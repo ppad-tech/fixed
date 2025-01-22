@@ -35,19 +35,19 @@ mul_c_matches a b =
       c_hi = fi (c .>>. 64) :: Word64
       c_lo = fi (c .&. 0xffffffffffffffff) :: Word64
 
-      W64P hi lo = mul_c a b
+      P hi lo = mul_c a b
   in  hi == c_hi && lo == c_lo
 
 -- (hi * 2 ^ 64 + lo) = z + (x * y)
 umul_hop_predicate_holds :: Word64 -> Word64 -> Word64 -> Bool
 umul_hop_predicate_holds z x y =
-  let !(W64P hi lo) = umul_hop z x y
+  let !(P hi lo) = umul_hop z x y
   in  fi hi * 2 ^ (64 :: Int) + fi lo == (fi z + (fi x * fi y) :: Integer)
 
 -- (hi * 2 ^ 64 + lo) = z + (x * y) + c
 umul_step_predicate_holds :: Word64 -> Word64 -> Word64 -> Word64 -> Bool
 umul_step_predicate_holds z x y c =
-  let !(W64P hi lo) = umul_step z x y c
+  let !(P hi lo) = umul_step z x y c
       !left = fi hi * 2 ^ (64 :: Int) + fi lo :: Integer
       !rite = fi z + (fi x * fi y) + fi c :: Integer
   in  left == rite
