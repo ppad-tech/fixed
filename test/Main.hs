@@ -4,6 +4,7 @@
 module Main where
 
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
+import qualified Data.Bits as B
 import Data.Word (Word64)
 import Data.Word.Extended
 import Test.Tasty
@@ -114,6 +115,16 @@ quot_rem_r_case1 = do
   let !(P q r) = quot_rem_r 0 4 2
   H.assertEqual mempty (P 2 0) (P q r)
 
+recip_2by1_case0 :: H.Assertion
+recip_2by1_case0 = do
+  let !q = recip_2by1 (B.complement 4)
+  H.assertEqual mempty 5 q
+
+recip_2by1_case1 :: H.Assertion
+recip_2by1_case1 = do
+  let !q = recip_2by1 (B.complement 0xff)
+  H.assertEqual mempty 256 q
+
 -- main -----------------------------------------------------------------------
 
 inverses :: TestTree
@@ -157,6 +168,8 @@ main = defaultMain $
   , testGroup "unit tests" [
       H.testCase "quot_rem_r matches case0" quot_rem_r_case0
     , H.testCase "quot_rem_r matches case1" quot_rem_r_case1
+    , H.testCase "recip_2by1 matches case0" recip_2by1_case0
+    , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     ]
   ]
 

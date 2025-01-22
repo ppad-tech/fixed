@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Data.Word.Extended where
 
@@ -285,4 +286,22 @@ quot_rem_r hi lo y_0
                     else go qn rhn
             | otherwise = qa
       in  go q_acc rhat_acc
+
+recip_2by1 :: Word64 -> Word64
+recip_2by1 d = r where
+  !(P r _) = quot_rem_r (B.complement d) 0xffffffffffffffff d
+
+quot_rem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
+quot_rem_2by1 uh ul d rec =
+  let !(P qh_0 ql) = mul_c rec uh
+      !(P ql_0 c)  = add_c ql ul 0
+      !(P (succ -> qh_1) _)  = add_c qh_0 uh c
+      !r = ul - qh_1 * d -- sub_mul?
+
+      !(P qh_y r_y) | r > ql_0  = P (qh_1 - 1) (r + d)
+                    | otherwise = P qh_1 r
+
+  in  if   r_y >= d
+      then P (qh_y + 1) (r_y - d)
+      else P qh_y r_y
 
