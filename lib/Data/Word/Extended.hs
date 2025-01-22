@@ -92,9 +92,10 @@ add_c w64_0 w64_1 c =
          | otherwise = 0
   in  P s n
 
+-- | A 'Word256' and overflow result, if any.
 data Word256WithOverflow = Word256WithOverflow
   !Word256
-  {-# UNPACK #-} !Bool
+  {-# UNPACK #-} !Word64
   deriving (Eq, Show)
 
 -- addition with overflow indication
@@ -104,9 +105,7 @@ add_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
       !(P s1 c1) = add_c a1 b1 c0
       !(P s2 c2) = add_c a2 b2 c1
       !(P s3 c3) = add_c a3 b3 c2
-  in  Word256WithOverflow
-        (Word256 s0 s1 s2 s3)
-        (c3 /= 0)
+  in  Word256WithOverflow (Word256 s0 s1 s2 s3) c3
 
 -- | Addition on 'Word256' values.
 add :: Word256 -> Word256 -> Word256
@@ -127,9 +126,7 @@ sub_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
       !(P s1 c1) = sub_b a1 b1 c0
       !(P s2 c2) = sub_b a2 b2 c1
       !(P s3 c3) = sub_b a3 b3 c2
-  in  Word256WithOverflow
-        (Word256 s0 s1 s2 s3)
-        (c3 /= 0)
+  in  Word256WithOverflow (Word256 s0 s1 s2 s3) c3
 
 -- | Subtraction on 'Word256' values.
 sub :: Word256 -> Word256 -> Word256
@@ -216,4 +213,30 @@ mul_512 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) =
       !(P c7_2   r5) = umul_step r2_5 x2 y3 c7_1
       !(P r7     r6) = umul_step c6 x3 y3 c7_2
   in  Word512 r0 r1 r2 r3 r4 r5 r6 r7
+
+-- division -------------------------------------------------------------------
+
+-- sub_mul x y m = (x - y * m, rem)
+sub_mul :: Word256 -> Word256 -> Word64 -> Word256WithOverflow
+sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
+  let !s0 = x0
+      !(P ph0 pl0) = mul_c y0 m
+      !(P z0 c0)   = sub_b s0 pl0 0
+      !b0          = ph0 + c0
+
+      !(P s1 c1)   = sub_b x1 b0 0
+      !(P ph1 pl1) = mul_c y1 m
+      !(P z1 c2)   = sub_b s1 pl1 0
+      !b1          = ph1 + c1 + c2
+
+      !(P s2 c3)   = sub_b x2 b1 0
+      !(P ph2 pl2) = mul_c y2 m
+      !(P z2 c4)   = sub_b s2 pl2 0
+      !b2          = ph2 + c3 + c4
+
+      !(P s3 c5)   = sub_b x3 b2 0
+      !(P ph3 pl3) = mul_c y3 m
+      !(P z3 c6)   = sub_b s3 pl3 0
+      !b3          = ph3 + c5 + c6
+  in  Word256WithOverflow (Word256 z0 z1 z2 z3) b3
 

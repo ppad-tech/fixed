@@ -27,6 +27,18 @@ instance (Q.Arbitrary a, Ord a) => Q.Arbitrary (Monotonic a) where
     b <- Q.arbitrary `Q.suchThat` (\b -> b <= a)
     pure (Monotonic (a, b))
 
+-- second argument * third argument is no greater than first argument
+newtype MulMonotonic = MulMonotonic (Integer, Integer, Integer)
+  deriving Show
+
+instance Q.Arbitrary MulMonotonic where
+  arbitrary = do
+    Q.NonNegative a <- Q.arbitrary :: Q.Gen (Q.NonNegative Integer)
+    m <- fmap fi (Q.arbitrary :: Q.Gen Word64)
+    Q.NonNegative b <-
+      fmap Q.NonNegative (Q.arbitrary `Q.suchThat` (\b -> b * m <= a))
+    pure (MulMonotonic (a, b, m))
+
 -- properties -----------------------------------------------------------------
 
 mul_c_matches :: Word64 -> Word64 -> Bool
@@ -51,6 +63,13 @@ umul_step_predicate_holds z x y c =
       !left = fi hi * 2 ^ (64 :: Int) + fi lo :: Integer
       !rite = fi z + (fi x * fi y) + fi c :: Integer
   in  left == rite
+
+sub_mul_matches :: MulMonotonic -> Bool
+sub_mul_matches (MulMonotonic (x, y, m)) =
+    let !left = to_word256 (x - y * m)
+        !(Word256WithOverflow rite _)
+          = sub_mul (to_word256 x) (to_word256 y) (fi m)
+    in  left == rite
 
 to_word256_inverts_to_integer :: Word256 -> Bool
 to_word256_inverts_to_integer w256 =
@@ -110,6 +129,8 @@ utils = testGroup "utils" [
       Q.withMaxSuccess 1000 umul_hop_predicate_holds
   , Q.testProperty "umul_step: (hi * 2 ^ 64 + lo) = z + (x * y) + c" $
       Q.withMaxSuccess 1000 umul_step_predicate_holds
+  , Q.testProperty "sub_mul matches integer sub_mul" $
+      Q.withMaxSuccess 1000 sub_mul_matches
   ]
 
 main :: IO ()
