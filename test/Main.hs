@@ -7,6 +7,7 @@ import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
 import Data.Word (Word64)
 import Data.Word.Extended
 import Test.Tasty
+import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
 
 instance Q.Arbitrary Word256 where
@@ -101,6 +102,18 @@ mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
       !rite = to_word512 (a * b)
   in  left == rite
 
+-- assertions ------------------------------------------------------------------
+
+quot_rem_r_case0 :: H.Assertion
+quot_rem_r_case0 = do
+  let !(P q r) = quot_rem_r 2 4 4
+  H.assertEqual mempty (P 9223372036854775809 0) (P q r)
+
+quot_rem_r_case1 :: H.Assertion
+quot_rem_r_case1 = do
+  let !(P q r) = quot_rem_r 0 4 2
+  H.assertEqual mempty (P 2 0) (P q r)
+
 -- main -----------------------------------------------------------------------
 
 inverses :: TestTree
@@ -134,10 +147,16 @@ utils = testGroup "utils" [
   ]
 
 main :: IO ()
-main = defaultMain $ testGroup "ppad-fw" [
-    utils
-  , inverses
-  , arithmetic
+main = defaultMain $
+  testGroup "ppad-fixed" [
+    testGroup "property tests" [
+      utils
+    , inverses
+    , arithmetic
+    ]
+  , testGroup "unit tests" [
+      H.testCase "quot_rem_r matches case0" quot_rem_r_case0
+    , H.testCase "quot_rem_r matches case1" quot_rem_r_case1
+    ]
   ]
-
 

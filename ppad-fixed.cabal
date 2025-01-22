@@ -41,6 +41,7 @@ test-suite fixed-tests
     , bytestring
     , ppad-fixed
     , tasty
+    , tasty-hunit
     , tasty-quickcheck
 
 benchmark fixed-bench
