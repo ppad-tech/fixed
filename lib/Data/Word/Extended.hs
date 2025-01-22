@@ -244,8 +244,8 @@ sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
 
 -- quotient, remainder of (hi, lo) divided by y
 -- translated from Div64 in go's math/bits package
-quot_rem_r :: Word64 -> Word64 -> Word64 -> W64Pair
-quot_rem_r hi lo y_0
+quotrem_r :: Word64 -> Word64 -> Word64 -> W64Pair
+quotrem_r hi lo y_0
     | y_0 == 0  = error "ppad-fixed: division by zero"
     | y_0 <= hi = error "ppad-fixed: overflow"
     | hi == 0   = P (lo `quot` y_0) (lo `rem` y_0)
@@ -289,10 +289,10 @@ quot_rem_r hi lo y_0
 
 recip_2by1 :: Word64 -> Word64
 recip_2by1 d = r where
-  !(P r _) = quot_rem_r (B.complement d) 0xffffffffffffffff d
+  !(P r _) = quotrem_r (B.complement d) 0xffffffffffffffff d
 
-quot_rem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
-quot_rem_2by1 uh ul d rec =
+quotrem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
+quotrem_2by1 uh ul d rec =
   let !(P qh_0 ql) = mul_c rec uh
       !(P ql_0 c)  = add_c ql ul 0
       !(P (succ -> qh_1) _)  = add_c qh_0 uh c
@@ -304,4 +304,13 @@ quot_rem_2by1 uh ul d rec =
   in  if   r_y >= d
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
+
+quotrem_by1 :: Word256 -> Word64 -> Word256WithOverflow
+quotrem_by1 (Word256 u0 u1 u2 u3) d =
+  let !rec = recip_2by1 d
+      !r0  = u3
+      !(P q2 r1) = quotrem_2by1 r0 u2 d rec
+      !(P q1 r2) = quotrem_2by1 r1 u1 d rec
+      !(P q0 r3) = quotrem_2by1 r2 u0 d rec
+  in  Word256WithOverflow (Word256 q0 q1 q2 0) r3
 

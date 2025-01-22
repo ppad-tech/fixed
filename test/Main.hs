@@ -105,14 +105,14 @@ mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
 
 -- assertions ------------------------------------------------------------------
 
-quot_rem_r_case0 :: H.Assertion
-quot_rem_r_case0 = do
-  let !(P q r) = quot_rem_r 2 4 4
+quotrem_r_case0 :: H.Assertion
+quotrem_r_case0 = do
+  let !(P q r) = quotrem_r 2 4 4
   H.assertEqual mempty (P 9223372036854775809 0) (P q r)
 
-quot_rem_r_case1 :: H.Assertion
-quot_rem_r_case1 = do
-  let !(P q r) = quot_rem_r 0 4 2
+quotrem_r_case1 :: H.Assertion
+quotrem_r_case1 = do
+  let !(P q r) = quotrem_r 0 4 2
   H.assertEqual mempty (P 2 0) (P q r)
 
 recip_2by1_case0 :: H.Assertion
@@ -166,8 +166,8 @@ main = defaultMain $
     , arithmetic
     ]
   , testGroup "unit tests" [
-      H.testCase "quot_rem_r matches case0" quot_rem_r_case0
-    , H.testCase "quot_rem_r matches case1" quot_rem_r_case1
+      H.testCase "quotrem_r matches case0" quotrem_r_case0
+    , H.testCase "quotrem_r matches case1" quotrem_r_case1
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     ]
