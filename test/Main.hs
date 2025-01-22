@@ -33,10 +33,10 @@ newtype MulMonotonic = MulMonotonic (Integer, Integer, Integer)
 
 instance Q.Arbitrary MulMonotonic where
   arbitrary = do
-    Q.NonNegative a <- Q.arbitrary :: Q.Gen (Q.NonNegative Integer)
+    Q.NonNegative a <- Q.arbitrary
     m <- fmap fi (Q.arbitrary :: Q.Gen Word64)
     Q.NonNegative b <-
-      fmap Q.NonNegative (Q.arbitrary `Q.suchThat` (\b -> b * m <= a))
+      Q.arbitrary `Q.suchThat` (\(Q.NonNegative b) -> b * m <= a)
     pure (MulMonotonic (a, b, m))
 
 -- properties -----------------------------------------------------------------
@@ -67,9 +67,9 @@ umul_step_predicate_holds z x y c =
 sub_mul_matches :: MulMonotonic -> Bool
 sub_mul_matches (MulMonotonic (x, y, m)) =
     let !left = to_word256 (x - y * m)
-        !(Word256WithOverflow rite _)
+        !(Word256WithOverflow rite r)
           = sub_mul (to_word256 x) (to_word256 y) (fi m)
-    in  left == rite
+    in  (left == rite && r == 0)
 
 to_word256_inverts_to_integer :: Word256 -> Bool
 to_word256_inverts_to_integer w256 =
@@ -113,9 +113,9 @@ inverses = testGroup "inverses" [
 
 arithmetic :: TestTree
 arithmetic = testGroup "arithmetic" [
-    Q.testProperty "addition matches (nonneg input)" $
+    Q.testProperty "addition matches (nonneg)" $
       Q.withMaxSuccess 1000 add_matches
-  , Q.testProperty "subtraction matches (nonneg, monotonic inputs)" $
+  , Q.testProperty "subtraction matches (nonneg, monotonic)" $
       Q.withMaxSuccess 1000 sub_matches
   , Q.testProperty "multiplication matches (nonneg, low bits)" $
       Q.withMaxSuccess 1000 mul_512_matches
@@ -129,7 +129,7 @@ utils = testGroup "utils" [
       Q.withMaxSuccess 1000 umul_hop_predicate_holds
   , Q.testProperty "umul_step: (hi * 2 ^ 64 + lo) = z + (x * y) + c" $
       Q.withMaxSuccess 1000 umul_step_predicate_holds
-  , Q.testProperty "sub_mul matches integer sub_mul" $
+  , Q.testProperty "sub_mul matches integer sub_mul (nonneg, monotonic)" $
       Q.withMaxSuccess 1000 sub_mul_matches
   ]
 
