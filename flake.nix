@@ -11,7 +11,7 @@
     nixpkgs.follows = "ppad-nixpkgs/nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, ppad-nixpkgs }:
     flake-utils.lib.eachDefaultSystem (system:
       let
         lib = "ppad-fw";
