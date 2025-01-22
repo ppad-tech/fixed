@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE BinaryLiterals #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NumericUnderscores #-}
 
@@ -106,26 +105,23 @@ sub w0 w1 = d where
 -- note that this is available in a single MULX instruction on e.g.
 -- x86_64 with BMI2
 --
--- adapted from go's math/bits package
+-- translated from Mul64 in go's math/bits package
 mul_c :: Word64 -> Word64 -> W64Pair
-mul_c w64_0 w64_1 =
-  let !lo_0   = w64_0 * w64_1
-      !mask32 = 0b11111111_11111111_11111111_11111111 -- 2 ^ 32 - 1
+mul_c x y =
+  let !mask32 = 0xffffffff
+      !x0 = x .&. mask32
+      !x1 = x .>>. 32
+      !y0 = y .&. mask32
+      !y1 = y .>>. 32
 
-      !w32_0_lo = w64_0 .&. mask32
-      !w32_0_hi = w64_0 .>>. 32
+      !w0   = x0 * y0
+      !t    = x1 * y0 + w0 .>>. 32
+      !w1   = t .&. mask32
+      !w2   = t .>>. 32
+      !w1_1 = w1 + x0 * y1
 
-      !w32_1_lo = w64_1 .&. mask32
-      !w32_1_hi = w64_1 .>>. 32
-
-      !cross_0  = w32_0_lo * w32_1_hi + w32_0_hi * w32_1_lo
-      !hi_0     = w32_0_hi * w32_1_hi + cross_0 .>>. 32
-
-      !cross_lo = cross_0 .<<. 32
-      !lo = lo_0 + cross_lo
-      !hi | lo < cross_lo = hi_0 + 1
-          | otherwise     = hi_0
-
+      !hi = x1 * y1 + w2 + w1_1 .>>. 32
+      !lo = x * y
   in  W64P hi lo
 
 -- (hi * 2 ^ 64 + lo) = z + (x * y)
