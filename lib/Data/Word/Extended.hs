@@ -5,7 +5,7 @@
 
 module Data.Word.Extended where
 
-import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
+import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
 import qualified Data.Bits as B
 import Data.Word (Word64)
 import GHC.Generics
@@ -83,6 +83,20 @@ to_word512 n =
       !w6 = fi ((n .>>. 384) .&. mask64)
       !w7 = fi ((n .>>. 448) .&. mask64)
   in  Word512 w0 w1 w2 w3 w4 w5 w6 w7
+
+-- bits -----------------------------------------------------------------------
+
+or :: Word256 -> Word256 -> Word256
+or (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
+  Word256 (a0 .|. b0) (a1 .|. b1) (a2 .|. b2) (a3 .|. b3)
+
+and :: Word256 -> Word256 -> Word256
+and (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
+  Word256 (a0 .&. b0) (a1 .&. b1) (a2 .&. b2) (a3 .&. b3)
+
+xor :: Word256 -> Word256 -> Word256
+xor (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
+  Word256 (a0 .^. b0) (a1 .^. b1) (a2 .^. b2) (a3 .^. b3)
 
 -- addition, subtraction ------------------------------------------------------
 
@@ -232,6 +246,7 @@ mul_512 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) =
 
 -- division -------------------------------------------------------------------
 
+-- XX make this work on variable-length x, y
 -- sub_mul x y m = (x - y * m, rem)
 sub_mul :: Word256 -> Word256 -> Word64 -> Word256WithOverflow
 sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
@@ -312,7 +327,7 @@ quotrem_2by1 uh ul d rec =
   let !(P qh_0 ql) = mul_c rec uh
       !(P ql_0 c)  = add_c ql ul 0
       !(P (succ -> qh_1) _)  = add_c qh_0 uh c
-      !r = ul - qh_1 * d -- sub_mul?
+      !r = ul - qh_1 * d
 
       !(P qh_y r_y) | r > ql_0  = P (qh_1 - 1) (r + d)
                     | otherwise = P qh_1 r
@@ -321,6 +336,7 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
+-- XX make this work on variable-length x, y (udivremBy1)
 quotrem_by1 :: Word256 -> Word64 -> Word256WithOverflow
 quotrem_by1 (Word256 u0 u1 u2 u3) d =
   let !rec = recip_2by1 d
