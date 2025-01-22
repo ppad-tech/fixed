@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Main where
 
 import Data.Word.Extended
@@ -16,14 +18,16 @@ to_word256_inverts_to_integer :: Word256 -> Bool
 to_word256_inverts_to_integer w256 =
   to_word256 (to_integer w256) == w256
 
-to_integer_inverts_to_word256 :: Integer -> Bool
-to_integer_inverts_to_word256 n =
+-- doesn't hold for negative inputs
+to_integer_inverts_to_word256 :: (Q.NonNegative Integer) -> Bool
+to_integer_inverts_to_word256 (Q.NonNegative n) =
   to_integer (to_word256 n) == n
 
+conversion :: TestTree
 conversion = testGroup "conversion" [
     Q.testProperty "to_word256 . to_integer ~ id" $
       Q.withMaxSuccess 1000 to_word256_inverts_to_integer
-  , Q.testProperty "to_integer . to_word256 ~ id" $
+  , Q.testProperty "to_integer . to_word256 ~ id (for nonnegative input)" $
       Q.withMaxSuccess 1000 to_integer_inverts_to_word256
   ]
 
