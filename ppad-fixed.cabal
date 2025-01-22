@@ -1,7 +1,7 @@
 cabal-version:      3.0
-name:               ppad-fw
+name:               ppad-fixed
 version:            0.1.0
-synopsis:           Fixed-width integers
+synopsis:           Fixed-width integers.
 license:            MIT
 license-file:       LICENSE
 author:             Jared Tobin
@@ -15,7 +15,7 @@ description:
 
 source-repository head
   type:     git
-  location: git.ppad.tech/sha256.git
+  location: git.ppad.tech/fixed.git
 
 library
   default-language: Haskell2010
@@ -27,7 +27,7 @@ library
   build-depends:
       base >= 4.9 && < 5
 
-test-suite fw-tests
+test-suite fixed-tests
   type:                exitcode-stdio-1.0
   default-language:    Haskell2010
   hs-source-dirs:      test
@@ -39,7 +39,7 @@ test-suite fw-tests
   build-depends:
       base
     , bytestring
-    , ppad-fw
+    , ppad-fixed
     , tasty
     , tasty-quickcheck
 

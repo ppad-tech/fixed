@@ -1,5 +1,5 @@
 {
-  description = "Fixed-width integer types";
+  description = "Fixed-width integer types.";
 
   inputs = {
     ppad-nixpkgs = {
@@ -14,7 +14,7 @@
   outputs = { self, nixpkgs, flake-utils, ppad-nixpkgs }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        lib = "ppad-fw";
+        lib = "ppad-fixed";
 
         pkgs = import nixpkgs { inherit system; };
         hlib = pkgs.haskell.lib;
