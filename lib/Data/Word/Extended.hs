@@ -101,4 +101,62 @@ sub :: Word256 -> Word256 -> Word256
 sub w0 w1 = d where
   !(Word256WithOverflow d _) = sub_of w0 w1
 
+-- multiplication -------------------------------------------------------------
+
+-- note that this is available in a single MULX instruction on e.g.
+-- x86_64 with BMI2
+--
+-- adapted from go's math/bits package
+mul_c :: Word64 -> Word64 -> W64Pair
+mul_c w64_0 w64_1 =
+  let !lo_0   = w64_0 * w64_1
+      !mask32 = 0b11111111_11111111_11111111_11111111 -- 2 ^ 32 - 1
+
+      !w32_0_lo = w64_0 .&. mask32
+      !w32_0_hi = w64_0 .>>. 32
+
+      !w32_1_lo = w64_1 .&. mask32
+      !w32_1_hi = w64_1 .>>. 32
+
+      !cross_0  = w32_0_lo * w32_1_hi + w32_0_hi * w32_1_lo
+      !hi_0     = w32_0_hi * w32_1_hi + cross_0 .>>. 32
+
+      !cross_lo = cross_0 .<<. 32
+      !lo = lo_0 + cross_lo
+      !hi | lo < cross_lo = hi_0 + 1
+          | otherwise     = hi_0
+
+  in  W64P hi lo
+
+-- (hi * 2 ^ 64 + lo) = z + (x * y)
+umul_hop :: Word64 -> Word64 -> Word64 -> W64Pair
+umul_hop z x y =
+  let !(W64P hi_0 lo_0) = mul_c x y
+      !(W64P lo c)      = add_c lo_0 z 0
+      !(W64P hi _)      = add_c hi_0 0 c
+  in  W64P hi lo
+
+-- (hi * 2 ^ 64 + lo) = z + (x * y) + c
+umul_step :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
+umul_step z x y c =
+  let !(W64P hi_0 lo_0) = mul_c x y
+      !(W64P lo_1 c_0)  = add_c lo_0 c 0
+      !(W64P hi_1 _)    = add_c hi_0 0 c_0
+      !(W64P lo c_1)    = add_c lo_1 z 0
+      !(W64P hi _)      = add_c hi_1 0 c_1
+  in  W64P hi lo
+
+mul :: Word256 -> Word256 -> Word256
+mul (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
+  let !(W64P c0_0 s0) = mul_c a0 b0
+      !(W64P c0_1 r0) = umul_hop c0_0 a1 b0
+      !(W64P c0_2 r1) = umul_hop c0_1 a2 b0
+
+      !(W64P c1_0 s1) = umul_hop r0 a0 b1
+      !(W64P c1_1 r2) = umul_step r1 a1 b1 c1_0
+
+      !(W64P c2 s2)   = umul_hop r2 a1 b1
+
+      !s3 = a3 * b0 + a2 * b1 + a0 * b3 + a1 * b2 + c0_2 + c1_1 + c2
+  in  Word256 s0 s1 s2 s3
 
