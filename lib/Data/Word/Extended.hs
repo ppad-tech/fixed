@@ -5,6 +5,7 @@
 module Data.Word.Extended where
 
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
+import qualified Data.Bits as B
 import Data.Word (Word64)
 import GHC.Generics
 
@@ -239,4 +240,49 @@ sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
       !(P z3 c6)   = sub_b s3 pl3 0
       !b3          = ph3 + c5 + c6
   in  Word256WithOverflow (Word256 z0 z1 z2 z3) b3
+
+-- quotient, remainder of (hi, lo) divided by y
+-- translated from Div64 in go's math/bits package
+quot_rem_r :: Word64 -> Word64 -> Word64 -> W64Pair
+quot_rem_r hi lo y_0
+    | y_0 == 0  = error "ppad-fixed: division by zero"
+    | y_0 <= hi = error "ppad-fixed: overflow"
+    | hi == 0   = P (lo `quot` y_0) (lo `rem` y_0)
+    | otherwise =
+        let !s = B.countLeadingZeros y_0
+            !y = y_0 .<<. s
+
+            !yn1  = y .>>. 32
+            !yn0  = y .&. mask32
+            !un32 = (hi .<<. s) .|. (lo .>>. (64 - s))
+            !un10 = lo .<<. s
+            !un1 = un10 .>>. 32
+            !un0 = un10 .&. mask32
+            !q1 = un32 `quot` yn1 -- `div` ?
+            !rhat = un32 - q1 * yn1
+
+            !q1_l = q_loop q1 rhat yn0 yn1 un1
+
+            !un21 = un32 * two32 + un1 - q1_l * y
+            !q0 = un21 `quot` yn1
+            !rhat_n = un21 - q0 * yn1
+
+            !q0_l = q_loop q0 rhat_n yn0 yn1 un0
+        in  P
+              (q1_l * two32 + q0_l)
+              ((un21 * two32 + un0 - q0_l * y) .>>. s)
+  where
+    !two32  = 0x100000000
+    !mask32 = 0x0ffffffff
+
+    q_loop !q_acc !rhat_acc !yn_0 !yn_1 !un =
+      let go !qa !rha
+            | qa >= two32 || qa * yn_0 > two32 * rha + un =
+                let !qn = qa - 1
+                    !rhn = rha + yn_1
+                in  if   rhn >= two32
+                    then qn
+                    else go qn rhn
+            | otherwise = qa
+      in  go q_acc rhat_acc
 
