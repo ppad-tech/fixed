@@ -42,8 +42,9 @@ mul_baseline = bench "mul (baseline)" $ nf ((*) w0) w1 where
   !w0 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
   !w1 = 0x7fffffffffffffffffffffffffffffffffffffffffffffbfffffffffffffffed
 
+-- XX overflows; unsure if valid comparison
 mul :: Benchmark
-mul = bench "mul" $ nf (W.mul_512 w0) w1 where
+mul = bench "mul" $ nf (W.mul w0) w1 where
   !w0 = W.to_word256
     0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
   !w1 = W.to_word256

@@ -36,6 +36,12 @@ data Word512 = Word512
     {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+-- just for holding a couple of word64's
+data Word128 = P
+    {-# UNPACK #-} !Word64
+    {-# UNPACK #-} !Word64
+  deriving (Eq, Show)
+
 -- conversion -----------------------------------------------------------------
 
 to_integer :: Word256 -> Integer
@@ -80,12 +86,6 @@ to_word512 n =
 
 -- addition, subtraction ------------------------------------------------------
 
--- strict, unboxed pair of Word64
-data W64Pair = P
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-  deriving (Eq, Show)
-
 -- add-with-carry
 --
 -- x86-64 ADDQ rX, rY
@@ -93,7 +93,7 @@ data W64Pair = P
 --
 -- ARM    ADDS
 --        ADC
-add_c :: Word64 -> Word64 -> Word64 -> W64Pair
+add_c :: Word64 -> Word64 -> Word64 -> Word128
 add_c w64_0 w64_1 c =
   let !s = w64_0 + w64_1 + c
       !n | s < w64_0 || s < w64_1 = 1
@@ -127,7 +127,7 @@ add w0 w1 = s where
 --
 -- ARM     SUBS
 --         SBC
-sub_b :: Word64 -> Word64 -> Word64 -> W64Pair
+sub_b :: Word64 -> Word64 -> Word64 -> Word128
 sub_b w64_0 w64_1 b =
   let !d = w64_0 - w64_1 - b
       !n | w64_0 < w64_1 + b = 1
@@ -155,7 +155,7 @@ sub w0 w1 = d where
 -- ARM    UMULH
 --
 -- translated from Mul64 in go's math/bits package
-mul_c :: Word64 -> Word64 -> W64Pair
+mul_c :: Word64 -> Word64 -> Word128
 mul_c x y =
   let !mask32 = 0xffffffff
       !x0 = x .&. mask32
@@ -174,7 +174,7 @@ mul_c x y =
   in  P hi lo
 
 -- (hi * 2 ^ 64 + lo) = z + (x * y)
-umul_hop :: Word64 -> Word64 -> Word64 -> W64Pair
+umul_hop :: Word64 -> Word64 -> Word64 -> Word128
 umul_hop z x y =
   let !(P hi_0 lo_0) = mul_c x y
       !(P lo c)      = add_c lo_0 z 0
@@ -182,7 +182,7 @@ umul_hop z x y =
   in  P hi lo
 
 -- (hi * 2 ^ 64 + lo) = z + (x * y) + c
-umul_step :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
+umul_step :: Word64 -> Word64 -> Word64 -> Word64 -> Word128
 umul_step z x y c =
   let !(P hi_0 lo_0) = mul_c x y
       !(P lo_1 c_0)  = add_c lo_0 c 0
@@ -260,7 +260,7 @@ sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
 -- translated from Div64 in go's math/bits package
 --
 -- x86-64 (RDX:RAX)  DIVQ
-quotrem_r :: Word64 -> Word64 -> Word64 -> W64Pair
+quotrem_r :: Word64 -> Word64 -> Word64 -> Word128
 quotrem_r hi lo y_0
     | y_0 == 0  = error "ppad-fixed: division by zero"
     | y_0 <= hi = error "ppad-fixed: overflow"
@@ -307,7 +307,7 @@ recip_2by1 :: Word64 -> Word64
 recip_2by1 d = r where
   !(P r _) = quotrem_r (B.complement d) 0xffffffffffffffff d
 
-quotrem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> W64Pair
+quotrem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> Word128
 quotrem_2by1 uh ul d rec =
   let !(P qh_0 ql) = mul_c rec uh
       !(P ql_0 c)  = add_c ql ul 0
