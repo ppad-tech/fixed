@@ -3,10 +3,11 @@
 
 module Main where
 
-import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
+import Data.Bits ((.|.), (.&.), (.>>.), (.^.))
 import qualified Data.Bits as B
 import Data.Word (Word64)
 import Data.Word.Extended
+import Prelude hiding (and, or)
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
@@ -81,6 +82,18 @@ to_integer_inverts_to_word256 :: Q.NonNegative Integer -> Bool
 to_integer_inverts_to_word256 (Q.NonNegative n) =
   to_integer (to_word256 n) == n
 
+or_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+or_matches (Q.NonNegative a) (Q.NonNegative b) =
+  to_integer (to_word256 a `or` to_word256 b) == a .|. b
+
+and_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+and_matches (Q.NonNegative a) (Q.NonNegative b) =
+  to_integer (to_word256 a `and` to_word256 b) == a .&. b
+
+xor_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+xor_matches (Q.NonNegative a) (Q.NonNegative b) =
+  to_integer (to_word256 a `xor` to_word256 b) == a .^. b
+
 add_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
 add_matches (Q.NonNegative a) (Q.NonNegative b) =
   to_integer (to_word256 a `add` to_word256 b) == a + b
@@ -127,6 +140,16 @@ recip_2by1_case1 = do
 
 -- main -----------------------------------------------------------------------
 
+bits :: TestTree
+bits = testGroup "bits" [
+    Q.testProperty "or matches" $
+      Q.withMaxSuccess 1000 or_matches
+  , Q.testProperty "and matches" $
+      Q.withMaxSuccess 1000 and_matches
+  , Q.testProperty "xor matches" $
+      Q.withMaxSuccess 1000 xor_matches
+  ]
+
 inverses :: TestTree
 inverses = testGroup "inverses" [
     Q.testProperty "to_word256 . to_integer ~ id" $
@@ -163,6 +186,7 @@ main = defaultMain $
     testGroup "property tests" [
       utils
     , inverses
+    , bits
     , arithmetic
     ]
   , testGroup "unit tests" [
