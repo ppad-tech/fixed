@@ -60,13 +60,27 @@ to_integer_inverts_to_word256 :: Q.NonNegative Integer -> Bool
 to_integer_inverts_to_word256 (Q.NonNegative n) =
   to_integer (to_word256 n) == n
 
-addition_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
-addition_matches (Q.NonNegative a) (Q.NonNegative b) =
+add_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+add_matches (Q.NonNegative a) (Q.NonNegative b) =
   to_integer (to_word256 a `add` to_word256 b) == a + b
 
-subtraction_matches :: Monotonic (Q.NonNegative Integer) -> Bool
-subtraction_matches (Monotonic (Q.NonNegative a, Q.NonNegative b)) =
+sub_matches :: Monotonic (Q.NonNegative Integer) -> Bool
+sub_matches (Monotonic (Q.NonNegative a, Q.NonNegative b)) =
   to_integer (to_word256 a `sub` to_word256 b) == a - b
+
+mul_lo_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+mul_lo_matches (Q.NonNegative a) (Q.NonNegative b) =
+  let !mask128 = 0xffffffffffffffffffffffffffffffff
+      !a_lo = a .&. mask128
+      !b_lo = b .&. mask128
+
+  in  to_word256 a_lo `mul` to_word256 b_lo == to_word256 (a_lo * b_lo)
+
+mul_512_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
+  let !left = to_word256 a `mul_512` to_word256 b
+      !rite = to_word512 (a * b)
+  in  left == rite
 
 -- main -----------------------------------------------------------------------
 
@@ -81,9 +95,11 @@ inverses = testGroup "inverses" [
 arithmetic :: TestTree
 arithmetic = testGroup "arithmetic" [
     Q.testProperty "addition matches (nonneg input)" $
-      Q.withMaxSuccess 1000 addition_matches
+      Q.withMaxSuccess 1000 add_matches
   , Q.testProperty "subtraction matches (nonneg, monotonic inputs)" $
-      Q.withMaxSuccess 1000 subtraction_matches
+      Q.withMaxSuccess 1000 sub_matches
+  , Q.testProperty "multiplication matches (nonneg, low bits)" $
+      Q.withMaxSuccess 1000 mul_512_matches
   ]
 
 utils :: TestTree
