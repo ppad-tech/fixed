@@ -87,6 +87,12 @@ data W64Pair = P
   deriving (Eq, Show)
 
 -- add-with-carry
+--
+-- x86-64 ADDQ rX, rY
+--        ADCQ $0, rCarry
+--
+-- ARM    ADDS
+--        ADC
 add_c :: Word64 -> Word64 -> Word64 -> W64Pair
 add_c w64_0 w64_1 c =
   let !s = w64_0 + w64_1 + c
@@ -115,6 +121,12 @@ add w0 w1 = s where
   !(Word256WithOverflow s _) = add_of w0 w1
 
 -- subtract-with-borrow
+--
+-- x86-64  SUBQ rY, rX
+--         SBBQ $0, rBorrow
+--
+-- ARM     SUBS
+--         SBC
 sub_b :: Word64 -> Word64 -> Word64 -> W64Pair
 sub_b w64_0 w64_1 b =
   let !d = w64_0 - w64_1 - b
@@ -137,8 +149,10 @@ sub w0 w1 = d where
 
 -- multiplication -------------------------------------------------------------
 
--- this is available in a single MULX instruction on e.g. x86_64
--- with BMI2
+-- x86-64 (BMI2)    MULX
+--        (RDX:RAX) MULQ
+--
+-- ARM    UMULH
 --
 -- translated from Mul64 in go's math/bits package
 mul_c :: Word64 -> Word64 -> W64Pair
@@ -244,6 +258,8 @@ sub_mul (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
 
 -- quotient, remainder of (hi, lo) divided by y
 -- translated from Div64 in go's math/bits package
+--
+-- x86-64 (RDX:RAX)  DIVQ
 quotrem_r :: Word64 -> Word64 -> Word64 -> W64Pair
 quotrem_r hi lo y_0
     | y_0 == 0  = error "ppad-fixed: division by zero"
@@ -259,7 +275,7 @@ quotrem_r hi lo y_0
             !un10 = lo .<<. s
             !un1 = un10 .>>. 32
             !un0 = un10 .&. mask32
-            !q1 = un32 `quot` yn1 -- `div` ?
+            !q1 = un32 `quot` yn1
             !rhat = un32 - q1 * yn1
 
             !q1_l = q_loop q1 rhat yn0 yn1 un1
