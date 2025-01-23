@@ -195,8 +195,8 @@ quotrem_by1_case0 = do
         pure (qu, re)
   let pec_array = PA.primArrayFromList [4, 0, 0, 0]
       pec_rem   = 1032
-  H.assertEqual mempty pec_rem r
-  H.assertEqual mempty pec_array q
+  H.assertEqual "remainder matches" pec_rem r
+  H.assertEqual "quotient matches" pec_array q
 
 quotrem_by1_case1 :: H.Assertion
 quotrem_by1_case1 = do
@@ -210,8 +210,95 @@ quotrem_by1_case1 = do
         pure (qu, re)
   let pec_array = PA.primArrayFromList [26, 0, 0, 0]
       pec_rem   = 6664
-  H.assertEqual mempty pec_rem r
-  H.assertEqual mempty pec_array q
+  H.assertEqual "remainder matches" pec_rem r
+  H.assertEqual "quotient matches" pec_array q
+
+quotrem_knuth_case0 :: H.Assertion
+quotrem_knuth_case0 = do
+  let (q, u) = runST $ do
+        quo <- PA.newPrimArray 5
+        PA.setPrimArray quo 0 5 0
+        u_arr <- PA.newPrimArray 5
+        PA.writePrimArray u_arr 0 2162362899639802732
+        PA.writePrimArray u_arr 1 8848548347662387477
+        PA.writePrimArray u_arr 2 13702897166684377657
+        PA.writePrimArray u_arr 3 16799544643779908154
+        PA.writePrimArray u_arr 4 1
+        let !d = PA.primArrayFromList [
+                16950798510782491100
+              , 2612788699139816405
+              , 5146719872810836952
+              , 14966148379609982000
+              ]
+        quotrem_knuth quo u_arr d
+        qf <- PA.unsafeFreezePrimArray quo
+        uf <- PA.unsafeFreezePrimArray u_arr
+        pure (qf, uf)
+  let pec_q = PA.primArrayFromList [2, 0, 0, 0, 0]
+      pec_u = PA.primArrayFromList [
+          5154254025493923764
+        , 3622970949382754665
+        , 3409457421062703753
+        , 5313991958269495770 -- was off by 1 :|
+        , 0
+        ]
+  H.assertEqual "divisor matches" pec_u u
+  H.assertEqual "quotient matches" pec_q q
+
+quotrem_case0 :: H.Assertion
+quotrem_case0 = do
+  let (q, r) = runST $ do
+        quo <- PA.newPrimArray 5
+        PA.setPrimArray quo 0 5 0
+        let !u = PA.primArrayFromList
+              [0x1234567890ABCDEF, 0xFEDCBA0987654321, 0x123456789ABCDEF0]
+            !d = PA.primArrayFromList
+              [0x0, 0x0, 0x1, 0x100000000]
+        re <- PA.newPrimArray 4
+        PA.setPrimArray re 0 4 0
+        quotrem quo u d (Just re)
+        qf <- PA.unsafeFreezePrimArray quo
+        rf <- PA.unsafeFreezePrimArray re
+        pure (qf, rf)
+  let pec_q = PA.primArrayFromList [0, 0, 0, 0, 0]
+      pec_r = PA.primArrayFromList
+        [1311768467294899695, 18364757930599072545, 1311768467463790320, 0]
+  H.assertEqual "remainder matches" pec_r r
+  H.assertEqual "quotient matches" pec_q q
+
+quotrem_case1 :: H.Assertion
+quotrem_case1 = do
+  let (q, r) = runST $ do
+        quo <- PA.newPrimArray 5
+        PA.setPrimArray quo 0 5 0
+        let !u = PA.primArrayFromList [
+                5152276743337338587
+              , 6823823105342984773
+              , 12649096328525870222
+              , 8811572179372364942
+              ]
+            !d = PA.primArrayFromList [
+                8849385646123010679
+              , 653197174784954101
+              , 1286679968202709238
+              , 3741537094902495500
+              ]
+
+        re <- PA.newPrimArray 4
+        PA.setPrimArray re 0 4 0
+        quotrem quo u d (Just re)
+        qf <- PA.unsafeFreezePrimArray quo
+        rf <- PA.unsafeFreezePrimArray re
+        pure (qf, rf)
+  let pec_q = PA.primArrayFromList [2, 0, 0, 0, 0]
+      pec_r = PA.primArrayFromList [
+          5900249524800868845
+        , 5517428755773076570
+        , 10075736392120451746
+        , 1328497989567373942
+        ]
+  H.assertEqual "remainder matches" pec_r r
+  H.assertEqual "quotient matches" pec_q q
 
 -- main -----------------------------------------------------------------------
 
@@ -283,6 +370,9 @@ main = defaultMain $
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
     , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
     , H.testCase "quotrem_by1 matches case1" quotrem_by1_case1
+    , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
+    , H.testCase "quotrem matches case0" quotrem_case0
+    , H.testCase "quotrem matches case1" quotrem_case1
     ]
   ]
 
