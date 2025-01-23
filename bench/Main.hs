@@ -3,15 +3,18 @@
 
 module Main where
 
-import Data.Bits ((.|.), (.&.), (.^.))
-import qualified Data.Word.Extended as W
 import Control.DeepSeq
 import Criterion.Main
+import Data.Bits ((.|.), (.&.), (.^.))
+import qualified Data.Bits as B
+import qualified Data.Word.Extended as W
+import qualified Data.Primitive.PrimArray as PA
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
 
 instance NFData W.Word256
 instance NFData W.Word512
+instance NFData W.Word256WithOverflow
 
 or_baseline :: Benchmark
 or_baseline = bench "or (baseline)" $ nf ((.|.) w0) w1 where
@@ -142,25 +145,47 @@ mod = bench "mod" $ nf (W.mod w0) w1 where
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
+quotrem_by1 :: Benchmark
+quotrem_by1 = env setup $ \ ~(quo, u, d) ->
+    bench "quotrem_by1" $ nfAppIO (W.quotrem_by1 quo u) d
+  where
+    setup = do
+      quo <- PA.newPrimArray 5
+      PA.setPrimArray quo 0 5 0
+      let u = PA.primArrayFromList [
+              300
+            , 200
+            , 100
+            ]
+          d = B.complement 50
+      pure (quo, u, d)
+
+quotrem_by1_256 :: Benchmark
+quotrem_by1_256 =
+  bench "quotrem_by1_256" $
+    nf (W.quotrem_by1_256 (W.Word256 300 200 100 0)) (B.complement 50)
+
 main :: IO ()
 main = defaultMain [
-    mul_baseline
-  , mul
-  , div_baseline
-  , div
-  , mod_baseline
-  , mod
-  , div_baseline_small
-  , div_small
-  , or_baseline
-  , or
-  , and_baseline
-  , and
-  , xor_baseline
-  , xor
-  , add_baseline
-  , add
-  , sub_baseline
-  , sub
+    quotrem_by1
+  , quotrem_by1_256
+  --  mul_baseline
+  --  mul
+  --, div_baseline
+  --, div
+  --, mod_baseline
+  --, mod
+  --, div_baseline_small
+  --, div_small
+  --, or_baseline
+  --, or
+  --, and_baseline
+  --, and
+  --, xor_baseline
+  --, xor
+  --, add_baseline
+  --, add
+  --, sub_baseline
+  --, sub
   ]
 

@@ -60,6 +60,7 @@ benchmark fixed-bench
     , criterion
     , deepseq
     , ppad-fixed
+    , primitive
 
 benchmark fixed-weigh
   type:                exitcode-stdio-1.0
@@ -74,5 +75,6 @@ benchmark fixed-weigh
       base
     , deepseq
     , ppad-fixed
+    , primitive
     , weigh
 
