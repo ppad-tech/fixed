@@ -31,13 +31,14 @@ instance (Q.Arbitrary a, Eq a) => Q.Arbitrary (Different a) where
     pure (Different (a, b))
 
 -- second argument is no greater than first argument
-newtype Monotonic a = Monotonic (a, a)
+newtype Monotonic = Monotonic (Integer, Integer)
   deriving Show
 
-instance (Q.Arbitrary a, Ord a) => Q.Arbitrary (Monotonic a) where
+instance Q.Arbitrary Monotonic where
   arbitrary = do
-    a <- Q.arbitrary
-    b <- Q.arbitrary `Q.suchThat` (\b -> b <= a)
+    a <- Q.chooseInteger (0, 2 ^ (256 :: Int) - 1)
+    b <- (Q.chooseInteger (0, 2 ^ (256 :: Int) - 1))
+      `Q.suchThat` (\b -> b <= a)
     pure (Monotonic (a, b))
 
 -- second argument * third argument is no greater than first argument
@@ -128,8 +129,8 @@ add_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
 add_matches (Q.NonNegative a) (Q.NonNegative b) =
   to_integer (to_word256 a `add` to_word256 b) == a + b
 
-sub_matches :: Monotonic (Q.NonNegative Integer) -> Bool
-sub_matches (Monotonic (Q.NonNegative a, Q.NonNegative b)) =
+sub_matches :: Monotonic -> Bool
+sub_matches (Monotonic (a, b)) =
   to_integer (to_word256 a `sub` to_word256 b) == a - b
 
 mul_lo_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
