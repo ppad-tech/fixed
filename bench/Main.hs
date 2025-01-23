@@ -7,7 +7,8 @@ import Data.Bits ((.|.), (.&.), (.^.))
 import qualified Data.Word.Extended as W
 import Control.DeepSeq
 import Criterion.Main
-import Prelude hiding (or, and)
+import Prelude hiding (or, and, div)
+import qualified Prelude (div)
 
 instance NFData W.Word256
 instance NFData W.Word512
@@ -102,6 +103,19 @@ mul128 = bench "mul128" $ nf (W.mul w0) w1 where
   !w0 = W.to_word256 0x7fffffffffffffffffffffffffffffed
   !w1 = W.to_word256 0x7ffffffffffffffbffffffffffffffed
 
+div_baseline :: Benchmark
+div_baseline = bench "div (baseline)" $ nf (Prelude.div w0) w1 where
+  w0, w1 :: Integer
+  !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
+div :: Benchmark
+div = bench "div" $ nf (W.div w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
 main :: IO ()
 main = defaultMain [
     or_baseline
@@ -118,5 +132,7 @@ main = defaultMain [
   , mul
   , mul128_baseline
   , mul128
+  , div_baseline
+  , div
   ]
 

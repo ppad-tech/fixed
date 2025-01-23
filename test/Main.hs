@@ -3,8 +3,10 @@
 
 module Main where
 
+import Control.Monad.ST
 import Data.Bits ((.|.), (.&.), (.>>.), (.^.))
 import qualified Data.Bits as B
+import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import Data.Word.Extended
 import Prelude hiding (and, or, div)
@@ -181,6 +183,20 @@ quotrem_2by1_case0 = do
       !o = quotrem_2by1 8 4 d (recip_2by1 d)
   H.assertEqual mempty (P 8 2052) o
 
+quotrem_by1_case0 :: H.Assertion
+quotrem_by1_case0 = do
+  let (q, r) = runST $ do
+        quo <- PA.newPrimArray 4
+        let !u = PA.primArrayFromList [8, 4]
+            !d = B.complement 0xFF :: Word64
+        re <- quotrem_by1 quo u d
+        qu <- PA.unsafeFreezePrimArray quo
+        pure (qu, re)
+  let pec_array = PA.primArrayFromList [4, 0, 0, 0]
+      pec_rem   = 1032
+  H.assertEqual mempty pec_rem r
+  H.assertEqual mempty pec_array q
+
 -- main -----------------------------------------------------------------------
 
 comparison :: TestTree
@@ -249,6 +265,7 @@ main = defaultMain $
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
+    , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
     ]
   ]
 
