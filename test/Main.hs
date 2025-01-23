@@ -248,20 +248,20 @@ quotrem_case0 :: H.Assertion
 quotrem_case0 = do
   let (q, r) = runST $ do
         quo <- PA.newPrimArray 5
-        PA.setPrimArray quo 0 5 0
+        PA.setPrimArray quo 0 5 (0 :: Word64)
         let !u = PA.primArrayFromList
               [0x1234567890ABCDEF, 0xFEDCBA0987654321, 0x123456789ABCDEF0]
             !d = PA.primArrayFromList
               [0x0, 0x0, 0x1, 0x100000000]
-        re <- PA.newPrimArray 4
-        PA.setPrimArray re 0 4 0
-        quotrem quo u d (Just re)
+        rf <- quotrem quo u d
         qf <- PA.unsafeFreezePrimArray quo
-        rf <- PA.unsafeFreezePrimArray re
         pure (qf, rf)
   let pec_q = PA.primArrayFromList [0, 0, 0, 0, 0]
-      pec_r = PA.primArrayFromList
-        [1311768467294899695, 18364757930599072545, 1311768467463790320, 0]
+      pec_r = Word256
+        1311768467294899695
+        18364757930599072545
+        1311768467463790320
+        0
   H.assertEqual "remainder matches" pec_r r
   H.assertEqual "quotient matches" pec_q q
 
@@ -283,19 +283,16 @@ quotrem_case1 = do
               , 3741537094902495500
               ]
 
-        re <- PA.newPrimArray 4
-        PA.setPrimArray re 0 4 0
-        quotrem quo u d (Just re)
+        rf <- quotrem quo u d
         qf <- PA.unsafeFreezePrimArray quo
-        rf <- PA.unsafeFreezePrimArray re
         pure (qf, rf)
   let pec_q = PA.primArrayFromList [2, 0, 0, 0, 0]
-      pec_r = PA.primArrayFromList [
-          5900249524800868845
-        , 5517428755773076570
-        , 10075736392120451746
-        , 1328497989567373942
-        ]
+      pec_r = Word256
+        5900249524800868845
+        5517428755773076570
+        10075736392120451746
+        1328497989567373942
+
   H.assertEqual "remainder matches" pec_r r
   H.assertEqual "quotient matches" pec_q q
 

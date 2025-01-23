@@ -487,9 +487,8 @@ quotrem
   => PA.MutablePrimArray (PrimState m) Word64
   -> PA.PrimArray Word64
   -> PA.PrimArray Word64
-  -> Maybe (PA.MutablePrimArray (PrimState m) Word64)
-  -> m ()
-quotrem quo u d mr = do
+  -> m Word256
+quotrem quo u d = do
     let !ld    = PA.sizeofPrimArray d
         !lu    = PA.sizeofPrimArray u
         !dlen  = len_loop d (ld - 1)
@@ -508,9 +507,16 @@ quotrem quo u d mr = do
     PA.writePrimArray dn 0 (PA.indexPrimArray d 0 .<<. shift)
     let !ulen  = len_loop u (lu - 1)
     if   ulen < dlen
-    then case mr of
-      Nothing -> pure ()
-      Just !r -> PA.copyPrimArray r 0 u 0 lu
+    then do
+      let !u0 | lu >= 1   = PA.indexPrimArray u 0
+              | otherwise = 0
+          !u1 | lu >= 2   = PA.indexPrimArray u 1
+              | otherwise = 0
+          !u2 | lu >= 3   = PA.indexPrimArray u 2
+              | otherwise = 0
+          !u3 | lu >= 4   = PA.indexPrimArray u 3
+              | otherwise = 0
+      pure (Word256 u0 u1 u2 u3)
     else do
       un <- PA.newPrimArray (ulen + 1)
       PA.setPrimArray un 0 (ulen + 1) 0
@@ -532,36 +538,34 @@ quotrem quo u d mr = do
         dn_0 <- PA.readPrimArray dn 0
         un_c <- PA.freezePrimArray un 0 (ulen + 1)
         r <- quotrem_by1 quo un_c dn_0
-        case mr of
-          Nothing  -> pure ()
-          Just !re -> do
-            PA.writePrimArray re 0 (r .>>. shift)
-            PA.writePrimArray re 1 0
-            PA.writePrimArray re 2 0
-            PA.writePrimArray re 3 0
+        pure (Word256 (r .>>. shift) 0 0 0)
       else do
         dnf <- PA.unsafeFreezePrimArray dn
         quotrem_knuth quo un dnf
-        case mr of
-          Nothing -> pure ()
-          Just !r -> do
-            let go_r !j
-                  | j == dlen = pure ()
-                  | otherwise = do
-                      un_j   <- PA.readPrimArray un j
-                      un_j_1 <- PA.readPrimArray un (j + 1)
-                      let !val = (un_j  .>>. shift)
-                             .|. (un_j_1 .<<. (64 - shift))
-                      PA.writePrimArray r j val
-                      go_r (succ j)
-            go_r 0
-            un_dlen_1 <- PA.readPrimArray un (dlen - 1)
-            PA.writePrimArray r (dlen - 1) (un_dlen_1 .>>. shift)
+        let go_r !j !acc
+              | j == dlen = pure acc
+              | otherwise = do
+                  un_j   <- PA.readPrimArray un j
+                  un_j_1 <- PA.readPrimArray un (j + 1)
+                  let !val = (un_j  .>>. shift)
+                         .|. (un_j_1 .<<. (64 - shift))
+                      !nacc = setr acc j val
+                  go_r (succ j) nacc
+        !r <- go_r 0 zero
+        un_dlen_1 <- PA.readPrimArray un (dlen - 1)
+        pure (setr r (dlen - 1) (un_dlen_1 .>>. shift))
   where
     len_loop !arr !j
       | j < 0 = 0
       | PA.indexPrimArray arr j /= 0 = j + 1
       | otherwise = len_loop arr (pred j)
+
+    setr w@(Word256 z0 z1 z2 z3) j val
+      | j == 0 = Word256 val z1 z2 z3
+      | j == 1 = Word256 z0 val z2 z3
+      | j == 2 = Word256 z0 z1 val z3
+      | j == 3 = Word256 z0 z1 z2 val
+      | otherwise = w
 
 -- primarray
 div :: Word256 -> Word256 -> Word256
@@ -584,7 +588,7 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       PA.writePrimArray my 3 b3
       x <- PA.unsafeFreezePrimArray mx
       y <- PA.unsafeFreezePrimArray my
-      quotrem quo x y Nothing
+      _ <- quotrem quo x y
       z0 <- PA.readPrimArray quo 0
       z1 <- PA.readPrimArray quo 1
       z2 <- PA.readPrimArray quo 2
@@ -612,12 +616,5 @@ mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       PA.writePrimArray my 3 b3
       x <- PA.unsafeFreezePrimArray mx
       y <- PA.unsafeFreezePrimArray my
-      re <- PA.newPrimArray 4
-      PA.setPrimArray re 0 4 0
-      quotrem quo x y (Just re)
-      z0 <- PA.readPrimArray re 0
-      z1 <- PA.readPrimArray re 1
-      z2 <- PA.readPrimArray re 2
-      z3 <- PA.readPrimArray re 3
-      pure (Word256 z0 z1 z2 z3)
+      quotrem quo x y
 
