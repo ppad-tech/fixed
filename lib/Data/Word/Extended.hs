@@ -535,10 +535,10 @@ quotrem quo u d mr = do
         case mr of
           Nothing  -> pure ()
           Just !re -> do
-            PA.writePrimArray re 0 0
+            PA.writePrimArray re 0 (r .>>. shift)
             PA.writePrimArray re 1 0
             PA.writePrimArray re 2 0
-            PA.writePrimArray re 3 (r .>>. shift)
+            PA.writePrimArray re 3 0
       else do
         dnf <- PA.unsafeFreezePrimArray dn
         quotrem_knuth quo un dnf
