@@ -406,15 +406,6 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
--- quotrem_by1 :: Word256 -> Word64 -> Word256WithOverflow
--- quotrem_by1 (Word256 u0 u1 u2 u3) d =
---   let !rec = recip_2by1 d
---       !r0  = u3
---       !(P q2 r1) = quotrem_2by1 r0 u2 d rec
---       !(P q1 r2) = quotrem_2by1 r1 u1 d rec
---       !(P q0 r3) = quotrem_2by1 r2 u0 d rec
---   in  Word256WithOverflow (Word256 q0 q1 q2 0) r3
-
 quotrem_by1
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -452,7 +443,7 @@ quotrem_knuth quo u d = do
             !u2 <- PA.readPrimArray u (j + ld)
             !u1 <- PA.readPrimArray u (j + ld - 1)
             !u0 <- PA.readPrimArray u (j + ld - 2)
-            let !qhat | u2 >= dh  = 0xffffffffffffffff
+            let !qhat | u2 >= dh  = 0xffff_ffff_ffff_ffff
                       | otherwise =
                           let !(P qh rh) = quotrem_2by1 u2 u1 dh rec
                               !(P ph pl) = mul_c qh dl
@@ -486,6 +477,7 @@ quotrem quo u d mr = do
         !dlen  = len_loop d (ld - 1)
         !shift = B.countLeadingZeros (PA.indexPrimArray d (dlen - 1))
     dn <- PA.newPrimArray dlen
+    PA.setPrimArray dn 0 dlen 0
     let go_dn !j
           | j < 0 = pure ()
           | otherwise = do
@@ -503,6 +495,7 @@ quotrem quo u d mr = do
       Just !r -> PA.copyPrimArray r 0 u 0 lu
     else do
       un <- PA.newPrimArray (ulen + 1)
+      PA.setPrimArray un 0 (ulen + 1) 0
       let u_ulen = PA.indexPrimArray u (ulen - 1)
       PA.writePrimArray un ulen (u_ulen .>>. (64 - shift))
       -- duplicated, but easy to handle mutableprimarrays this way
@@ -513,7 +506,7 @@ quotrem quo u d mr = do
                     !uj_1 = PA.indexPrimArray u (j - 1)
                     !val  = (uj .<<. shift) .|. (uj_1 .>>. (64 - shift))
                 PA.writePrimArray un j val
-                go_dn (pred j)
+                go_un (pred j)
       go_un (ulen - 1)
       PA.writePrimArray un 0 (PA.indexPrimArray u 0 .<<. shift)
       if   dlen == 1
@@ -559,6 +552,7 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
   | is_word64 a           = Word256 (a3 `quot` b3) 0 0 0
   | otherwise = runST $ do
       quo <- PA.newPrimArray 4
+      PA.setPrimArray quo 0 4 0
       mx <- PA.newPrimArray 4
       my <- PA.newPrimArray 4
       PA.writePrimArray mx 0 a0
@@ -577,5 +571,4 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       z2 <- PA.readPrimArray quo 2
       z3 <- PA.readPrimArray quo 3
       pure (Word256 z0 z1 z2 z3)
-
 
