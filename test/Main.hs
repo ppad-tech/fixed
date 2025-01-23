@@ -20,6 +20,15 @@ instance Q.Arbitrary Word256 where
     w3 <- Q.arbitrary
     pure (Word256 w0 w1 w2 w3)
 
+newtype Different a = Different (a, a)
+  deriving Show
+
+instance (Q.Arbitrary a, Eq a) => Q.Arbitrary (Different a) where
+  arbitrary = do
+    a <- Q.arbitrary
+    b <- Q.arbitrary `Q.suchThat` (\b -> b /= a)
+    pure (Different (a, b))
+
 -- second argument is no greater than first argument
 newtype Monotonic a = Monotonic (a, a)
   deriving Show
@@ -43,6 +52,16 @@ instance Q.Arbitrary MulMonotonic where
     pure (MulMonotonic (a, b, m))
 
 -- properties -----------------------------------------------------------------
+
+lt_matches :: Different (Q.NonNegative Integer) -> Bool
+lt_matches (Different (Q.NonNegative a, Q.NonNegative b))
+  | a < b     = to_word256 a `lt` to_word256 b
+  | otherwise = to_word256 b `lt` to_word256 a
+
+gt_matches :: Different (Q.NonNegative Integer) -> Bool
+gt_matches (Different (Q.NonNegative a, Q.NonNegative b))
+  | a > b     = to_word256 a `gt` to_word256 b
+  | otherwise = to_word256 b `gt` to_word256 a
 
 mul_c_matches :: Word64 -> Word64 -> Bool
 mul_c_matches a b =
@@ -140,6 +159,14 @@ recip_2by1_case1 = do
 
 -- main -----------------------------------------------------------------------
 
+comparison :: TestTree
+comparison = testGroup "comparison" [
+    Q.testProperty "lt matches" $
+      Q.withMaxSuccess 1000 lt_matches
+  , Q.testProperty "gt matches" $
+      Q.withMaxSuccess 1000 gt_matches
+  ]
+
 bits :: TestTree
 bits = testGroup "bits" [
     Q.testProperty "or matches" $
@@ -184,7 +211,8 @@ main :: IO ()
 main = defaultMain $
   testGroup "ppad-fixed" [
     testGroup "property tests" [
-      utils
+      comparison
+    , utils
     , inverses
     , bits
     , arithmetic
