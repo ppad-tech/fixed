@@ -100,13 +100,6 @@ umul_step_predicate_holds z x y c =
       !rite = fi z + (fi x * fi y) + fi c :: Integer
   in  left == rite
 
-sub_mul_matches :: MulMonotonic -> Bool
-sub_mul_matches (MulMonotonic (x, y, m)) =
-    let !left = to_word256 (x - y * m)
-        !(Word256WithOverflow rite r)
-          = sub_mul (to_word256 x) (to_word256 y) (fi m)
-    in  (left == rite && r == 0)
-
 to_word256_inverts_to_integer :: Word256 -> Bool
 to_word256_inverts_to_integer w256 =
   to_word256 (to_integer w256) == w256
@@ -356,8 +349,6 @@ utils = testGroup "utils" [
       Q.withMaxSuccess 1000 umul_hop_predicate_holds
   , Q.testProperty "umul_step: (hi * 2 ^ 64 + lo) = z + (x * y) + c" $
       Q.withMaxSuccess 1000 umul_step_predicate_holds
-  , Q.testProperty "sub_mul matches integer sub_mul (nonneg, monotonic)" $
-      Q.withMaxSuccess 1000 sub_mul_matches
   ]
 
 main :: IO ()

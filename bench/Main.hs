@@ -14,7 +14,7 @@ import qualified Prelude (div)
 
 instance NFData W.Word256
 instance NFData W.Word512
-instance NFData W.Word256WithOverflow
+instance NFData W.Word320
 
 or_baseline :: Benchmark
 or_baseline = bench "or (baseline)" $ nf ((.|.) w0) w1 where
@@ -169,10 +169,10 @@ main :: IO ()
 main = defaultMain [
     quotrem_by1
   , quotrem_by1_256
-  --  mul_baseline
-  --  mul
-  --, div_baseline
-  --, div
+  , mul_baseline
+  , mul
+  , div_baseline
+  , div
   --, mod_baseline
   --, mod
   --, div_baseline_small

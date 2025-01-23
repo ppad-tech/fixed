@@ -144,24 +144,24 @@ add_c w64_0 w64_1 c =
   in  P s n
 
 -- | A 'Word256' and overflow result, if any.
-data Word256WithOverflow = Word256WithOverflow
+data Word320 = Word320
   !Word256
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
 -- addition with overflow indication
-add_of :: Word256 -> Word256 -> Word256WithOverflow
+add_of :: Word256 -> Word256 -> Word320
 add_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   let !(P s0 c0) = add_c a0 b0 0
       !(P s1 c1) = add_c a1 b1 c0
       !(P s2 c2) = add_c a2 b2 c1
       !(P s3 c3) = add_c a3 b3 c2
-  in  Word256WithOverflow (Word256 s0 s1 s2 s3) c3
+  in  Word320 (Word256 s0 s1 s2 s3) c3
 
 -- | Addition on 'Word256' values.
 add :: Word256 -> Word256 -> Word256
 add w0 w1 = s where
-  !(Word256WithOverflow s _) = add_of w0 w1
+  !(Word320 s _) = add_of w0 w1
 
 -- subtract-with-borrow
 --
@@ -177,18 +177,18 @@ sub_b w64_0 w64_1 b =
          | otherwise = 0
   in  P d n
 
-sub_of :: Word256 -> Word256 -> Word256WithOverflow
+sub_of :: Word256 -> Word256 -> Word320
 sub_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   let !(P s0 c0) = sub_b a0 b0 0
       !(P s1 c1) = sub_b a1 b1 c0
       !(P s2 c2) = sub_b a2 b2 c1
       !(P s3 c3) = sub_b a3 b3 c2
-  in  Word256WithOverflow (Word256 s0 s1 s2 s3) c3
+  in  Word320 (Word256 s0 s1 s2 s3) c3
 
 -- | Subtraction on 'Word256' values.
 sub :: Word256 -> Word256 -> Word256
 sub w0 w1 = d where
-  !(Word256WithOverflow d _) = sub_of w0 w1
+  !(Word320 d _) = sub_of w0 w1
 
 -- multiplication -------------------------------------------------------------
 
@@ -299,29 +299,32 @@ sub_mul_to x x_offset y m = do
             loop (succ j) (ph + carry1 + carry2)
   loop 0 0
 
--- XX requires a way to select fields via the offset passed
-sub_mul256 :: Word256 -> Word256 -> Word64 -> Word256WithOverflow
-sub_mul256 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) m =
-  let !s0 = x0
-      !(P ph0 pl0) = mul_c y0 m
-      !(P z0 c0)   = sub_b s0 pl0 0
-      !b0          = ph0 + c0
+sub_mul256 :: Word256 -> Int -> Word256 -> Word64 -> Word320
+sub_mul256 (Word256 x0 x1 x2 x3) offset (Word256 y0 y1 y2 y3) m =
+    let !s0          = x 0
+        !(P ph0 pl0) = mul_c y0 m
+        !(P z0 c0)   = sub_b s0 pl0 0
+        !b0          = ph0 + c0
 
-      !(P s1 c1)   = sub_b x1 b0 0
-      !(P ph1 pl1) = mul_c y1 m
-      !(P z1 c2)   = sub_b s1 pl1 0
-      !b1          = ph1 + c1 + c2
+        !(P s1 c1)   = sub_b (x 1) b0 0
+        !(P ph1 pl1) = mul_c y1 m
+        !(P z1 c2)   = sub_b s1 pl1 0
+        !b1          = ph1 + c1 + c2
 
-      !(P s2 c3)   = sub_b x2 b1 0
-      !(P ph2 pl2) = mul_c y2 m
-      !(P z2 c4)   = sub_b s2 pl2 0
-      !b2          = ph2 + c3 + c4
+        !(P s2 c3)   = sub_b (x 2) b1 0
+        !(P ph2 pl2) = mul_c y2 m
+        !(P z2 c4)   = sub_b s2 pl2 0
+        !b2          = ph2 + c3 + c4
 
-      !(P s3 c5)   = sub_b x3 b2 0
-      !(P ph3 pl3) = mul_c y3 m
-      !(P z3 c6)   = sub_b s3 pl3 0
-      !b3          = ph3 + c5 + c6
-  in  Word256WithOverflow (Word256 z0 z1 z2 z3) b3
+        !(P s3 c5)   = sub_b (x 3) b2 0
+        !(P ph3 pl3) = mul_c y3 m
+        !(P z3 c6)   = sub_b s3 pl3 0
+        !b3          = ph3 + c5 + c6
+    in  Word320 (Word256 z0 z1 z2 z3) b3
+  where
+    x j = case j + offset of
+      0 -> x0; 1 -> x1; 2 -> x2; 3 -> x3
+      _ -> error "sub_mul256: invalid index"
 
 -- XX primarray
 -- requires (len x - x_offset) >= len y > 0
@@ -429,14 +432,14 @@ quotrem_by1 quo u d = do
             loop (pred j) rnex
   loop (lu - 2) r0
 
-quotrem_by1_256 :: Word256 -> Word64 -> Word256WithOverflow
+quotrem_by1_256 :: Word256 -> Word64 -> Word320
 quotrem_by1_256 (Word256 u0 u1 u2 u3) d =
   let !rec = recip_2by1 d
       !r0  = u3
       !(P q2 r1) = quotrem_2by1 r0 u2 d rec
       !(P q1 r2) = quotrem_2by1 r1 u1 d rec
       !(P q0 r3) = quotrem_2by1 r2 u0 d rec
-  in  Word256WithOverflow (Word256 q0 q1 q2 0) r3
+  in  Word320 (Word256 q0 q1 q2 0) r3
 
 -- XX primarray
 quotrem_knuth
@@ -478,7 +481,7 @@ quotrem_knuth quo u d = do
             loop (pred j)
   loop (lu - ld - 1)
 
--- XX primarray
+-- XX primarray; dynamic size requirements
 quotrem
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64

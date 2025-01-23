@@ -13,7 +13,7 @@ import qualified Weigh as W
 
 instance NFData E.Word256
 instance NFData E.Word512
-instance NFData E.Word256WithOverflow
+instance NFData E.Word320
 
 i0, i1 :: Integer
 i0 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
