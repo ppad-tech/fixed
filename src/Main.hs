@@ -20,18 +20,15 @@ main = do
         , 3741537094902495500
         ]
 
-  re <- PA.newPrimArray 4
-  PA.setPrimArray re 0 4 0
   quo <- PA.newPrimArray 5
-  let go !j
+  let go !j !acc
         | j == 10000 = pure ()
         | otherwise = do
             PA.setPrimArray quo 0 5 0
-            quotrem quo u d (Just re)
-            go (succ j)
-  go 0
+            w <- quotrem quo u d
+            go (succ j) w
+  r <- go 0 zero
   q <- PA.unsafeFreezePrimArray quo
-  r <- PA.unsafeFreezePrimArray re
   print r
   print q
 
