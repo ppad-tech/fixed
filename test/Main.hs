@@ -52,6 +52,16 @@ instance Q.Arbitrary MulMonotonic where
       Q.arbitrary `Q.suchThat` (\(Q.NonNegative b) -> b * m <= a)
     pure (MulMonotonic (a, b, m))
 
+newtype DivMonotonic = DivMonotonic (Integer, Integer)
+  deriving Show
+
+instance Q.Arbitrary DivMonotonic where
+  arbitrary = do
+    a <- Q.chooseInteger (1, 2 ^ (256 :: Int) - 1)
+    b <- (Q.chooseInteger (1, 2 ^ (256 :: Int) - 1))
+      `Q.suchThat` (\b -> b <= a)
+    pure (DivMonotonic (a, b))
+
 -- properties -----------------------------------------------------------------
 
 lt_matches :: Different (Q.NonNegative Integer) -> Bool
@@ -136,8 +146,8 @@ mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
       !rite = to_word512 (a * b)
   in  left == rite
 
-div_matches :: Monotonic (Q.Positive Integer) -> Bool
-div_matches (Monotonic (Q.Positive b, Q.Positive a)) =
+div_matches :: DivMonotonic -> Bool
+div_matches (DivMonotonic (a, b)) =
   let !left = to_word256 a `div` to_word256 b
       !rite = to_word256 (a `Prelude.div` b)
   in  left == rite
