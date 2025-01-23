@@ -26,7 +26,7 @@ library
       Data.Word.Extended
   build-depends:
       base >= 4.9 && < 5
-    , primitive >= 0.8 && > 0.10
+    , primitive >= 0.8 && < 0.10
 
 test-suite fixed-tests
   type:                exitcode-stdio-1.0
