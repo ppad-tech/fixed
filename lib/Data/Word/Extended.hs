@@ -497,7 +497,7 @@ quotrem quo u d mr = do
     dn <- PA.newPrimArray dlen
     PA.setPrimArray dn 0 dlen 0
     let go_dn !j
-          | j < 0 = pure ()
+          | j == 0 = pure ()
           | otherwise = do
               let !dj   = PA.indexPrimArray d j
                   !dj_1 = PA.indexPrimArray d (j - 1)
@@ -518,7 +518,7 @@ quotrem quo u d mr = do
       PA.writePrimArray un ulen (u_ulen .>>. (64 - shift))
       -- duplicated, but easy to handle mutableprimarrays this way
       let go_un !j
-            | j < 0 = pure ()
+            | j == 0 = pure ()
             | otherwise = do
                 let !uj   = PA.indexPrimArray u j
                     !uj_1 = PA.indexPrimArray u (j - 1)
