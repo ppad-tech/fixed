@@ -12,6 +12,7 @@ import qualified Data.Bits as B
 import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import GHC.Generics
+import Prelude hiding (div)
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
@@ -99,6 +100,18 @@ lt (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
 
 gt :: Word256 -> Word256 -> Bool
 gt a b = lt b a
+
+zero :: Word256
+zero = Word256 0 0 0 0
+
+one :: Word256
+one = Word256 1 0 0 0
+
+is_zero :: Word256 -> Bool
+is_zero w = w == zero
+
+is_word64 :: Word256 -> Bool
+is_word64 (Word256 _ a b c) = a == 0 && b == 0 && c == 0
 
 -- bits -----------------------------------------------------------------------
 
@@ -538,4 +551,31 @@ quotrem quo u d mr = do
       | j < 0 = 0
       | PA.indexPrimArray arr j /= 0 = j + 1
       | otherwise = len_loop arr (pred j)
+
+div :: Word256 -> Word256 -> Word256
+div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
+  | is_zero b || b `gt` a = zero -- ?
+  | a == b                = one
+  | is_word64 a           = Word256 0 0 0 (a3 `quot` b3)
+  | otherwise = runST $ do
+      quo <- PA.newPrimArray 4
+      mx <- PA.newPrimArray 4
+      my <- PA.newPrimArray 4
+      PA.writePrimArray mx 0 a0
+      PA.writePrimArray mx 1 a1
+      PA.writePrimArray mx 2 a2
+      PA.writePrimArray mx 3 a3
+      PA.writePrimArray my 0 b0
+      PA.writePrimArray my 1 b1
+      PA.writePrimArray my 2 b2
+      PA.writePrimArray my 3 b3
+      x <- PA.unsafeFreezePrimArray mx
+      y <- PA.unsafeFreezePrimArray my
+      quotrem quo x y Nothing
+      z0 <- PA.readPrimArray quo 0
+      z1 <- PA.readPrimArray quo 1
+      z2 <- PA.readPrimArray quo 2
+      z3 <- PA.readPrimArray quo 3
+      pure (Word256 z0 z1 z2 z3)
+
 
