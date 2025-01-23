@@ -12,7 +12,7 @@ import qualified Data.Bits as B
 import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import GHC.Generics
-import Prelude hiding (div)
+import Prelude hiding (div, mod)
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
@@ -570,5 +570,34 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       z1 <- PA.readPrimArray quo 1
       z2 <- PA.readPrimArray quo 2
       z3 <- PA.readPrimArray quo 3
+      pure (Word256 z0 z1 z2 z3)
+
+mod :: Word256 -> Word256 -> Word256
+mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
+  | is_zero b || a == b = zero -- ?
+  | a `lt` b = a
+  | is_word64 a = Word256 (a0 `Prelude.rem` b0) 0 0 0
+  | otherwise = runST $ do
+      quo <- PA.newPrimArray 4
+      PA.setPrimArray quo 0 4 0
+      mx <- PA.newPrimArray 4
+      my <- PA.newPrimArray 4
+      PA.writePrimArray mx 0 a0
+      PA.writePrimArray mx 1 a1
+      PA.writePrimArray mx 2 a2
+      PA.writePrimArray mx 3 a3
+      PA.writePrimArray my 0 b0
+      PA.writePrimArray my 1 b1
+      PA.writePrimArray my 2 b2
+      PA.writePrimArray my 3 b3
+      x <- PA.unsafeFreezePrimArray mx
+      y <- PA.unsafeFreezePrimArray my
+      re <- PA.newPrimArray 4
+      PA.setPrimArray re 0 4 0
+      quotrem quo x y (Just re)
+      z0 <- PA.readPrimArray re 0
+      z1 <- PA.readPrimArray re 1
+      z2 <- PA.readPrimArray re 2
+      z3 <- PA.readPrimArray re 3
       pure (Word256 z0 z1 z2 z3)
 

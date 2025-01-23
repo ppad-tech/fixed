@@ -9,7 +9,7 @@ import qualified Data.Bits as B
 import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import Data.Word.Extended
-import Prelude hiding (and, or, div)
+import Prelude hiding (and, or, div, mod)
 import qualified Prelude (div)
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
@@ -153,6 +153,12 @@ div_matches :: DivMonotonic -> Bool
 div_matches (DivMonotonic (a, b)) =
   let !left = to_word256 a `div` to_word256 b
       !rite = to_word256 (a `Prelude.div` b)
+  in  left == rite
+
+mod_matches :: DivMonotonic -> Bool
+mod_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `mod` to_word256 b
+      !rite = to_word256 (a `rem` b)
   in  left == rite
 
 -- assertions ------------------------------------------------------------------
@@ -338,6 +344,8 @@ arithmetic = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 mul_512_matches
   , Q.testProperty "division matches" $
       Q.withMaxSuccess 1000 div_matches
+  , Q.testProperty "mod matches" $
+      Q.withMaxSuccess 1000 mod_matches
   ]
 
 utils :: TestTree

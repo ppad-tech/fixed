@@ -7,7 +7,7 @@ import Data.Bits ((.|.), (.&.), (.^.))
 import qualified Data.Word.Extended as W
 import Control.DeepSeq
 import Criterion.Main
-import Prelude hiding (or, and, div)
+import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
 
 instance NFData W.Word256
@@ -116,9 +116,43 @@ div = bench "div" $ nf (W.div w0) w1 where
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
+div_baseline_small :: Benchmark
+div_baseline_small =
+    bench "div, small (baseline)" $ nf (Prelude.div w0) w1
+  where
+    w0, w1 :: Integer
+    !w0 = 0x7fffffed
+    !w1 = 0x7ffbffed
+
+div_small :: Benchmark
+div_small = bench "div, small" $ nf (W.div w0) w1 where
+  !w0 = W.to_word256 0x7fffffed
+  !w1 = W.to_word256 0x7ffbffed
+
+mod_baseline :: Benchmark
+mod_baseline = bench "mod (baseline)" $ nf (Prelude.rem w0) w1 where
+  w0, w1 :: Integer
+  !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
+mod :: Benchmark
+mod = bench "mod" $ nf (W.mod w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
 main :: IO ()
 main = defaultMain [
-    or_baseline
+    mul_baseline
+  , mul
+  , div_baseline
+  , div
+  , mod_baseline
+  , mod
+  , div_baseline_small
+  , div_small
+  , or_baseline
   , or
   , and_baseline
   , and
@@ -128,11 +162,5 @@ main = defaultMain [
   , add
   , sub_baseline
   , sub
-  , mul_baseline
-  , mul
-  , mul128_baseline
-  , mul128
-  , div_baseline
-  , div
   ]
 
