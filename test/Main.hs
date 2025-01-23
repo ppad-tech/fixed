@@ -175,6 +175,12 @@ recip_2by1_case1 = do
   let !q = recip_2by1 (B.complement 0xff)
   H.assertEqual mempty 256 q
 
+quotrem_2by1_case0 :: H.Assertion
+quotrem_2by1_case0 = do
+  let !d = B.complement 0xFF :: Word64
+      !o = quotrem_2by1 8 4 d (recip_2by1 d)
+  H.assertEqual mempty (P 8 2052) o
+
 -- main -----------------------------------------------------------------------
 
 comparison :: TestTree
@@ -242,6 +248,7 @@ main = defaultMain $
     , H.testCase "quotrem_r matches case1" quotrem_r_case1
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
+    , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
     ]
   ]
 
