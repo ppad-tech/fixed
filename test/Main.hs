@@ -7,7 +7,8 @@ import Data.Bits ((.|.), (.&.), (.>>.), (.^.))
 import qualified Data.Bits as B
 import Data.Word (Word64)
 import Data.Word.Extended
-import Prelude hiding (and, or)
+import Prelude hiding (and, or, div)
+import qualified Prelude (div)
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
@@ -135,6 +136,12 @@ mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
       !rite = to_word512 (a * b)
   in  left == rite
 
+div_matches :: Monotonic (Q.Positive Integer) -> Bool
+div_matches (Monotonic (Q.Positive b, Q.Positive a)) =
+  let !left = to_word256 a `div` to_word256 b
+      !rite = to_word256 (a `Prelude.div` b)
+  in  left == rite
+
 -- assertions ------------------------------------------------------------------
 
 quotrem_r_case0 :: H.Assertion
@@ -193,6 +200,8 @@ arithmetic = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 sub_matches
   , Q.testProperty "multiplication matches (nonneg, low bits)" $
       Q.withMaxSuccess 1000 mul_512_matches
+  , Q.testProperty "division matches" $
+      Q.withMaxSuccess 1000 div_matches
   ]
 
 utils :: TestTree
