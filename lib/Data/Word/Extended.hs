@@ -556,7 +556,7 @@ div :: Word256 -> Word256 -> Word256
 div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
   | is_zero b || b `gt` a = zero -- ?
   | a == b                = one
-  | is_word64 a           = Word256 0 0 0 (a3 `quot` b3)
+  | is_word64 a           = Word256 (a3 `quot` b3) 0 0 0
   | otherwise = runST $ do
       quo <- PA.newPrimArray 4
       mx <- PA.newPrimArray 4
