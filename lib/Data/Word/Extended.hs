@@ -366,7 +366,7 @@ sub_mul_to x x_offset y m = do
 sub_mul
   :: Word576  -- dividend
   -> Int      -- min dividend index
-  -> Word576  -- divisor
+  -> Word256  -- divisor
   -> Int      -- max divisor index
   -> Word64   -- multiplier
   -> Word640  -- result, borrow
@@ -375,7 +375,7 @@ sub_mul u u_start d d_len m = loop 0 u 0 where
     | j == d_len = Word640 acc borrow
     | otherwise =
         let !u_j = sel576 u (u_start + j)
-            !d_j = sel576 d j
+            !d_j = sel256 d j
             !(P s carry1) = sub_b u_j borrow 0
             !(P ph pl)    = mul_c d_j m
             !(P t carry2) = sub_b s pl 0
@@ -405,7 +405,7 @@ add_to x x_offset y = do
 add_big
   :: Word576
   -> Int
-  -> Word576
+  -> Word256
   -> Int
   -> Word640
 add_big u u_start d d_len = loop 0 u 0 where
@@ -413,7 +413,7 @@ add_big u u_start d d_len = loop 0 u 0 where
     | j == d_len = Word640 acc car
     | otherwise =
         let !u_j = sel576 acc (u_start + j)
-            !d_j = sel576 d j
+            !d_j = sel256 d j
             !(P w64 ncar) = add_c u_j d_j car
             !nacc = set576 acc (u_start + j) w64
         in  loop (succ j) nacc ncar
@@ -524,12 +524,12 @@ quotrem_by1_gen u ulen d =
 quotrem_knuth_gen
   :: Word576
   -> Int
-  -> Word576
+  -> Word256
   -> Int
   -> Word1152
 quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
-  !d_hi = sel576 d (dlen - 1)
-  !d_lo = sel576 d (dlen - 2)
+  !d_hi = sel256 d (dlen - 1)
+  !d_lo = sel256 d (dlen - 2)
   !rec = recip_2by1 d_hi
   loop j !qacc !uacc
     | j < 0 = Word1152 qacc uacc
@@ -619,10 +619,7 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
                     !(Word640 q r) = quotrem_by1_gen un (ulen + 1) dn_0
                 in  Word832 q (Word256 (r .>>. shift) 0 0 0)
               else
-                let !(Word256 z0 z1 z2 z3) = dn
-                    !dn_576                = Word576 z0 z1 z2 z3 0 0 0 0 0
-                    !(Word1152 q un0) =
-                      quotrem_knuth_gen un (ulen + 1) dn_576 dlen
+                let !(Word1152 q un0) = quotrem_knuth_gen un (ulen + 1) dn dlen
                     !r_pre     = fill_rem dlen un0 shift
                     !un_dlen_1 = sel576 un0 (dlen - 1)
                     !r         = set256 r_pre (dlen - 1) (un_dlen_1 .>>.shift)
