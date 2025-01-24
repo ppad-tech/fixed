@@ -779,9 +779,9 @@ quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
   loop j !qacc !uacc
     | j < 0 = Word1152 qacc uacc
     | otherwise =
-        let !u_2 = sel576 uacc (j + dlen)
-            !u_1 = sel576 uacc (j + dlen - 1)
-            !u_0 = sel576 uacc (j + dlen - 2)
+        let !u_2 = sel576 u (j + dlen)
+            !u_1 = sel576 u (j + dlen - 1)
+            !u_0 = sel576 u (j + dlen - 2)
             !qhat
               | u_2 >= d_hi = 0xffff_ffff_ffff_ffff
               | otherwise   =
