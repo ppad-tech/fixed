@@ -34,6 +34,14 @@ sel256 (Word256 a0 a1 a2 a3) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3
   _ -> error "ppad-fixed (sel256): bad index"
 
+set256 :: Word256 -> Int -> Word64 -> Word256
+set256 (Word256 a0 a1 a2 a3) j wo = case j of
+  0 -> Word256 wo a1 a2 a3
+  1 -> Word256 a0 wo a2 a3
+  2 -> Word256 a0 a1 wo a3
+  3 -> Word256 a0 a1 a2 wo
+  _ -> error "ppad-fixed (set256): bad index"
+
 -- | Little-endian Word512.
 data Word512 = Word512
   {-# UNPACK #-} !Word64
@@ -538,7 +546,7 @@ quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
                       then qh - 1
                       else qh
 
-            !(Word640 u0 borrow) = sub_mul u j d dlen qhat
+            !(Word640 u0 borrow) = sub_mul uacc j d dlen qhat
             !u1 = set576 u0 (j + dlen) (u_2 - borrow)
         in  if   u_2 < borrow
             then
@@ -591,99 +599,91 @@ quotrem_knuth quo u d = do
             loop (pred j)
   loop (lu - ld - 1)
 
+quotrem_gen
+  :: Word576
+  -> Word256
+  -> Word832
+quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
+    let !dlen   = setlen_256 d
+        !shift  = B.countLeadingZeros d3
+        !dn_pre = fill256 (dlen - 1) d zero shift
+        !dn     = set256 dn_pre 0 (d0 .<<. shift)
+        !ulen   = setlen_576 u
+    in  if   ulen < dlen
+        then Word832 zero576 (Word256 u0 u1 u2 u3)
+        else
+          let !u_ulen  = sel576 u (ulen - 1)
+              !un_pre0 = set576 zero576 ulen (u_ulen .>>. (64 - shift))
+              !un_pre1 = fill576 (ulen - 1) u un_pre0 shift
+              !un      = set576 un_pre1 0 (u0 .<<. shift)
+          in  if   dlen == 1
+              then
+                let !dn_0 = sel256 dn 0
+                    !(Word640 q r) = quotrem_by1_gen un (ulen + 1) dn_0
+                in  Word832 q (Word256 (r .>>. shift) 0 0 0)
+              else
+                let !(Word256 z0 z1 z2 z3) = dn
+                    !dn_576                = Word576 z0 z1 z2 z3 0 0 0 0 0
+                    !(Word1152 q un0) =
+                      quotrem_knuth_gen un (ulen + 1) dn_576 dlen
+                    !r_pre     = fill_rem 0 dlen un0 shift
+                    !un_dlen_1 = sel576 un0 (dlen - 1)
+                    !r         = set256 r_pre (dlen - 1) (un_dlen_1 .>>.shift)
+                in  Word832 q r
+  where
+    fill_rem !start !dl !src !s =
+      let loop !j !acc
+            | j == dl = acc
+            | otherwise =
+                let !src_j   = sel576 src j
+                    !src_j_1 = sel576 src (j + 1)
+                    !val     = (src_j .>>. s) .|. (src_j_1 .<<. (64 - s))
+                    !nacc    = set256 acc j val
+                in  loop (succ j) nacc
+      in  loop start zero
 
--- XX needs work
--- quotrem_256
---   :: Word256
---   -> Word256
---   -> Word256
--- quotrem_256 u@(Word256 u0 _ _ _) d@(Word256 d0 _ _ d3) =
---     let !dlen  = hi_w d
---         !shift = B.countLeadingZeros d3
---         !(Word256 dn0 _ _ _) =
---           set (munge (dlen - 1) d zero shift) 0 (d0 .<<. shift)
---         !ulen  = hi_w u
---     in  if   ulen < dlen
---         then u
---         else
---           let !u_ulen = sel u (ulen - 1)
---               !un = set
---                 (munge
---                   (ulen - 1)
---                   u
---                   (set zero ulen (u_ulen .>>. (64 - shift)))
---                   shift)
---                 0
---                 (u0 .<<. shift)
---           in  if   dlen == 1
---               then
---                 let !(Word320 _ r) = quotrem_by1_256 un dn0
---                 in  Word256 (r .>>. shift) 0 0 0
---               else
---                 let go_r !j !acc
---                       | j == dlen = acc
---                       | otherwise =
---                           let !un_j   = sel un j
---                               !un_j_1 = sel un (j + 1)
---                               !val = (un_j  .>>. shift)
---                                  .|. (un_j_1 .<<. (64 - shift))
---                               !nacc = set acc j val
---                           in  go_r (succ j) nacc
---                     !r = go_r 0 zero
---                     !un_dlen_1 = sel un (dlen - 1)
---                 in  (set r (dlen - 1) (un_dlen_1 .>>. shift))
---   where
---     hi_w (Word256 z0 z1 z2 z3)
---       | z3 /= 0 = 4
---       | z2 /= 0 = 3
---       | z1 /= 0 = 2
---       | z0 /= 0 = 1
---       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
---
---     set :: Word256 -> Int -> Word64 -> Word256
---     set w@(Word256 z0 z1 z2 z3) j val
---       | j == 0 = Word256 val z1 z2 z3
---       | j == 1 = Word256 z0 val z2 z3
---       | j == 2 = Word256 z0 z1 val z3
---       | j == 3 = Word256 z0 z1 z2 val
---       | otherwise = w
---
---     sel :: Word256 -> Int -> Word64
---     sel (Word256 z0 z1 z2 z3) j
---       | j == 0 = z0
---       | j == 1 = z1
---       | j == 2 = z2
---       | j == 3 = z3
---       | otherwise = error "ppad-fixed (select): invalid index"
---
---     munge !j !ref !acc !s
---       | j == 0 = acc
---       | otherwise =
---           let !ref_j   = sel ref j
---               !ref_j_1 = sel ref (j - 1)
---               !val  = (ref_j .<<. s) .|. (ref_j_1 .>>. (64 - s))
---               !nacc = set acc j val
---           in  munge (pred j) ref nacc s
+    fill576 !start !src !tar !s =
+      let loop !j !acc
+            | j == 0 = acc
+            | otherwise =
+                let !src_j   = sel576 src j
+                    !src_j_1 = sel576 src (j - 1)
+                    !val     = (src_j .<<. s) .|. (src_j_1 .>>. (64 - s))
+                    !nacc    = set576 acc j val
+                in  loop (pred j) nacc
+      in  loop start tar
 
+    fill256 !start !src !tar !s =
+      let loop !j !acc
+            | j == 0 = acc
+            | otherwise =
+                let !src_j   = sel256 src j
+                    !src_j_1 = sel256 src (j - 1)
+                    !val     = (src_j .<<. s) .|. (src_j_1 .>>. (64 - s))
+                    !nacc    = set256 acc j val
+                in  loop (pred j) nacc
+      in  loop start tar
 
+    setlen_256 :: Word256 -> Int
+    setlen_256 (Word256 z0 z1 z2 z3)
+      | z3 /= 0 = 4
+      | z2 /= 0 = 3
+      | z1 /= 0 = 2
+      | z0 /= 0 = 1
+      | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
--- quotrem_gen
---   :: Word576
---   -> Int
---   -> Word256 -- needs to be more general
---   -> Int
---   -> Word832
--- quotrem_gen u ulen d@(Word256 d0 _ _ d3) dlen =
---     let !dlen  = len_set_words d
---         !shift = B.countLeadingZeros d3
---         !ulen  = len_set_words u
---   where
---     len_set_words (Word256 z0 z1 z2 z3)
---       | z3 /= 0 = 4
---       | z2 /= 0 = 3
---       | z1 /= 0 = 2
---       | z0 /= 0 = 1
---       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
+    setlen_576 :: Word576 -> Int
+    setlen_576 (Word576 z0 z1 z2 z3 z4 z5 z6 z7 z8)
+      | z8 /= 0 = 9
+      | z7 /= 0 = 8
+      | z6 /= 0 = 7
+      | z5 /= 0 = 6
+      | z4 /= 0 = 5
+      | z3 /= 0 = 4
+      | z2 /= 0 = 3
+      | z1 /= 0 = 2
+      | z0 /= 0 = 1
+      | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
 -- XX primarray; dynamic size requirements
 quotrem

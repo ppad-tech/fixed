@@ -241,11 +241,12 @@ quotrem_knuth_gen_case0 = do
         16799544643779908154
         1
         0 0 0 0
-      !d = Word256
+      !d = Word576
         16950798510782491100
         2612788699139816405
         5146719872810836952
         14966148379609982000
+        0 0 0 0 0
       !(Word1152 q nu) = quotrem_knuth_gen u 5 d 4
       !pec_q = Word576 2 0 0 0 0 0 0 0 0
       !pec_u = Word576
@@ -342,6 +343,47 @@ quotrem_case1 = do
   H.assertEqual "remainder matches" pec_r r
   H.assertEqual "quotient matches" pec_q q
 
+quotrem_gen_case0 :: H.Assertion
+quotrem_gen_case0 = do
+  let !u = Word576
+        0x1234567890ABCDEF
+        0xFEDCBA0987654321
+        0x123456789ABCDEF0
+        0 0 0 0 0 0
+      !d = Word256 0x0 0x0 0x1 0x100000000
+      !(Word832 q r) = quotrem_gen u d
+      !pec_q = Word576 0 0 0 0 0 0 0 0 0
+      !pec_r = Word256
+        1311768467294899695
+        18364757930599072545
+        1311768467463790320
+        0
+  H.assertEqual "remainder matches" pec_r r
+  H.assertEqual "quotient matches" pec_q q
+
+quotrem_gen_case1 :: H.Assertion
+quotrem_gen_case1 = do
+  let !u = Word576
+        5152276743337338587
+        6823823105342984773
+        12649096328525870222
+        8811572179372364942
+        0 0 0 0 0
+      !d = Word256
+        8849385646123010679
+        653197174784954101
+        1286679968202709238
+        3741537094902495500
+      !(Word832 q r) = quotrem_gen u d
+      !pec_q = Word576 2 0 0 0 0 0 0 0 0
+      !pec_r = Word256
+        5900249524800868845
+        5517428755773076570
+        10075736392120451746
+        1328497989567373942
+  H.assertEqual "remainder matches" pec_r r
+  H.assertEqual "quotient matches" pec_q q
+
 -- main -----------------------------------------------------------------------
 
 comparison :: TestTree
@@ -418,6 +460,8 @@ main = defaultMain $
     , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
     , H.testCase "quotrem matches case0" quotrem_case0
     , H.testCase "quotrem matches case1" quotrem_case1
+    , H.testCase "quotrem_gen matches case0" quotrem_gen_case0
+    , H.testCase "quotrem_gen matches case1" quotrem_gen_case1
     ]
   ]
 
