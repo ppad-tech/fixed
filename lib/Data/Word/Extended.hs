@@ -6,11 +6,8 @@
 
 module Data.Word.Extended where
 
-import Control.Monad.Primitive
-import Control.Monad.ST
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
 import qualified Data.Bits as B
-import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import GHC.Generics
 import Prelude hiding (div, mod)
@@ -746,35 +743,35 @@ quotrem_by1_gen (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
   where
     !rec = recip_2by1 d
 
-    step0 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step0 (Word576 _ q1 q2 q3 q4 q5 q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u0 d rec
       in  Word640 (Word576 q q1 q2 q3 q4 q5 q6 q7 q8) nr
 
-    step1 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step1 (Word576 q0 _ q2 q3 q4 q5 q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u1 d rec
       in  Word640 (Word576 q0 q q2 q3 q4 q5 q6 q7 q8) nr
 
-    step2 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step2 (Word576 q0 q1 _ q3 q4 q5 q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u2 d rec
       in  Word640 (Word576 q0 q1 q q3 q4 q5 q6 q7 q8) nr
 
-    step3 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step3 (Word576 q0 q1 q2 _ q4 q5 q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u3 d rec
       in  Word640 (Word576 q0 q1 q2 q q4 q5 q6 q7 q8) nr
 
-    step4 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step4 (Word576 q0 q1 q2 q3 _ q5 q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u4 d rec
       in  Word640 (Word576 q0 q1 q2 q3 q q5 q6 q7 q8) nr
 
-    step5 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step5 (Word576 q0 q1 q2 q3 q4 _ q6 q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u5 d rec
       in  Word640 (Word576 q0 q1 q2 q3 q4 q q6 q7 q8) nr
 
-    step6 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step6 (Word576 q0 q1 q2 q3 q4 q5 _ q7 q8) r =
       let !(P q nr) = quotrem_2by1 r u6 d rec
       in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q q7 q8) nr
 
-    step7 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+    step7 (Word576 q0 q1 q2 q3 q4 q5 q6 _ q8) r =
       let !(P q nr) = quotrem_2by1 r u7 d rec
       in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q6 q q8) nr
 
