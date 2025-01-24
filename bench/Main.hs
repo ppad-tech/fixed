@@ -121,6 +121,13 @@ div = bench "div" $ nf (W.div w0) w1 where
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
+div_pure :: Benchmark
+div_pure = bench "div_pure" $ nf (W.div_pure w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
 div_baseline_small :: Benchmark
 div_baseline_small =
     bench "div, small (baseline)" $ nf (Prelude.div w0) w1
@@ -169,12 +176,13 @@ quotrem_by1_gen =
 
 main :: IO ()
 main = defaultMain [
-    quotrem_by1
-  , quotrem_by1_gen
-  , mul_baseline
-  , mul
-  , div_baseline
+  --   quotrem_by1
+  -- , quotrem_by1_gen
+    div_baseline
+  , div_pure
   , div
+  --, mul_baseline
+  --, mul
   --, mod_baseline
   --, mod
   --, div_baseline_small

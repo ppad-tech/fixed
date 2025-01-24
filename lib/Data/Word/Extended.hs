@@ -799,6 +799,16 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       z3 <- PA.readPrimArray quo 3
       pure (Word256 z0 z1 z2 z3)
 
+div_pure :: Word256 -> Word256 -> Word256
+div_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
+  | is_zero b || b `gt` a = zero -- ?
+  | a == b                = one
+  | is_word64 a           = Word256 (a0 `quot` b0) 0 0 0
+  | otherwise =
+      let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
+          !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem_gen u b
+      in  Word256 q0 q1 q2 q3
+
 -- primarray
 mod :: Word256 -> Word256 -> Word256
 mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
@@ -822,3 +832,12 @@ mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
       y <- PA.unsafeFreezePrimArray my
       quotrem quo x y
 
+mod_pure :: Word256 -> Word256 -> Word256
+mod_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
+  | is_zero b || a == b = zero -- ?
+  | a `lt` b = a
+  | is_word64 a = Word256 (a0 `Prelude.rem` b0) 0 0 0
+  | otherwise =
+      let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
+          !(Word832 _ r) = quotrem_gen u b
+      in  r

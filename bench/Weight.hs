@@ -55,6 +55,7 @@ main = do
     W.func "mul" (E.mul w0) w1
     W.func "div (baseline)" (Prelude.div i2) i3
     W.func "div" (E.div w2) w3
+    W.func "div_pure" (E.div_pure w2) w3
     W.io "quotrem_by1" (E.quotrem_by1 q u) d
     W.func "quotrem_by1_gen"
       (E.quotrem_by1_gen (E.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)

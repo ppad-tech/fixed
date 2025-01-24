@@ -148,9 +148,21 @@ div_matches (DivMonotonic (a, b)) =
       !rite = to_word256 (a `Prelude.div` b)
   in  left == rite
 
+div_pure_matches :: DivMonotonic -> Bool
+div_pure_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `div_pure` to_word256 b
+      !rite = to_word256 (a `Prelude.div` b)
+  in  left == rite
+
 mod_matches :: DivMonotonic -> Bool
 mod_matches (DivMonotonic (a, b)) =
   let !left = to_word256 a `mod` to_word256 b
+      !rite = to_word256 (a `rem` b)
+  in  left == rite
+
+mod_pure_matches :: DivMonotonic -> Bool
+mod_pure_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `mod_pure` to_word256 b
       !rite = to_word256 (a `rem` b)
   in  left == rite
 
@@ -422,8 +434,12 @@ arithmetic = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 mul_512_matches
   , Q.testProperty "division matches" $
       Q.withMaxSuccess 1000 div_matches
+  , Q.testProperty "pure division matches" $
+      Q.withMaxSuccess 1000 div_pure_matches
   , Q.testProperty "mod matches" $
       Q.withMaxSuccess 1000 mod_matches
+  , Q.testProperty "pure mod matches" $
+      Q.withMaxSuccess 1000 mod_pure_matches
   ]
 
 utils :: TestTree
