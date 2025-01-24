@@ -97,6 +97,11 @@ data Word640 = Word640
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+data Word832 = Word832
+  {-# UNPACK #-} !Word576
+  {-# UNPACK #-} !Word256
+  deriving (Eq, Show, Generic)
+
 data Word1152 = Word1152 -- yikes
   {-# UNPACK #-} !Word576
   {-# UNPACK #-} !Word576
@@ -352,7 +357,7 @@ sub_mul_to x x_offset y m = do
 sub_mul
   :: Word576  -- dividend
   -> Int      -- min dividend index
-  -> Word256  -- divisor
+  -> Word576  -- divisor
   -> Int      -- max divisor index
   -> Word64   -- multiplier
   -> Word640  -- result, borrow
@@ -361,7 +366,7 @@ sub_mul u u_start d d_len m = loop 0 u 0 where
     | j == d_len = Word640 acc borrow
     | otherwise =
         let !u_j = sel576 acc (u_start + j)
-            !d_j = sel256 d j
+            !d_j = sel576 d j
             !(P s carry1) = sub_b u_j borrow 0
             !(P ph pl)    = mul_c d_j m
             !(P t carry2) = sub_b s pl 0
@@ -391,7 +396,7 @@ add_to x x_offset y = do
 add_big
   :: Word576
   -> Int
-  -> Word256
+  -> Word576
   -> Int
   -> Word640
 add_big u u_start d d_len = loop 0 u 0 where
@@ -399,7 +404,7 @@ add_big u u_start d d_len = loop 0 u 0 where
     | j == d_len = Word640 acc car
     | otherwise =
         let !u_j = sel576 acc (u_start + j)
-            !d_j = sel256 d j
+            !d_j = sel576 d j
             !(P w64 ncar) = add_c u_j d_j car
             !nacc = set576 acc (u_start + j) w64
         in  loop (succ j) nacc ncar
@@ -511,12 +516,12 @@ quotrem_by1_gen u ulen d =
 quotrem_knuth_gen
   :: Word576
   -> Int
-  -> Word256
+  -> Word576
   -> Int
   -> Word1152
 quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
-  !d_hi = sel256 d (dlen - 1)
-  !d_lo = sel256 d (dlen - 2)
+  !d_hi = sel576 d (dlen - 1)
+  !d_lo = sel576 d (dlen - 2)
   !rec = recip_2by1 d_hi
   loop j !qacc !uacc
     | j < 0 = Word1152 qacc uacc
@@ -659,6 +664,26 @@ quotrem_knuth quo u d = do
 --               !val  = (ref_j .<<. s) .|. (ref_j_1 .>>. (64 - s))
 --               !nacc = set acc j val
 --           in  munge (pred j) ref nacc s
+
+
+
+-- quotrem_gen
+--   :: Word576
+--   -> Int
+--   -> Word256 -- needs to be more general
+--   -> Int
+--   -> Word832
+-- quotrem_gen u ulen d@(Word256 d0 _ _ d3) dlen =
+--     let !dlen  = len_set_words d
+--         !shift = B.countLeadingZeros d3
+--         !ulen  = len_set_words u
+--   where
+--     len_set_words (Word256 z0 z1 z2 z3)
+--       | z3 /= 0 = 4
+--       | z2 /= 0 = 3
+--       | z1 /= 0 = 2
+--       | z0 /= 0 = 1
+--       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
 -- XX primarray; dynamic size requirements
 quotrem
