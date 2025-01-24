@@ -361,25 +361,173 @@ sub_mul_to x x_offset y m = do
             loop (succ j) (ph + carry1 + carry2)
   loop 0 0
 
--- XX could be improved
-sub_mul
-  :: Word576  -- dividend
-  -> Int      -- min dividend index
-  -> Word256  -- divisor
-  -> Int      -- max divisor index
-  -> Word64   -- multiplier
-  -> Word640  -- result, borrow
-sub_mul u u_start d d_len m = loop 0 u 0 where
-  loop !j !acc !borrow
-    | j == d_len = Word640 acc borrow
-    | otherwise =
-        let !u_j = sel576 u (u_start + j)
-            !d_j = sel256 d j
-            !(P s carry1) = sub_b u_j borrow 0
-            !(P ph pl)    = mul_c d_j m
-            !(P t carry2) = sub_b s pl 0
-            !nacc         = set576 acc (u_start + j) t
-        in  loop (succ j) nacc (ph + carry1 + carry2)
+sub_mul :: Word576 -> Int -> Word256 -> Int -> Word64 -> Word640
+sub_mul u u_start (Word256 d0 d1 d2 d3) d_len m = case d_len of
+    2 ->
+      let !(Word640 u_0 b_0) = step0 u 0
+      in                       step1 u_0 b_0
+    3 ->
+      let !(Word640 u_0 b_0) = step0 u 0
+          !(Word640 u_1 b_1) = step1 u_0 b_0
+      in                       step2 u_1 b_1
+    4 ->
+      let !(Word640 u_0 b_0) = step0 u 0
+          !(Word640 u_1 b_1) = step1 u_0 b_0
+          !(Word640 u_2 b_2) = step2 u_1 b_1
+      in                       step3 u_2 b_2
+    _ ->
+      error "ppad-fixed (sub_mul): bad index"
+  where
+    step0 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
+      0 ->
+        let !(P s car1) = sub_b u0 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 t u1 u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      1 ->
+        let !(P s car1) = sub_b u1 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      2 ->
+        let !(P s car1) = sub_b u2 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      3 ->
+        let !(P s car1) = sub_b u3 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
+      4 ->
+        let !(P s car1) = sub_b u4 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
+      5 ->
+        let !(P s car1) = sub_b u5 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
+      6 ->
+        let !(P s car1) = sub_b u6 bor 0
+            !(P ph pl)  = mul_c d0 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
+      _ ->
+        error "ppad-fixed (step0): bad index"
+
+    step1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
+      0 ->
+        let !(P s car1) = sub_b u1 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      1 ->
+        let !(P s car1) = sub_b u2 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      2 ->
+        let !(P s car1) = sub_b u3 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u3 t u4 u5 u6 u7 u8) (ph + car1 + car2)
+      3 ->
+        let !(P s car1) = sub_b u4 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u3 u4 t u5 u6 u7 u8) (ph + car1 + car2)
+      4 ->
+        let !(P s car1) = sub_b u5 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u3 u4 u5 t u6 u7 u8) (ph + car1 + car2)
+      5 ->
+        let !(P s car1) = sub_b u6 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) (ph + car1 + car2)
+      6 ->
+        let !(P s car1) = sub_b u7 bor 0
+            !(P ph pl)  = mul_c d1 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) (ph + car1 + car2)
+      _ ->
+        error "ppad-fixed (step1): bad index"
+
+    step2 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
+      0 ->
+        let !(P s car1) = sub_b u2 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
+      1 ->
+        let !(P s car1) = sub_b u3 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
+      2 ->
+        let !(P s car1) = sub_b u4 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
+      3 ->
+        let !(P s car1) = sub_b u5 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
+      4 ->
+        let !(P s car1) = sub_b u6 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
+      5 ->
+        let !(P s car1) = sub_b u7 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) (ph + car1 + car2)
+      6 ->
+        let !(P s car1) = sub_b u8 bor 0
+            !(P ph pl)  = mul_c d2 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) (ph + car1 + car2)
+      _ ->
+        error "ppad-fixed (step2): bad index"
+
+    step3 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
+      0 ->
+        let !(P s car1) = sub_b u3 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
+      1 ->
+        let !(P s car1) = sub_b u4 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
+      2 ->
+        let !(P s car1) = sub_b u5 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
+      3 ->
+        let !(P s car1) = sub_b u6 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
+      4 ->
+        let !(P s car1) = sub_b u7 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) (ph + car1 + car2)
+      5 ->
+        let !(P s car1) = sub_b u8 bor 0
+            !(P ph pl)  = mul_c d3 m
+            !(P t car2) = sub_b s pl 0
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) (ph + car1 + car2)
+      _ ->
+        error "ppad-fixed (step3): bad index"
 
 -- requires (len x - x_offset) >= len y > 0
 add_to
@@ -400,7 +548,7 @@ add_to x x_offset y = do
             loop (succ j) carry
   loop 0 0
 
--- XX could be improved
+-- XX expensive
 add_big
   :: Word576
   -> Int
@@ -520,6 +668,7 @@ quotrem_by1_gen u ulen d =
               !nacc = set576 acc j q_j
           in  loop (pred j) nacc r
 
+-- XX expensive
 quotrem_knuth_gen
   :: Word576
   -> Int
