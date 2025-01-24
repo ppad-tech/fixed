@@ -16,6 +16,8 @@ instance NFData E.Word320
 instance NFData E.Word512
 instance NFData E.Word576
 instance NFData E.Word640
+instance NFData E.Word832
+instance NFData E.Word1152
 
 i0, i1 :: Integer
 i0 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
@@ -59,4 +61,9 @@ main = do
     W.io "quotrem_by1" (E.quotrem_by1 q u) d
     W.func "quotrem_by1_gen"
       (E.quotrem_by1_gen (E.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)
+    W.func "quotrem_gen"
+      (E.quotrem_gen (E.Word576 0x1234567890ABCDEF 0xFEDCBA0987654321 0x123456789ABCDEF0 0 0 0 0 0 0)) (E.Word256 0x0 0x0 0x1 0x100000000)
+    W.func "quotrem_knuth_gen"
+      (E.quotrem_knuth_gen (E.Word576 2162362899639802732 8848548347662387477 13702897166684377657 16799544643779908154 1 0 0 0 0) 5 (E.Word256 16950798510782491100 2612788699139816405 5146719872810836952 14966148379609982000)) 4
+
 

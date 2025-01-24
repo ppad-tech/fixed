@@ -81,7 +81,6 @@ data Word576 = Word576
 zero576 :: Word576
 zero576 = Word576 0 0 0 0 0 0 0 0 0
 
--- XX can i eliminate more of these?
 sel576 :: Word576 -> Int -> Word64
 sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4

@@ -17,6 +17,7 @@ instance NFData W.Word320
 instance NFData W.Word512
 instance NFData W.Word576
 instance NFData W.Word640
+instance NFData W.Word1152
 
 or_baseline :: Benchmark
 or_baseline = bench "or (baseline)" $ nf ((.|.) w0) w1 where
@@ -172,15 +173,52 @@ quotrem_by1 = env setup $ \ ~(quo, u, d) ->
 quotrem_by1_gen :: Benchmark
 quotrem_by1_gen =
   bench "quotrem_by1_gen" $
-    nf (W.quotrem_by1_gen (W.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)
+    nf (W.quotrem_by1_gen (W.Word576 300 200 100 0 0 0 0 0 0) 3)
+      (B.complement 50)
+
+quotrem_knuth :: Benchmark
+quotrem_knuth = env setup $ \ ~(quo, u, d) ->
+    bench "quotrem_knuth" $ nfAppIO (W.quotrem_knuth quo u) d
+  where
+    setup = do
+      quo <- PA.newPrimArray 5
+      PA.setPrimArray quo 0 5 0
+      u <- PA.newPrimArray 9
+      PA.setPrimArray u 0 9 0
+      PA.writePrimArray u 0 2162362899639802732
+      PA.writePrimArray u 0 8848548347662387477
+      PA.writePrimArray u 0 13702897166684377657
+      PA.writePrimArray u 0 16799544643779908154
+      PA.writePrimArray u 0 1
+      let !d = PA.primArrayFromList [
+              16950798510782491100
+            , 2612788699139816405
+            , 5146719872810836952
+            , 14966148379609982000
+            ]
+      pure (quo, u, d)
+
+quotrem_knuth_gen :: Benchmark
+quotrem_knuth_gen =
+    bench "quotrem_knuth_gen" $
+      nf (W.quotrem_knuth_gen u 5 d) 4
+  where
+    !u = W.Word576
+      2162362899639802732 8848548347662387477 13702897166684377657
+      16799544643779908154 1 0 0 0 0
+    !d = W.Word256
+      16950798510782491100 2612788699139816405
+      5146719872810836952 14966148379609982000
 
 main :: IO ()
 main = defaultMain [
-  --   quotrem_by1
-  -- , quotrem_by1_gen
-    div_baseline
-  , div_pure
-  , div
+    quotrem_knuth_gen
+  , quotrem_knuth
+  , quotrem_by1
+  , quotrem_by1_gen
+  --  div_baseline
+  --, div_pure
+  --, div
   --, mul_baseline
   --, mul
   --, mod_baseline
