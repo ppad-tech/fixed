@@ -221,16 +221,16 @@ main :: IO ()
 main = defaultMain [
   --  quotrem_knuth_gen
   --, quotrem_knuth
-  --, quotrem_by1
-  --, quotrem_by1_gen
-    div_baseline
-  , div_pure
-  , div
+    quotrem_by1
+  , quotrem_by1_gen
+  --, div_baseline
+  --, div_pure
+  --, div
   --, mul_baseline
   --, mul
-  , mod_baseline
-  , mod_pure
-  , mod
+  --, mod_baseline
+  --, mod_pure
+  --, mod
   --, div_baseline_small
   --, div_small
   --, or_baseline

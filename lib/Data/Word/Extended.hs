@@ -752,20 +752,97 @@ quotrem_by1_gen
   -> Int      -- dividend length
   -> Word64   -- divisor
   -> Word640
-quotrem_by1_gen u ulen d =
-    let !r0  = sel576 u (ulen - 1)
-    in  loop (ulen - 2) zero576 r0
+quotrem_by1_gen (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
+    9 ->
+      let !r_0 = u8
+          !(Word640 q0 r0) = step7 zero576 r_0
+          !(Word640 q1 r1) = step6 q0 r0
+          !(Word640 q2 r2) = step5 q1 r1
+          !(Word640 q3 r3) = step4 q2 r2
+          !(Word640 q4 r4) = step3 q3 r3
+          !(Word640 q5 r5) = step2 q4 r4
+          !(Word640 q6 r6) = step1 q5 r5
+      in                     step0 q6 r6
+    8 ->
+      let !r_0 = u7
+          !(Word640 q0 r0) = step6 zero576 r_0
+          !(Word640 q1 r1) = step5 q0 r0
+          !(Word640 q2 r2) = step4 q1 r1
+          !(Word640 q3 r3) = step3 q2 r2
+          !(Word640 q4 r4) = step2 q3 r3
+          !(Word640 q5 r5) = step1 q4 r4
+      in                     step0 q5 r5
+    7 ->
+      let !r_0 = u6
+          !(Word640 q0 r0) = step5 zero576 r_0
+          !(Word640 q1 r1) = step4 q0 r0
+          !(Word640 q2 r2) = step3 q1 r1
+          !(Word640 q3 r3) = step2 q2 r2
+          !(Word640 q4 r4) = step1 q3 r3
+      in                     step0 q4 r4
+    6 ->
+      let !r_0 = u5
+          !(Word640 q0 r0) = step4 zero576 r_0
+          !(Word640 q1 r1) = step3 q0 r0
+          !(Word640 q2 r2) = step2 q1 r1
+          !(Word640 q3 r3) = step1 q2 r2
+      in                     step0 q3 r3
+    5 ->
+      let !r_0 = u4
+          !(Word640 q0 r0) = step3 zero576 r_0
+          !(Word640 q1 r1) = step2 q0 r0
+          !(Word640 q2 r2) = step1 q1 r1
+      in                     step0 q2 r2
+    4 ->
+      let !r_0 = u3
+          !(Word640 q0 r0) = step2 zero576 r_0
+          !(Word640 q1 r1) = step1 q0 r0
+      in                     step0 q1 r1
+    3 ->
+      let !r_0 = u2
+          !(Word640 q0 r0) = step1 zero576 r_0
+      in                     step0 q0 r0
+    2 ->
+      let !r_0 = u1
+      in                     step0 zero576 r_0
+    _ ->
+      error "ppad-fixed (quotrem_by1_gen): bad index"
   where
     !rec = recip_2by1 d
-    loop !j !acc !racc
-      | j < 0 = Word640 acc racc
-      | otherwise =
-          let !u_j = sel576 u j
-              !(P q_j r) = quotrem_2by1 racc u_j d rec
-              !nacc = set576 acc j q_j
-          in  loop (pred j) nacc r
 
--- XX expensive
+    step0 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u0 d rec
+      in  Word640 (Word576 q q1 q2 q3 q4 q5 q6 q7 q8) nr
+
+    step1 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u1 d rec
+      in  Word640 (Word576 q0 q q2 q3 q4 q5 q6 q7 q8) nr
+
+    step2 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u2 d rec
+      in  Word640 (Word576 q0 q1 q q3 q4 q5 q6 q7 q8) nr
+
+    step3 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u3 d rec
+      in  Word640 (Word576 q0 q1 q2 q q4 q5 q6 q7 q8) nr
+
+    step4 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u4 d rec
+      in  Word640 (Word576 q0 q1 q2 q3 q q5 q6 q7 q8) nr
+
+    step5 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u5 d rec
+      in  Word640 (Word576 q0 q1 q2 q3 q4 q q6 q7 q8) nr
+
+    step6 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u6 d rec
+      in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q q7 q8) nr
+
+    step7 (Word576 q0 q1 q2 q3 q4 q5 q6 q7 q8) r =
+      let !(P q nr) = quotrem_2by1 r u7 d rec
+      in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q6 q q8) nr
+
+ -- XX expensive
 quotrem_knuth_gen
   :: Word576
   -> Int
