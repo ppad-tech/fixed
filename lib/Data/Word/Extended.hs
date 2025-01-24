@@ -602,7 +602,7 @@ quotrem_gen
   :: Word576
   -> Word256
   -> Word832
-quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
+quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 _ _ d3) =
     let !dlen   = setlen_256 d
         !shift  = B.countLeadingZeros d3
         !dn_pre = fill256 (dlen - 1) d zero shift
@@ -613,7 +613,7 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
         else
           let !u_ulen  = sel576 u (ulen - 1)
               !un_pre0 = set576 zero576 ulen (u_ulen .>>. (64 - shift))
-              !un_pre1 = fill576 (ulen - 1) u un_pre0 shift
+              !un_pre1 = fill576 (ulen - 1) un_pre0 shift
               !un      = set576 un_pre1 0 (u0 .<<. shift)
           in  if   dlen == 1
               then
@@ -643,16 +643,29 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
             4 -> Word256 v0 v1 v2 v3
             _ -> error "ppad-fixed (fill_rem): bad index"
 
-    fill576 !start !src !tar !s =
-      let loop !j !acc
-            | j == 0 = acc
-            | otherwise =
-                let !src_j   = sel576 src j
-                    !src_j_1 = sel576 src (j - 1)
-                    !val     = (src_j .<<. s) .|. (src_j_1 .>>. (64 - s))
-                    !nacc    = set576 acc j val
-                in  loop (pred j) nacc
-      in  loop start tar
+    fill576
+      !start
+      !tar@(Word576 tar0 _ tar2 tar3 tar4 tar5 tar6 tar7 tar8)
+      !s =
+        let v8 = (u8 .<<. s) .|. (u7 .>>. (64 - s))
+            v7 = (u7 .<<. s) .|. (u6 .>>. (64 - s))
+            v6 = (u6 .<<. s) .|. (u5 .>>. (64 - s))
+            v5 = (u5 .<<. s) .|. (u4 .>>. (64 - s))
+            v4 = (u4 .<<. s) .|. (u3 .>>. (64 - s))
+            v3 = (u3 .<<. s) .|. (u2 .>>. (64 - s))
+            v2 = (u2 .<<. s) .|. (u1 .>>. (64 - s))
+            v1 = (u1 .<<. s) .|. (u0 .>>. (64 - s))
+        in  case start of
+              8 -> Word576 tar0 v1 v2 v3 v4 v5 v6 v7 v8
+              7 -> Word576 tar0 v1 v2 v3 v4 v5 v6 v7 tar8
+              6 -> Word576 tar0 v1 v2 v3 v4 v5 v6 tar7 tar8
+              5 -> Word576 tar0 v1 v2 v3 v4 v5 tar6 tar7 tar8
+              4 -> Word576 tar0 v1 v2 v3 v4 tar5 tar6 tar7 tar8
+              3 -> Word576 tar0 v1 v2 v3 tar4 tar5 tar6 tar7 tar8
+              2 -> Word576 tar0 v1 v2 tar3 tar4 tar5 tar6 tar7 tar8
+              1 -> Word576 tar0 v1 tar2 tar3 tar4 tar5 tar6 tar7 tar8
+              0 -> tar
+              _ -> error "ppad-fixed (fill576): bad index"
 
     fill256 !start !src !tar !s =
       let loop !j !acc
