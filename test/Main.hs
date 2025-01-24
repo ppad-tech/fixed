@@ -232,6 +232,32 @@ quotrem_by1_gen_case1 = do
   H.assertEqual "remainder matches" pec_rem r
   H.assertEqual "quotient matches" pec_quo q
 
+quotrem_knuth_gen_case0 :: H.Assertion
+quotrem_knuth_gen_case0 = do
+  let !u = Word576
+        2162362899639802732
+        8848548347662387477
+        13702897166684377657
+        16799544643779908154
+        1
+        0 0 0 0
+      !d = Word256
+        16950798510782491100
+        2612788699139816405
+        5146719872810836952
+        14966148379609982000
+      !(Word1152 q nu) = quotrem_knuth_gen u 5 d 4
+      !pec_q = Word576 2 0 0 0 0 0 0 0 0
+      !pec_u = Word576
+        5154254025493923764
+        3622970949382754665
+        3409457421062703753
+        5313991958269495770
+        0
+        0 0 0 0
+  H.assertEqual "divisor matches" pec_u nu
+  H.assertEqual "quotient matches" pec_q q
+
 quotrem_knuth_case0 :: H.Assertion
 quotrem_knuth_case0 = do
   let (q, u) = runST $ do
@@ -258,7 +284,7 @@ quotrem_knuth_case0 = do
           5154254025493923764
         , 3622970949382754665
         , 3409457421062703753
-        , 5313991958269495770 -- was off by 1 :|
+        , 5313991958269495770
         , 0
         ]
   H.assertEqual "divisor matches" pec_u u
@@ -388,6 +414,7 @@ main = defaultMain $
     , H.testCase "quotrem_by1 matches case1" quotrem_by1_case1
     , H.testCase "quotrem_by1_gen matches case0" quotrem_by1_gen_case0
     , H.testCase "quotrem_by1_gen matches case1" quotrem_by1_gen_case1
+    , H.testCase "quotrem_knuth_gen matches case0" quotrem_knuth_gen_case0
     , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
     , H.testCase "quotrem matches case0" quotrem_case0
     , H.testCase "quotrem matches case1" quotrem_case1

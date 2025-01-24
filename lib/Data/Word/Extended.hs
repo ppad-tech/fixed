@@ -97,6 +97,11 @@ data Word640 = Word640
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+data Word1152 = Word1152 -- yikes
+  {-# UNPACK #-} !Word576
+  {-# UNPACK #-} !Word576
+  deriving (Eq, Show, Generic)
+
 -- conversion -----------------------------------------------------------------
 
 to_integer :: Word256 -> Integer
@@ -503,6 +508,44 @@ quotrem_by1_gen u ulen d =
               !nacc = set576 acc j q_j
           in  loop (pred j) nacc r
 
+quotrem_knuth_gen
+  :: Word576
+  -> Int
+  -> Word256
+  -> Int
+  -> Word1152
+quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
+  !d_hi = sel256 d (dlen - 1)
+  !d_lo = sel256 d (dlen - 2)
+  !rec = recip_2by1 d_hi
+  loop j !qacc !uacc
+    | j < 0 = Word1152 qacc uacc
+    | otherwise =
+        let !u_2 = sel576 uacc (j + dlen)
+            !u_1 = sel576 uacc (j + dlen - 1)
+            !u_0 = sel576 uacc (j + dlen - 2)
+            !qhat
+              | u_2 >= d_hi = 0xffff_ffff_ffff_ffff
+              | otherwise   =
+                  let !(P qh rh) = quotrem_2by1 u_2 u_1 d_hi rec
+                      !(P ph pl) = mul_c qh d_lo
+                  in  if   ph > rh || (ph == rh && pl > u_0)
+                      then qh - 1
+                      else qh
+
+            !(Word640 u0 borrow) = sub_mul u j d dlen qhat
+            !u1 = set576 u0 (j + dlen) (u_2 - borrow)
+        in  if   u_2 < borrow
+            then
+              let !qh = qhat - 1
+                  !(Word640 u2 r)  = add_big u1 j d dlen
+                  !u3 = set576 u2 (j + dlen) r
+                  !q  = set576 qacc j qh
+              in  loop (pred j) q u3
+            else
+              let !q = set576 qacc j qhat
+              in  loop (pred j) q u1
+
 -- XX primarray
 quotrem_knuth
   :: PrimMonad m
@@ -542,6 +585,7 @@ quotrem_knuth quo u d = do
               PA.writePrimArray quo j qhat
             loop (pred j)
   loop (lu - ld - 1)
+
 
 -- XX needs work
 -- quotrem_256
