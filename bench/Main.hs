@@ -13,8 +13,10 @@ import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
 
 instance NFData W.Word256
-instance NFData W.Word512
 instance NFData W.Word320
+instance NFData W.Word512
+instance NFData W.Word576
+instance NFData W.Word640
 
 or_baseline :: Benchmark
 or_baseline = bench "or (baseline)" $ nf ((.|.) w0) w1 where
@@ -160,15 +162,15 @@ quotrem_by1 = env setup $ \ ~(quo, u, d) ->
           d = B.complement 50
       pure (quo, u, d)
 
-quotrem_by1_256 :: Benchmark
-quotrem_by1_256 =
-  bench "quotrem_by1_256" $
-    nf (W.quotrem_by1_256 (W.Word256 300 200 100 0)) (B.complement 50)
+quotrem_by1_gen :: Benchmark
+quotrem_by1_gen =
+  bench "quotrem_by1_gen" $
+    nf (W.quotrem_by1_gen (W.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)
 
 main :: IO ()
 main = defaultMain [
     quotrem_by1
-  , quotrem_by1_256
+  , quotrem_by1_gen
   , mul_baseline
   , mul
   , div_baseline

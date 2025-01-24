@@ -12,8 +12,10 @@ import qualified Data.Word.Extended as E
 import qualified Weigh as W
 
 instance NFData E.Word256
-instance NFData E.Word512
 instance NFData E.Word320
+instance NFData E.Word512
+instance NFData E.Word576
+instance NFData E.Word640
 
 i0, i1 :: Integer
 i0 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
@@ -54,6 +56,6 @@ main = do
     W.func "div (baseline)" (Prelude.div i2) i3
     W.func "div" (E.div w2) w3
     W.io "quotrem_by1" (E.quotrem_by1 q u) d
-    W.func "quotrem_by1_256"
-      (E.quotrem_by1_256 (E.Word256 300 200 100 0)) (B.complement 50)
+    W.func "quotrem_by1_gen"
+      (E.quotrem_by1_gen (E.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)
 
