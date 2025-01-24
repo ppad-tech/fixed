@@ -602,10 +602,10 @@ quotrem_gen
   :: Word576
   -> Word256
   -> Word832
-quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 _ _ d3) =
+quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
     let !dlen   = setlen_256 d
         !shift  = B.countLeadingZeros d3
-        !dn_pre = fill256 (dlen - 1) d zero shift
+        !dn_pre = fill256 (dlen - 1) shift
         !dn     = set256 dn_pre 0 (d0 .<<. shift)
         !ulen   = setlen_576 u
     in  if   ulen < dlen
@@ -667,16 +667,16 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 _ _ d3) =
               0 -> tar
               _ -> error "ppad-fixed (fill576): bad index"
 
-    fill256 !start !src !tar !s =
-      let loop !j !acc
-            | j == 0 = acc
-            | otherwise =
-                let !src_j   = sel256 src j
-                    !src_j_1 = sel256 src (j - 1)
-                    !val     = (src_j .<<. s) .|. (src_j_1 .>>. (64 - s))
-                    !nacc    = set256 acc j val
-                in  loop (pred j) nacc
-      in  loop start tar
+    fill256 !start !s =
+      let v3 = (d3 .<<. s) .|. (d2 .>>. (64 - s))
+          v2 = (d2 .<<. s) .|. (d1 .>>. (64 - s))
+          v1 = (d1 .<<. s) .|. (d0 .>>. (64 - s))
+      in  case start of
+            3 -> Word256 0 v1 v2 v3
+            2 -> Word256 0 v1 v2 0
+            1 -> Word256 0 v1 0 0
+            0 -> zero
+            _ -> error "ppad-fixed (fill576): bad index"
 
     setlen_256 :: Word256 -> Int
     setlen_256 (Word256 z0 z1 z2 z3)
