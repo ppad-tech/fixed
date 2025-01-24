@@ -155,6 +155,13 @@ mod = bench "mod" $ nf (W.mod w0) w1 where
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
+mod_pure :: Benchmark
+mod_pure = bench "mod (pure)" $ nf (W.mod_pure w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
 quotrem_by1 :: Benchmark
 quotrem_by1 = env setup $ \ ~(quo, u, d) ->
     bench "quotrem_by1" $ nfAppIO (W.quotrem_by1 quo u) d
@@ -212,17 +219,18 @@ quotrem_knuth_gen =
 
 main :: IO ()
 main = defaultMain [
-    quotrem_knuth_gen
-  , quotrem_knuth
-  , quotrem_by1
-  , quotrem_by1_gen
-  --  div_baseline
-  --, div_pure
-  --, div
+  --  quotrem_knuth_gen
+  --, quotrem_knuth
+  --, quotrem_by1
+  --, quotrem_by1_gen
+    div_baseline
+  , div_pure
+  , div
   --, mul_baseline
   --, mul
-  --, mod_baseline
-  --, mod
+  , mod_baseline
+  , mod_pure
+  , mod
   --, div_baseline_small
   --, div_small
   --, or_baseline
