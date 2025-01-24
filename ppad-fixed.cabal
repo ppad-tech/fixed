@@ -26,7 +26,6 @@ library
       Data.Word.Extended
   build-depends:
       base >= 4.9 && < 5
-    , primitive >= 0.8 && < 0.10
 
 test-suite fixed-tests
   type:                exitcode-stdio-1.0
@@ -41,7 +40,6 @@ test-suite fixed-tests
       base
     , bytestring
     , ppad-fixed
-    , primitive
     , tasty
     , tasty-hunit
     , tasty-quickcheck
@@ -60,7 +58,6 @@ benchmark fixed-bench
     , criterion
     , deepseq
     , ppad-fixed
-    , primitive
 
 benchmark fixed-weigh
   type:                exitcode-stdio-1.0
@@ -75,7 +72,6 @@ benchmark fixed-weigh
       base
     , deepseq
     , ppad-fixed
-    , primitive
     , weigh
 
 executable fixed-profile
@@ -91,5 +87,4 @@ executable fixed-profile
     , criterion
     , deepseq
     , ppad-fixed
-    , primitive
 

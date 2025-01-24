@@ -2,7 +2,6 @@
 
 module Main where
 
-import qualified Data.Primitive.PrimArray as PA
 import Data.Word.Extended
 
 main :: IO ()
