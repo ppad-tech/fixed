@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -22,33 +23,74 @@ fi = fromIntegral
 
 -- | Little-endian Word256.
 data Word256 = Word256
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
+
+sel256 :: Word256 -> Int -> Word64
+sel256 (Word256 a0 a1 a2 a3) = \case
+  0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3
+  _ -> error "ppad-fixed (sel256): bad index"
 
 -- | Little-endian Word512.
 data Word512 = Word512
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
 -- utility words ------------------------------------------------------------
 
 data Word128 = P
-    {-# UNPACK #-} !Word64
-    {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
   deriving (Eq, Show)
 
 data Word320 = Word320
   !Word256
+  {-# UNPACK #-} !Word64
+  deriving (Eq, Show, Generic)
+
+data Word576 = Word576
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  {-# UNPACK #-} !Word64
+  deriving (Eq, Show, Generic)
+
+sel576 :: Word576 -> Int -> Word64
+sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
+  0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4
+  5 -> a5; 6 -> a6; 7 -> a7; 8 -> a8
+  _ -> error "ppad-fixed (sel576): bad index"
+
+set576 :: Word576 -> Int -> Word64 -> Word576
+set576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) j wo = case j of
+  0 -> Word576 wo a1 a2 a3 a4 a5 a6 a7 a8
+  1 -> Word576 a0 wo a2 a3 a4 a5 a6 a7 a8
+  2 -> Word576 a0 a1 wo a3 a4 a5 a6 a7 a8
+  3 -> Word576 a0 a1 a2 wo a4 a5 a6 a7 a8
+  4 -> Word576 a0 a1 a2 a3 wo a5 a6 a7 a8
+  5 -> Word576 a0 a1 a2 a3 a4 wo a6 a7 a8
+  6 -> Word576 a0 a1 a2 a3 a4 a5 wo a7 a8
+  7 -> Word576 a0 a1 a2 a3 a4 a5 a6 wo a8
+  8 -> Word576 a0 a1 a2 a3 a4 a5 a6 a7 wo
+  _ -> error "ppad-fixed (set576): bad index"
+
+data Word640 = Word640
+  {-# UNPACK #-} !Word576
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
@@ -299,34 +341,24 @@ sub_mul_to x x_offset y m = do
             loop (succ j) (ph + carry1 + carry2)
   loop 0 0
 
--- XX needs dynamic treatment
--- = x - y * m
-sub_mul256 :: Word256 -> Int -> Word256 -> Word64 -> Word320
-sub_mul256 (Word256 x0 x1 x2 x3) offset (Word256 y0 y1 y2 y3) m =
-    let !s0          = x 0
-        !(P ph0 pl0) = mul_c y0 m
-        !(P z0 c0)   = sub_b s0 pl0 0
-        !b0          = ph0 + c0
-
-        !(P s1 c1)   = sub_b (x 1) b0 0
-        !(P ph1 pl1) = mul_c y1 m
-        !(P z1 c2)   = sub_b s1 pl1 0
-        !b1          = ph1 + c1 + c2
-
-        !(P s2 c3)   = sub_b (x 2) b1 0
-        !(P ph2 pl2) = mul_c y2 m
-        !(P z2 c4)   = sub_b s2 pl2 0
-        !b2          = ph2 + c3 + c4
-
-        !(P s3 c5)   = sub_b (x 3) b2 0
-        !(P ph3 pl3) = mul_c y3 m
-        !(P z3 c6)   = sub_b s3 pl3 0
-        !b3          = ph3 + c5 + c6
-    in  Word320 (Word256 z0 z1 z2 z3) b3
-  where
-    x j = case j + offset of
-      0 -> x0; 1 -> x1; 2 -> x2; 3 -> x3
-      _ -> error "sub_mul256: invalid index"
+sub_mul
+  :: Word576  -- dividend
+  -> Int      -- min dividend index
+  -> Word256  -- divisor
+  -> Int      -- max divisor index
+  -> Word64   -- multiplier
+  -> Word640  -- result, borrow
+sub_mul u u_start d d_len m = loop 0 u 0 where
+  loop !j !acc !borrow
+    | j == d_len = Word640 acc borrow
+    | otherwise =
+        let !u_j = sel576 acc (u_start + j)
+            !d_j = sel256 d j
+            !(P s carry1) = sub_b u_j borrow 0
+            !(P ph pl)    = mul_c d_j m
+            !(P t carry2) = sub_b s pl 0
+            !nacc         = set576 acc (u_start + j) t
+        in  loop (succ j) nacc (ph + carry1 + carry2)
 
 -- XX primarray
 -- requires (len x - x_offset) >= len y > 0
