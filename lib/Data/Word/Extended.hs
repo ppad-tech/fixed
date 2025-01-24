@@ -375,10 +375,26 @@ add_to x x_offset y = do
         | otherwise = do
             xj <- PA.readPrimArray x (j + x_offset)
             let yj = PA.indexPrimArray y j
-                !(P nex carry) = add_c xj yj carry
+                !(P nex carry) = add_c xj yj cacc
             PA.writePrimArray x (j + x_offset) nex
             loop (succ j) carry
   loop 0 0
+
+add_big
+  :: Word576
+  -> Int
+  -> Word256
+  -> Int
+  -> Word640
+add_big u u_start d d_len = loop 0 u 0 where
+  loop !j !acc !car
+    | j == d_len = Word640 acc car
+    | otherwise =
+        let !u_j = sel576 acc (u_start + j)
+            !d_j = sel256 d j
+            !(P w64 ncar) = add_c u_j d_j car
+            !nacc = set576 acc (u_start + j) w64
+        in  loop (succ j) nacc ncar
 
 -- quotient, remainder of (hi, lo) divided by y
 -- translated from Div64 in go's math/bits package
