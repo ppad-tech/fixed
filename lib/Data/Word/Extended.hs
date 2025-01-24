@@ -338,43 +338,17 @@ mul_512 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) =
 
 -- division -------------------------------------------------------------------
 
--- x =- y * m
--- requires (len x - x_offset) >= len y > 0
-sub_mul_to
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> Int
-  -> PA.PrimArray Word64
-  -> Word64
-  -> m Word64
-sub_mul_to x x_offset y m = do
-  let l = PA.sizeofPrimArray y
-      loop !j !borrow
-        | j == l = pure borrow
-        | otherwise = do
-            !x_j <- PA.readPrimArray x (j + x_offset)
-            let !y_j = PA.indexPrimArray y j
-                !(P s carry1) = sub_b x_j borrow 0
-                !(P ph pl)    = mul_c y_j m
-                !(P t carry2) = sub_b s pl 0
-            PA.writePrimArray x (j + x_offset) t
-            loop (succ j) (ph + carry1 + carry2)
-  loop 0 0
-
 sub_mul :: Word576 -> Int -> Word256 -> Int -> Word64 -> Word640
 sub_mul u u_start (Word256 d0 d1 d2 d3) d_len m = case d_len of
-    2 ->
-      let !(Word640 u_0 b_0) = step0 u 0
-      in                       step1 u_0 b_0
-    3 ->
-      let !(Word640 u_0 b_0) = step0 u 0
-          !(Word640 u_1 b_1) = step1 u_0 b_0
-      in                       step2 u_1 b_1
-    4 ->
-      let !(Word640 u_0 b_0) = step0 u 0
-          !(Word640 u_1 b_1) = step1 u_0 b_0
-          !(Word640 u_2 b_2) = step2 u_1 b_1
-      in                       step3 u_2 b_2
+    2 -> let !(Word640 u_0 b_0) = step0 u 0
+         in  step1 u_0 b_0
+    3 -> let !(Word640 u_0 b_0) = step0 u 0
+             !(Word640 u_1 b_1) = step1 u_0 b_0
+         in  step2 u_1 b_1
+    4 -> let !(Word640 u_0 b_0) = step0 u 0
+             !(Word640 u_1 b_1) = step1 u_0 b_0
+             !(Word640 u_2 b_2) = step2 u_1 b_1
+         in  step3 u_2 b_2
     _ ->
       error "ppad-fixed (sub_mul): bad index"
   where
@@ -529,39 +503,20 @@ sub_mul u u_start (Word256 d0 d1 d2 d3) d_len m = case d_len of
       _ ->
         error "ppad-fixed (step3): bad index"
 
--- requires (len x - x_offset) >= len y > 0
-add_to
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> Int
-  -> PA.PrimArray Word64
-  -> m Word64
-add_to x x_offset y = do
-  let l = PA.sizeofPrimArray y
-      loop !j !cacc
-        | j == l = pure cacc
-        | otherwise = do
-            xj <- PA.readPrimArray x (j + x_offset)
-            let yj = PA.indexPrimArray y j
-                !(P nex carry) = add_c xj yj cacc
-            PA.writePrimArray x (j + x_offset) nex
-            loop (succ j) carry
-  loop 0 0
-
 add_big :: Word576 -> Int -> Word256 -> Int -> Word640
 add_big u u_start (Word256 d0 d1 d2 d3) d_len = case d_len of
     2 ->
       let !(Word640 u_0 c_0) = step0 u 0
-      in                       step1 u_0 c_0
+      in  step1 u_0 c_0
     3 ->
       let !(Word640 u_0 c_0) = step0 u 0
           !(Word640 u_1 c_1) = step1 u_0 c_0
-      in                       step2 u_1 c_1
+      in  step2 u_1 c_1
     4 ->
       let !(Word640 u_0 c_0) = step0 u 0
           !(Word640 u_1 c_1) = step1 u_0 c_0
           !(Word640 u_2 c_2) = step2 u_1 c_1
-      in                       step3 u_2 c_2
+      in  step3 u_2 c_2
     _ ->
       error "ppad-fixed (add_big): bad index"
   where
@@ -728,25 +683,6 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
-quotrem_by1
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> PA.PrimArray Word64
-  -> Word64
-  -> m Word64
-quotrem_by1 quo u d = do
-  let !rec = recip_2by1 d
-      !lu  = PA.sizeofPrimArray u
-      !r0  = PA.indexPrimArray u (lu - 1)
-      loop !j !racc
-        | j < 0 = pure racc
-        | otherwise = do
-            let uj = PA.indexPrimArray u j
-                !(P qj rnex) = quotrem_2by1 racc uj d rec
-            PA.writePrimArray quo j qj
-            loop (pred j) rnex
-  loop (lu - 2) r0
-
 quotrem_by1_gen
   :: Word576  -- dividend
   -> Int      -- dividend length
@@ -881,45 +817,6 @@ quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
               let !q = set576 qacc j qhat
               in  loop (pred j) q u1
 
-quotrem_knuth
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> PA.MutablePrimArray (PrimState m)  Word64
-  -> PA.PrimArray Word64
-  -> m ()
-quotrem_knuth quo u d = do
-  !lu <- PA.getSizeofMutablePrimArray u
-  let !ld = PA.sizeofPrimArray d
-      !dh = PA.indexPrimArray d (ld - 1)
-      !dl = PA.indexPrimArray d (ld - 2)
-      !rec = recip_2by1 dh
-      loop !j
-        | j < 0 = pure ()
-        | otherwise = do
-            !u2 <- PA.readPrimArray u (j + ld)
-            !u1 <- PA.readPrimArray u (j + ld - 1)
-            !u0 <- PA.readPrimArray u (j + ld - 2)
-            let !qhat | u2 >= dh  = 0xffff_ffff_ffff_ffff
-                      | otherwise =
-                          let !(P qh rh) = quotrem_2by1 u2 u1 dh rec
-                              !(P ph pl) = mul_c qh dl
-                          in  if   ph > rh || (ph == rh && pl > u0)
-                              then qh - 1
-                              else qh
-
-            borrow <- sub_mul_to u j d qhat
-            PA.writePrimArray u (j + ld) (u2 - borrow)
-            if   u2 < borrow
-            then do
-              let !qh = qhat - 1
-              r <- add_to u j d
-              PA.writePrimArray u (j + ld) r
-              PA.writePrimArray quo j qh
-            else
-              PA.writePrimArray quo j qhat
-            loop (pred j)
-  loop (lu - ld - 1)
-
 quotrem_gen
   :: Word576
   -> Word256
@@ -1016,119 +913,6 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
       | z0 /= 0 = 1
       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
-quotrem
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> PA.PrimArray Word64
-  -> PA.PrimArray Word64
-  -> m Word256
-quotrem quo u d = do
-    let !ld    = PA.sizeofPrimArray d
-        !lu    = PA.sizeofPrimArray u
-        !dlen  = len_loop d (ld - 1)
-        !shift = B.countLeadingZeros (PA.indexPrimArray d (dlen - 1))
-    dn <- PA.newPrimArray dlen
-    PA.setPrimArray dn 0 dlen 0
-    let go_dn !j
-          | j == 0 = pure ()
-          | otherwise = do
-              let !dj   = PA.indexPrimArray d j
-                  !dj_1 = PA.indexPrimArray d (j - 1)
-                  !val  = (dj .<<. shift) .|. (dj_1 .>>. (64 - shift))
-              PA.writePrimArray dn j val
-              go_dn (pred j)
-    go_dn (dlen - 1)
-    PA.writePrimArray dn 0 (PA.indexPrimArray d 0 .<<. shift)
-    let !ulen  = len_loop u (lu - 1)
-    if   ulen < dlen
-    then do
-      let !u0 | lu >= 1   = PA.indexPrimArray u 0
-              | otherwise = 0
-          !u1 | lu >= 2   = PA.indexPrimArray u 1
-              | otherwise = 0
-          !u2 | lu >= 3   = PA.indexPrimArray u 2
-              | otherwise = 0
-          !u3 | lu >= 4   = PA.indexPrimArray u 3
-              | otherwise = 0
-      pure (Word256 u0 u1 u2 u3)
-    else do
-      un <- PA.newPrimArray (ulen + 1)
-      PA.setPrimArray un 0 (ulen + 1) 0
-      let u_ulen = PA.indexPrimArray u (ulen - 1)
-      PA.writePrimArray un ulen (u_ulen .>>. (64 - shift))
-      -- duplicated, but easy to handle mutableprimarrays this way
-      let go_un !j
-            | j == 0 = pure ()
-            | otherwise = do
-                let !uj   = PA.indexPrimArray u j
-                    !uj_1 = PA.indexPrimArray u (j - 1)
-                    !val  = (uj .<<. shift) .|. (uj_1 .>>. (64 - shift))
-                PA.writePrimArray un j val
-                go_un (pred j)
-      go_un (ulen - 1)
-      PA.writePrimArray un 0 (PA.indexPrimArray u 0 .<<. shift)
-      if   dlen == 1
-      then do
-        dn_0 <- PA.readPrimArray dn 0
-        un_c <- PA.freezePrimArray un 0 (ulen + 1)
-        r <- quotrem_by1 quo un_c dn_0
-        pure (Word256 (r .>>. shift) 0 0 0)
-      else do
-        dnf <- PA.unsafeFreezePrimArray dn
-        quotrem_knuth quo un dnf
-        let go_r !j !acc
-              | j == dlen = pure acc
-              | otherwise = do
-                  un_j   <- PA.readPrimArray un j
-                  un_j_1 <- PA.readPrimArray un (j + 1)
-                  let !val = (un_j  .>>. shift)
-                         .|. (un_j_1 .<<. (64 - shift))
-                      !nacc = setr acc j val
-                  go_r (succ j) nacc
-        !r <- go_r 0 zero
-        un_dlen_1 <- PA.readPrimArray un (dlen - 1)
-        pure (setr r (dlen - 1) (un_dlen_1 .>>. shift))
-  where
-    len_loop !arr !j
-      | j < 0 = 0
-      | PA.indexPrimArray arr j /= 0 = j + 1
-      | otherwise = len_loop arr (pred j)
-
-    setr w@(Word256 z0 z1 z2 z3) j val
-      | j == 0 = Word256 val z1 z2 z3
-      | j == 1 = Word256 z0 val z2 z3
-      | j == 2 = Word256 z0 z1 val z3
-      | j == 3 = Word256 z0 z1 z2 val
-      | otherwise = w
-
--- primarray
-div :: Word256 -> Word256 -> Word256
-div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
-  | is_zero b || b `gt` a = zero -- ?
-  | a == b                = one
-  | is_word64 a           = Word256 (a0 `quot` b0) 0 0 0
-  | otherwise = runST $ do
-      quo <- PA.newPrimArray 4
-      PA.setPrimArray quo 0 4 0
-      mx <- PA.newPrimArray 4
-      my <- PA.newPrimArray 4
-      PA.writePrimArray mx 0 a0
-      PA.writePrimArray mx 1 a1
-      PA.writePrimArray mx 2 a2
-      PA.writePrimArray mx 3 a3
-      PA.writePrimArray my 0 b0
-      PA.writePrimArray my 1 b1
-      PA.writePrimArray my 2 b2
-      PA.writePrimArray my 3 b3
-      x <- PA.unsafeFreezePrimArray mx
-      y <- PA.unsafeFreezePrimArray my
-      _ <- quotrem quo x y
-      z0 <- PA.readPrimArray quo 0
-      z1 <- PA.readPrimArray quo 1
-      z2 <- PA.readPrimArray quo 2
-      z3 <- PA.readPrimArray quo 3
-      pure (Word256 z0 z1 z2 z3)
-
 div_pure :: Word256 -> Word256 -> Word256
 div_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
   | is_zero b || b `gt` a = zero -- ?
@@ -1138,29 +922,6 @@ div_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
       let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
           !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem_gen u b
       in  Word256 q0 q1 q2 q3
-
--- primarray
-mod :: Word256 -> Word256 -> Word256
-mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 b1 b2 b3)
-  | is_zero b || a == b = zero -- ?
-  | a `lt` b = a
-  | is_word64 a = Word256 (a0 `Prelude.rem` b0) 0 0 0
-  | otherwise = runST $ do
-      quo <- PA.newPrimArray 4
-      PA.setPrimArray quo 0 4 0
-      mx <- PA.newPrimArray 4
-      my <- PA.newPrimArray 4
-      PA.writePrimArray mx 0 a0
-      PA.writePrimArray mx 1 a1
-      PA.writePrimArray mx 2 a2
-      PA.writePrimArray mx 3 a3
-      PA.writePrimArray my 0 b0
-      PA.writePrimArray my 1 b1
-      PA.writePrimArray my 2 b2
-      PA.writePrimArray my 3 b3
-      x <- PA.unsafeFreezePrimArray mx
-      y <- PA.unsafeFreezePrimArray my
-      quotrem quo x y
 
 mod_pure :: Word256 -> Word256 -> Word256
 mod_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)

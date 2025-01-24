@@ -7,7 +7,6 @@ module Main where
 
 import Control.DeepSeq
 import qualified Data.Bits as B
-import qualified Data.Primitive.PrimArray as PA
 import qualified Data.Word.Extended as E
 import qualified Weigh as W
 
@@ -37,17 +36,6 @@ w3 = E.to_word256 i3
 
 main :: IO ()
 main = do
-  !(!q, !u, !d) <- do
-      quo <- PA.newPrimArray 5
-      PA.setPrimArray quo 0 5 0
-      let uf = PA.primArrayFromList [
-              300
-            , 200
-            , 100
-            ]
-          df = B.complement 50
-      pure (quo, uf, df)
-
   W.mainWith $ do
     W.func "add (baseline)" ((+) i0) i1
     W.func "add" (E.add w0) w1
@@ -56,9 +44,7 @@ main = do
     W.func "mul (baseline)" ((*) i0) i1
     W.func "mul" (E.mul w0) w1
     W.func "div (baseline)" (Prelude.div i2) i3
-    W.func "div" (E.div w2) w3
     W.func "div_pure" (E.div_pure w2) w3
-    W.io "quotrem_by1" (E.quotrem_by1 q u) d
     W.func "quotrem_by1_gen"
       (E.quotrem_by1_gen (E.Word576 300 200 100 0 0 0 0 0 0) 3) (B.complement 50)
     W.func "quotrem_gen"
