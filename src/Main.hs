@@ -20,12 +20,6 @@ main = do
           1286679968202709238
           3741537094902495500
 
-  let go !j !acc
-        | j == 10000 = acc
-        | otherwise =
-            let !(Word832 q r) = quotrem_gen u d
-            in  go (succ j) (q, r)
-      (q, r) = go 0 (zero576, zero)
-  print r
-  print q
+  let foo = quotrem_gen u d
+  print foo
 

@@ -81,6 +81,7 @@ data Word576 = Word576
 zero576 :: Word576
 zero576 = Word576 0 0 0 0 0 0 0 0 0
 
+-- XX can i eliminate more of these?
 sel576 :: Word576 -> Int -> Word64
 sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4
@@ -338,7 +339,6 @@ mul_512 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) =
 
 -- division -------------------------------------------------------------------
 
--- XX primarray
 -- x =- y * m
 -- requires (len x - x_offset) >= len y > 0
 sub_mul_to
@@ -362,6 +362,7 @@ sub_mul_to x x_offset y m = do
             loop (succ j) (ph + carry1 + carry2)
   loop 0 0
 
+-- XX could be improved
 sub_mul
   :: Word576  -- dividend
   -> Int      -- min dividend index
@@ -373,7 +374,7 @@ sub_mul u u_start d d_len m = loop 0 u 0 where
   loop !j !acc !borrow
     | j == d_len = Word640 acc borrow
     | otherwise =
-        let !u_j = sel576 acc (u_start + j)
+        let !u_j = sel576 u (u_start + j)
             !d_j = sel576 d j
             !(P s carry1) = sub_b u_j borrow 0
             !(P ph pl)    = mul_c d_j m
@@ -381,7 +382,6 @@ sub_mul u u_start d d_len m = loop 0 u 0 where
             !nacc         = set576 acc (u_start + j) t
         in  loop (succ j) nacc (ph + carry1 + carry2)
 
--- XX primarray
 -- requires (len x - x_offset) >= len y > 0
 add_to
   :: PrimMonad m
@@ -401,6 +401,7 @@ add_to x x_offset y = do
             loop (succ j) carry
   loop 0 0
 
+-- XX could be improved
 add_big
   :: Word576
   -> Int
@@ -483,7 +484,6 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
--- XX primarray
 quotrem_by1
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -559,7 +559,6 @@ quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
               let !q = set576 qacc j qhat
               in  loop (pred j) q u1
 
--- XX primarray
 quotrem_knuth
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -626,21 +625,23 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
                     !dn_576                = Word576 z0 z1 z2 z3 0 0 0 0 0
                     !(Word1152 q un0) =
                       quotrem_knuth_gen un (ulen + 1) dn_576 dlen
-                    !r_pre     = fill_rem 0 dlen un0 shift
+                    !r_pre     = fill_rem dlen un0 shift
                     !un_dlen_1 = sel576 un0 (dlen - 1)
                     !r         = set256 r_pre (dlen - 1) (un_dlen_1 .>>.shift)
                 in  Word832 q r
   where
-    fill_rem !start !dl !src !s =
-      let loop !j !acc
-            | j == dl = acc
-            | otherwise =
-                let !src_j   = sel576 src j
-                    !src_j_1 = sel576 src (j + 1)
-                    !val     = (src_j .>>. s) .|. (src_j_1 .<<. (64 - s))
-                    !nacc    = set256 acc j val
-                in  loop (succ j) nacc
-      in  loop start zero
+    fill_rem !dl !(Word576 w0 w1 w2 w3 w4 _ _ _ _) !s =
+      let v0 = (w0 .>>. s) .|. (w1 .<<. (64 - s))
+          v1 = (w1 .>>. s) .|. (w2 .<<. (64 - s))
+          v2 = (w2 .>>. s) .|. (w3 .<<. (64 - s))
+          v3 = (w3 .>>. s) .|. (w4 .<<. (64 - s))
+      in  case dl of
+            0 -> zero
+            1 -> Word256 v0 0 0 0
+            2 -> Word256 v0 v1 0 0
+            3 -> Word256 v0 v1 v2 0
+            4 -> Word256 v0 v1 v2 v3
+            _ -> error "ppad-fixed (fill_rem): bad index"
 
     fill576 !start !src !tar !s =
       let loop !j !acc
@@ -685,7 +686,6 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 _ _ _ _ _) d@(Word256 d0 _ _ d3) =
       | z0 /= 0 = 1
       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
--- XX primarray; dynamic size requirements
 quotrem
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
