@@ -548,22 +548,119 @@ add_to x x_offset y = do
             loop (succ j) carry
   loop 0 0
 
--- XX expensive
-add_big
-  :: Word576
-  -> Int
-  -> Word256
-  -> Int
-  -> Word640
-add_big u u_start d d_len = loop 0 u 0 where
-  loop !j !acc !car
-    | j == d_len = Word640 acc car
-    | otherwise =
-        let !u_j = sel576 acc (u_start + j)
-            !d_j = sel256 d j
-            !(P w64 ncar) = add_c u_j d_j car
-            !nacc = set576 acc (u_start + j) w64
-        in  loop (succ j) nacc ncar
+add_big :: Word576 -> Int -> Word256 -> Int -> Word640
+add_big u u_start (Word256 d0 d1 d2 d3) d_len = case d_len of
+    2 ->
+      let !(Word640 u_0 c_0) = step0 u 0
+      in                       step1 u_0 c_0
+    3 ->
+      let !(Word640 u_0 c_0) = step0 u 0
+          !(Word640 u_1 c_1) = step1 u_0 c_0
+      in                       step2 u_1 c_1
+    4 ->
+      let !(Word640 u_0 c_0) = step0 u 0
+          !(Word640 u_1 c_1) = step1 u_0 c_0
+          !(Word640 u_2 c_2) = step2 u_1 c_1
+      in                       step3 u_2 c_2
+    _ ->
+      error "ppad-fixed (add_big): bad index"
+  where
+    step0 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
+      0 ->
+        let !(P t car1) = add_c u0 d0 car
+        in  Word640 (Word576 t u1 u2 u3 u4 u5 u6 u7 u8) car1
+      1 ->
+        let !(P t car1) = add_c u1 d0 car
+        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) car1
+      2 ->
+        let !(P t car1) = add_c u2 d0 car
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
+      3 ->
+        let !(P t car1) = add_c u3 d0 car
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
+      4 ->
+        let !(P t car1) = add_c u4 d0 car
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
+      5 ->
+        let !(P t car1) = add_c u5 d0 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
+      6 ->
+        let !(P t car1) = add_c u6 d0 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
+      _ ->
+        error "ppad-fixed (step0): bad index"
+
+    step1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
+      0 ->
+        let !(P t car1) = add_c u1 d1 car
+        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) car1
+      1 ->
+        let !(P t car1) = add_c u2 d1 car
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
+      2 ->
+        let !(P t car1) = add_c u3 d1 car
+        in  Word640 (Word576 u0 u1 u3 t u4 u5 u6 u7 u8) car1
+      3 ->
+        let !(P t car1) = add_c u4 d1 car
+        in  Word640 (Word576 u0 u1 u3 u4 t u5 u6 u7 u8) car1
+      4 ->
+        let !(P t car1) = add_c u5 d1 car
+        in  Word640 (Word576 u0 u1 u3 u4 u5 t u6 u7 u8) car1
+      5 ->
+        let !(P t car1) = add_c u6 d1 car
+        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) car1
+      6 ->
+        let !(P t car1) = add_c u7 d1 car
+        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) car1
+      _ ->
+        error "ppad-fixed (step1): bad index"
+
+    step2 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
+      0 ->
+        let !(P t car1) = add_c u2 d2 car
+        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
+      1 ->
+        let !(P t car1) = add_c u3 d2 car
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
+      2 ->
+        let !(P t car1) = add_c u4 d2 car
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
+      3 ->
+        let !(P t car1) = add_c u5 d2 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
+      4 ->
+        let !(P t car1) = add_c u6 d2 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
+      5 ->
+        let !(P t car1) = add_c u7 d2 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) car1
+      6 ->
+        let !(P t car1) = add_c u8 d2 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) car1
+      _ ->
+        error "ppad-fixed (step2): bad index"
+
+    step3 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
+      0 ->
+        let !(P t car1) = add_c u3 d3 car
+        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
+      1 ->
+        let !(P t car1) = add_c u4 d3 car
+        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
+      2 ->
+        let !(P t car1) = add_c u5 d3 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
+      3 ->
+        let !(P t car1) = add_c u6 d3 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
+      4 ->
+        let !(P t car1) = add_c u7 d3 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) car1
+      5 ->
+        let !(P t car1) = add_c u8 d3 car
+        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) car1
+      _ ->
+        error "ppad-fixed (step3): bad index"
 
 -- quotient, remainder of (hi, lo) divided by y
 -- translated from Div64 in go's math/bits package
