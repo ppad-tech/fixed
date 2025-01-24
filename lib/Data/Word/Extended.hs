@@ -70,6 +70,9 @@ data Word576 = Word576
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+zero576 :: Word576
+zero576 = Word576 0 0 0 0 0 0 0 0 0
+
 sel576 :: Word576 -> Int -> Word64
 sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4
@@ -482,15 +485,23 @@ quotrem_by1 quo u d = do
             loop (pred j) rnex
   loop (lu - 2) r0
 
--- XX needs to be dynamic
-quotrem_by1_256 :: Word256 -> Word64 -> Word320
-quotrem_by1_256 (Word256 u0 u1 u2 u3) d =
-  let !rec = recip_2by1 d
-      !r0  = u3
-      !(P q2 r1) = quotrem_2by1 r0 u2 d rec
-      !(P q1 r2) = quotrem_2by1 r1 u1 d rec
-      !(P q0 r3) = quotrem_2by1 r2 u0 d rec
-  in  Word320 (Word256 q0 q1 q2 0) r3
+quotrem_by1_gen
+  :: Word576  -- dividend
+  -> Int      -- dividend length
+  -> Word64   -- divisor
+  -> Word640
+quotrem_by1_gen u ulen d =
+    let !r0  = sel576 u (ulen - 1)
+    in  loop (ulen - 2) zero576 r0
+  where
+    !rec = recip_2by1 d
+    loop !j !acc !racc
+      | j < 0 = Word640 acc racc
+      | otherwise =
+          let !u_j = sel576 u j
+              !(P q_j r) = quotrem_2by1 racc u_j d rec
+              !nacc = set576 acc j q_j
+          in  loop (pred j) nacc r
 
 -- XX primarray
 quotrem_knuth

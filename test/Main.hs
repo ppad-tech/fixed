@@ -197,6 +197,16 @@ quotrem_by1_case0 = do
   H.assertEqual "remainder matches" pec_rem r
   H.assertEqual "quotient matches" pec_array q
 
+quotrem_by1_gen_case0 :: H.Assertion
+quotrem_by1_gen_case0 = do
+  let !u = Word576 8 4 0 0 0 0 0 0 0
+      !d = B.complement 0xFF :: Word64
+      !(Word640 q r) = quotrem_by1_gen u 2 d
+  let pec_quo = Word576 4 0 0 0 0 0 0 0 0
+      pec_rem = 1032
+  H.assertEqual "remainder matches" pec_rem r
+  H.assertEqual "quotient matches" pec_quo q
+
 quotrem_by1_case1 :: H.Assertion
 quotrem_by1_case1 = do
   let (q, r) = runST $ do
@@ -211,6 +221,16 @@ quotrem_by1_case1 = do
       pec_rem   = 6664
   H.assertEqual "remainder matches" pec_rem r
   H.assertEqual "quotient matches" pec_array q
+
+quotrem_by1_gen_case1 :: H.Assertion
+quotrem_by1_gen_case1 = do
+  let !u = Word576 8 26 0 0 0 0 0 0 0
+      !d = B.complement 0xFF :: Word64
+      !(Word640 q r) = quotrem_by1_gen u 2 d
+  let pec_quo = Word576 26 0 0 0 0 0 0 0 0
+      pec_rem = 6664
+  H.assertEqual "remainder matches" pec_rem r
+  H.assertEqual "quotient matches" pec_quo q
 
 quotrem_knuth_case0 :: H.Assertion
 quotrem_knuth_case0 = do
@@ -366,6 +386,8 @@ main = defaultMain $
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
     , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
     , H.testCase "quotrem_by1 matches case1" quotrem_by1_case1
+    , H.testCase "quotrem_by1_gen matches case0" quotrem_by1_gen_case0
+    , H.testCase "quotrem_by1_gen matches case1" quotrem_by1_gen_case1
     , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
     , H.testCase "quotrem matches case0" quotrem_case0
     , H.testCase "quotrem matches case1" quotrem_case1
