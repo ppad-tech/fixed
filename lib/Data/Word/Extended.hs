@@ -18,7 +18,7 @@ fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
 
--- word256 --------------------------------------------------------------------
+-- word256, word512 -----------------------------------------------------------
 
 -- | Little-endian Word256.
 data Word256 = Word256
@@ -40,11 +40,17 @@ data Word512 = Word512
     {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
--- just for holding a couple of word64's
+-- utility words ------------------------------------------------------------
+
 data Word128 = P
     {-# UNPACK #-} !Word64
     {-# UNPACK #-} !Word64
   deriving (Eq, Show)
+
+data Word320 = Word320
+  !Word256
+  {-# UNPACK #-} !Word64
+  deriving (Eq, Show, Generic)
 
 -- conversion -----------------------------------------------------------------
 
@@ -142,12 +148,6 @@ add_c w64_0 w64_1 c =
       !n | s < w64_0 || s < w64_1 = 1
          | otherwise = 0
   in  P s n
-
--- | A 'Word256' and overflow result, if any.
-data Word320 = Word320
-  !Word256
-  {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
 
 -- addition with overflow indication
 add_of :: Word256 -> Word256 -> Word320
@@ -299,6 +299,8 @@ sub_mul_to x x_offset y m = do
             loop (succ j) (ph + carry1 + carry2)
   loop 0 0
 
+-- XX needs dynamic treatment
+-- = x - y * m
 sub_mul256 :: Word256 -> Int -> Word256 -> Word64 -> Word320
 sub_mul256 (Word256 x0 x1 x2 x3) offset (Word256 y0 y1 y2 y3) m =
     let !s0          = x 0
@@ -432,6 +434,7 @@ quotrem_by1 quo u d = do
             loop (pred j) rnex
   loop (lu - 2) r0
 
+-- XX needs to be dynamic
 quotrem_by1_256 :: Word256 -> Word64 -> Word320
 quotrem_by1_256 (Word256 u0 u1 u2 u3) d =
   let !rec = recip_2by1 d
@@ -480,6 +483,79 @@ quotrem_knuth quo u d = do
               PA.writePrimArray quo j qhat
             loop (pred j)
   loop (lu - ld - 1)
+
+-- XX needs work
+-- quotrem_256
+--   :: Word256
+--   -> Word256
+--   -> Word256
+-- quotrem_256 u@(Word256 u0 _ _ _) d@(Word256 d0 _ _ d3) =
+--     let !dlen  = hi_w d
+--         !shift = B.countLeadingZeros d3
+--         !(Word256 dn0 _ _ _) =
+--           set (munge (dlen - 1) d zero shift) 0 (d0 .<<. shift)
+--         !ulen  = hi_w u
+--     in  if   ulen < dlen
+--         then u
+--         else
+--           let !u_ulen = sel u (ulen - 1)
+--               !un = set
+--                 (munge
+--                   (ulen - 1)
+--                   u
+--                   (set zero ulen (u_ulen .>>. (64 - shift)))
+--                   shift)
+--                 0
+--                 (u0 .<<. shift)
+--           in  if   dlen == 1
+--               then
+--                 let !(Word320 _ r) = quotrem_by1_256 un dn0
+--                 in  Word256 (r .>>. shift) 0 0 0
+--               else
+--                 let go_r !j !acc
+--                       | j == dlen = acc
+--                       | otherwise =
+--                           let !un_j   = sel un j
+--                               !un_j_1 = sel un (j + 1)
+--                               !val = (un_j  .>>. shift)
+--                                  .|. (un_j_1 .<<. (64 - shift))
+--                               !nacc = set acc j val
+--                           in  go_r (succ j) nacc
+--                     !r = go_r 0 zero
+--                     !un_dlen_1 = sel un (dlen - 1)
+--                 in  (set r (dlen - 1) (un_dlen_1 .>>. shift))
+--   where
+--     hi_w (Word256 z0 z1 z2 z3)
+--       | z3 /= 0 = 4
+--       | z2 /= 0 = 3
+--       | z1 /= 0 = 2
+--       | z0 /= 0 = 1
+--       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
+--
+--     set :: Word256 -> Int -> Word64 -> Word256
+--     set w@(Word256 z0 z1 z2 z3) j val
+--       | j == 0 = Word256 val z1 z2 z3
+--       | j == 1 = Word256 z0 val z2 z3
+--       | j == 2 = Word256 z0 z1 val z3
+--       | j == 3 = Word256 z0 z1 z2 val
+--       | otherwise = w
+--
+--     sel :: Word256 -> Int -> Word64
+--     sel (Word256 z0 z1 z2 z3) j
+--       | j == 0 = z0
+--       | j == 1 = z1
+--       | j == 2 = z2
+--       | j == 3 = z3
+--       | otherwise = error "ppad-fixed (select): invalid index"
+--
+--     munge !j !ref !acc !s
+--       | j == 0 = acc
+--       | otherwise =
+--           let !ref_j   = sel ref j
+--               !ref_j_1 = sel ref (j - 1)
+--               !val  = (ref_j .<<. s) .|. (ref_j_1 .>>. (64 - s))
+--               !nacc = set acc j val
+--           in  munge (pred j) ref nacc s
 
 -- XX primarray; dynamic size requirements
 quotrem
