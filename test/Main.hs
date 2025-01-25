@@ -184,93 +184,6 @@ quotrem_2by1_case0 = do
       !o = quotrem_2by1 8 4 d (recip_2by1 d)
   H.assertEqual mempty (P 8 2052) o
 
-quotrem_by1_case0 :: H.Assertion
-quotrem_by1_case0 = do
-  let !u = Word576 8 4 0 0 0 0 0 0 0
-      !d = B.complement 0xFF :: Word64
-      !(Word640 q r) = quotrem_by1 u 2 d
-  let pec_quo = Word576 4 0 0 0 0 0 0 0 0
-      pec_rem = 1032
-  H.assertEqual "remainder matches" pec_rem r
-  H.assertEqual "quotient matches" pec_quo q
-
-quotrem_by1_case1 :: H.Assertion
-quotrem_by1_case1 = do
-  let !u = Word576 8 26 0 0 0 0 0 0 0
-      !d = B.complement 0xFF :: Word64
-      !(Word640 q r) = quotrem_by1 u 2 d
-  let pec_quo = Word576 26 0 0 0 0 0 0 0 0
-      pec_rem = 6664
-  H.assertEqual "remainder matches" pec_rem r
-  H.assertEqual "quotient matches" pec_quo q
-
-quotrem_knuth_case0 :: H.Assertion
-quotrem_knuth_case0 = do
-  let !u = Word576
-        2162362899639802732
-        8848548347662387477
-        13702897166684377657
-        16799544643779908154
-        1
-        0 0 0 0
-      !d = Word256
-        16950798510782491100
-        2612788699139816405
-        5146719872810836952
-        14966148379609982000
-      !(Word1152 q nu) = quotrem_knuth u 5 d 4
-      !pec_q = Word576 2 0 0 0 0 0 0 0 0
-      !pec_u = Word576
-        5154254025493923764
-        3622970949382754665
-        3409457421062703753
-        5313991958269495770
-        0
-        0 0 0 0
-  H.assertEqual "divisor matches" pec_u nu
-  H.assertEqual "quotient matches" pec_q q
-
-quotrem_case0 :: H.Assertion
-quotrem_case0 = do
-  let !u = Word576
-        0x1234567890ABCDEF
-        0xFEDCBA0987654321
-        0x123456789ABCDEF0
-        0 0 0 0 0 0
-      !d = Word256 0x0 0x0 0x1 0x100000000
-      !(Word832 q r) = quotrem u d
-      !pec_q = Word576 0 0 0 0 0 0 0 0 0
-      !pec_r = Word256
-        1311768467294899695
-        18364757930599072545
-        1311768467463790320
-        0
-  H.assertEqual "remainder matches" pec_r r
-  H.assertEqual "quotient matches" pec_q q
-
-quotrem_case1 :: H.Assertion
-quotrem_case1 = do
-  let !u = Word576
-        5152276743337338587
-        6823823105342984773
-        12649096328525870222
-        8811572179372364942
-        0 0 0 0 0
-      !d = Word256
-        8849385646123010679
-        653197174784954101
-        1286679968202709238
-        3741537094902495500
-      !(Word832 q r) = quotrem u d
-      !pec_q = Word576 2 0 0 0 0 0 0 0 0
-      !pec_r = Word256
-        5900249524800868845
-        5517428755773076570
-        10075736392120451746
-        1328497989567373942
-  H.assertEqual "remainder matches" pec_r r
-  H.assertEqual "quotient matches" pec_q q
-
 -- main -----------------------------------------------------------------------
 
 comparison :: TestTree
@@ -339,11 +252,6 @@ main = defaultMain $
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
-    , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
-    , H.testCase "quotrem_by1 matches case1" quotrem_by1_case1
-    , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
-    , H.testCase "quotrem matches case0" quotrem_case0
-    , H.testCase "quotrem matches case1" quotrem_case1
     ]
   ]
 

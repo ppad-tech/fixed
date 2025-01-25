@@ -43,10 +43,6 @@ module Data.Word.Extended (
 
   -- for testing/benchmarking
   , Word128(..)
-  , Word576(..)
-  , Word640(..)
-  , Word832(..)
-  , Word1152(..)
   , quotrem
   , quotrem_r
   , quotrem_by1
@@ -62,8 +58,11 @@ module Data.Word.Extended (
   ) where
 
 import Control.DeepSeq
+import Control.Monad.Primitive
+import Control.Monad.ST
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
 import qualified Data.Bits as B
+import qualified Data.Primitive.PrimArray as PA
 import Data.Word (Word64)
 import GHC.Generics
 import Prelude hiding (div, mod, or, and)
@@ -86,21 +85,6 @@ instance NFData Word256
 
 instance Show Word256 where
   show = show . to_integer
-
--- XX avoid
-sel256 :: Word256 -> Int -> Word64
-sel256 (Word256 a0 a1 a2 a3) = \case
-  0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3
-  _ -> error "ppad-fixed (sel256): bad index"
-
--- XX avoid
-set256 :: Word256 -> Int -> Word64 -> Word256
-set256 (Word256 a0 a1 a2 a3) j wo = case j of
-  0 -> Word256 wo a1 a2 a3
-  1 -> Word256 a0 wo a2 a3
-  2 -> Word256 a0 a1 wo a3
-  3 -> Word256 a0 a1 a2 wo
-  _ -> error "ppad-fixed (set256): bad index"
 
 -- | Little-endian Word512.
 data Word512 = Word512
@@ -145,30 +129,6 @@ data Word576 = Word576
   deriving (Eq, Show, Generic)
 
 instance NFData Word576
-
-zero576 :: Word576
-zero576 = Word576 0 0 0 0 0 0 0 0 0
-
--- XX avoid
-sel576 :: Word576 -> Int -> Word64
-sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
-  0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4
-  5 -> a5; 6 -> a6; 7 -> a7; 8 -> a8
-  _ -> error "ppad-fixed (sel576): bad index"
-
--- XX avoid
-set576 :: Word576 -> Int -> Word64 -> Word576
-set576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) j wo = case j of
-  0 -> Word576 wo a1 a2 a3 a4 a5 a6 a7 a8
-  1 -> Word576 a0 wo a2 a3 a4 a5 a6 a7 a8
-  2 -> Word576 a0 a1 wo a3 a4 a5 a6 a7 a8
-  3 -> Word576 a0 a1 a2 wo a4 a5 a6 a7 a8
-  4 -> Word576 a0 a1 a2 a3 wo a5 a6 a7 a8
-  5 -> Word576 a0 a1 a2 a3 a4 wo a6 a7 a8
-  6 -> Word576 a0 a1 a2 a3 a4 a5 wo a7 a8
-  7 -> Word576 a0 a1 a2 a3 a4 a5 a6 wo a8
-  8 -> Word576 a0 a1 a2 a3 a4 a5 a6 a7 wo
-  _ -> error "ppad-fixed (set576): bad index"
 
 data Word640 = Word640
   {-# UNPACK #-} !Word576
@@ -450,284 +410,192 @@ mul_512 (Word256 x0 x1 x2 x3) (Word256 y0 y1 y2 y3) =
 
 -- division -------------------------------------------------------------------
 
-sub_mul :: Word576 -> Int -> Word256 -> Int -> Word64 -> Word640
-sub_mul u u_start (Word256 d0 d1 d2 d3) d_len m = case d_len of
-    2 -> let !(Word640 u_0 b_0) = step0 u 0
-         in  step1 u_0 b_0
-    3 -> let !(Word640 u_0 b_0) = step0 u 0
-             !(Word640 u_1 b_1) = step1 u_0 b_0
-         in  step2 u_1 b_1
-    4 -> let !(Word640 u_0 b_0) = step0 u 0
-             !(Word640 u_1 b_1) = step1 u_0 b_0
-             !(Word640 u_2 b_2) = step2 u_1 b_1
-         in  step3 u_2 b_2
-    _ ->
-      error "ppad-fixed (sub_mul): bad index"
-  where
-    step0 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
-      0 ->
-        let !(P s car1) = sub_b u0 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 t u1 u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      1 ->
-        let !(P s car1) = sub_b u1 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      2 ->
-        let !(P s car1) = sub_b u2 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      3 ->
-        let !(P s car1) = sub_b u3 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
-      4 ->
-        let !(P s car1) = sub_b u4 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
-      5 ->
-        let !(P s car1) = sub_b u5 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
-      6 ->
-        let !(P s car1) = sub_b u6 bor 0
-            !(P ph pl)  = mul_c d0 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
-      _ ->
-        error "ppad-fixed (step0): bad index"
+-- primitive -------------------------
 
-    step1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
-      0 ->
-        let !(P s car1) = sub_b u1 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      1 ->
-        let !(P s car1) = sub_b u2 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      2 ->
-        let !(P s car1) = sub_b u3 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u3 t u4 u5 u6 u7 u8) (ph + car1 + car2)
-      3 ->
-        let !(P s car1) = sub_b u4 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u3 u4 t u5 u6 u7 u8) (ph + car1 + car2)
-      4 ->
-        let !(P s car1) = sub_b u5 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u3 u4 u5 t u6 u7 u8) (ph + car1 + car2)
-      5 ->
-        let !(P s car1) = sub_b u6 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) (ph + car1 + car2)
-      6 ->
-        let !(P s car1) = sub_b u7 bor 0
-            !(P ph pl)  = mul_c d1 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) (ph + car1 + car2)
-      _ ->
-        error "ppad-fixed (step1): bad index"
+-- x =- y * m
+-- requires (len x - x_offset) >= len y > 0
+sub_mul
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> Int
+  -> Word256
+  -> Int
+  -> Word64
+  -> m Word64
+sub_mul x x_offset (Word256 y0 y1 y2 y3) l m = do
+  let loop !j !borrow
+        | j == l = pure borrow
+        | otherwise = do
+            !x_j <- PA.readPrimArray x (j + x_offset)
+            let !(P s carry1) = sub_b x_j borrow 0
+                !(P ph pl)    = case j of
+                  0 -> mul_c y0 m
+                  1 -> mul_c y1 m
+                  2 -> mul_c y2 m
+                  3 -> mul_c y3 m
+                  _ -> error "ppad-fixed (sub_mul): bad index"
+                !(P t carry2) = sub_b s pl 0
+            PA.writePrimArray x (j + x_offset) t
+            loop (succ j) (ph + carry1 + carry2)
+  loop 0 0
 
-    step2 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
-      0 ->
-        let !(P s car1) = sub_b u2 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) (ph + car1 + car2)
-      1 ->
-        let !(P s car1) = sub_b u3 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
-      2 ->
-        let !(P s car1) = sub_b u4 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
-      3 ->
-        let !(P s car1) = sub_b u5 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
-      4 ->
-        let !(P s car1) = sub_b u6 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
-      5 ->
-        let !(P s car1) = sub_b u7 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) (ph + car1 + car2)
-      6 ->
-        let !(P s car1) = sub_b u8 bor 0
-            !(P ph pl)  = mul_c d2 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) (ph + car1 + car2)
-      _ ->
-        error "ppad-fixed (step2): bad index"
+quotrem_by1
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> PA.PrimArray Word64
+  -> Word64
+  -> m Word64
+quotrem_by1 quo u d = do
+  let !rec = recip_2by1 d
+      !lu  = PA.sizeofPrimArray u
+      !r0  = PA.indexPrimArray u (lu - 1)
+      loop !j !racc
+        | j < 0 = pure racc
+        | otherwise = do
+            let uj = PA.indexPrimArray u j
+                !(P qj rnex) = quotrem_2by1 racc uj d rec
+            PA.writePrimArray quo j qj
+            loop (pred j) rnex
+  loop (lu - 2) r0
 
-    step3 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) bor = case u_start of
-      0 ->
-        let !(P s car1) = sub_b u3 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) (ph + car1 + car2)
-      1 ->
-        let !(P s car1) = sub_b u4 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) (ph + car1 + car2)
-      2 ->
-        let !(P s car1) = sub_b u5 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) (ph + car1 + car2)
-      3 ->
-        let !(P s car1) = sub_b u6 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) (ph + car1 + car2)
-      4 ->
-        let !(P s car1) = sub_b u7 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) (ph + car1 + car2)
-      5 ->
-        let !(P s car1) = sub_b u8 bor 0
-            !(P ph pl)  = mul_c d3 m
-            !(P t car2) = sub_b s pl 0
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) (ph + car1 + car2)
-      _ ->
-        error "ppad-fixed (step3): bad index"
+add_to
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> Int
+  -> Word256
+  -> Int
+  -> m Word64
+add_to x x_offset (Word256 y0 y1 y2 y3) l = do
+  let loop !j !cacc
+        | j == l = pure cacc
+        | otherwise = do
+            xj <- PA.readPrimArray x (j + x_offset)
+            let !(P nex carry) = case j of
+                  0 -> add_c xj y0 cacc
+                  1 -> add_c xj y1 cacc
+                  2 -> add_c xj y2 cacc
+                  3 -> add_c xj y3 cacc
+                  _ -> error "ppad-fixed (add_to): bad index"
+            PA.writePrimArray x (j + x_offset) nex
+            loop (succ j) carry
+  loop 0 0
 
-add_big :: Word576 -> Int -> Word256 -> Int -> Word640
-add_big u u_start (Word256 d0 d1 d2 d3) d_len = case d_len of
-    2 ->
-      let !(Word640 u_0 c_0) = step0 u 0
-      in  step1 u_0 c_0
-    3 ->
-      let !(Word640 u_0 c_0) = step0 u 0
-          !(Word640 u_1 c_1) = step1 u_0 c_0
-      in  step2 u_1 c_1
-    4 ->
-      let !(Word640 u_0 c_0) = step0 u 0
-          !(Word640 u_1 c_1) = step1 u_0 c_0
-          !(Word640 u_2 c_2) = step2 u_1 c_1
-      in  step3 u_2 c_2
-    _ ->
-      error "ppad-fixed (add_big): bad index"
-  where
-    step0 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
-      0 ->
-        let !(P t car1) = add_c u0 d0 car
-        in  Word640 (Word576 t u1 u2 u3 u4 u5 u6 u7 u8) car1
-      1 ->
-        let !(P t car1) = add_c u1 d0 car
-        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) car1
-      2 ->
-        let !(P t car1) = add_c u2 d0 car
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
-      3 ->
-        let !(P t car1) = add_c u3 d0 car
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
-      4 ->
-        let !(P t car1) = add_c u4 d0 car
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
-      5 ->
-        let !(P t car1) = add_c u5 d0 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
-      6 ->
-        let !(P t car1) = add_c u6 d0 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
-      _ ->
-        error "ppad-fixed (step0): bad index"
+quotrem
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
+  -> PA.PrimArray Word64                      -- dividend  (potentially large)
+  -> Word256                                  -- divisor   (256-bit)
+  -> m Word256                                -- remainder (256-bit)
+quotrem quo u (Word256 d0 d1 d2 d3) = do
+  let -- normalize divisor
+      (dlen, shift)
+        | d3 /= 0   = (4, B.countLeadingZeros d3)
+        | d2 /= 0   = (3, B.countLeadingZeros d2)
+        | d1 /= 0   = (2, B.countLeadingZeros d1)
+        | otherwise = (1, B.countLeadingZeros d0) -- zero not checked
+      dn_3 = (d3 .<<. shift) .|. (d2 .>>. (64 - shift))
+      dn_2 = (d2 .<<. shift) .|. (d1 .>>. (64 - shift))
+      dn_1 = (d1 .<<. shift) .|. (d0 .>>. (64 - shift))
+      dn_0 = d0 .<<. shift
+      !dn = Word256 dn_0 dn_1 dn_2 dn_3
+      -- get size of normalized dividend
+      lu = PA.sizeofPrimArray u
+      ulen = let loop !j
+                   | j < 0 = 0
+                   | PA.indexPrimArray u j /= 0 = j + 1
+                   | otherwise = loop (j - 1)
+             in  loop (lu - 1)
+  if   ulen < dlen
+  then do
+    -- u always has size at least 4
+    let u0 = PA.indexPrimArray u 0; u1 = PA.indexPrimArray u 1
+        u2 = PA.indexPrimArray u 2; u3 = PA.indexPrimArray u 3
+    pure (Word256 u0 u1 u2 u3)
+  else do
+    -- normalize dividend
+    !un <- PA.newPrimArray (ulen + 1)
+    PA.setPrimArray un 0 (ulen + 1) 0
+    let u_hi = PA.indexPrimArray u (ulen - 1)
+    PA.writePrimArray un ulen (u_hi .>>. (64 - shift))
+    let normalize_u !j !uj
+          | j == 0 =
+              PA.writePrimArray un 0 (PA.indexPrimArray u 0 .<<. shift)
+          | otherwise = do
+              let !uj_1 = PA.indexPrimArray u (j - 1)
+                  !val  = (uj .<<. shift) .|. (uj_1 .>>. (64 - shift))
+              PA.writePrimArray un j val
+              normalize_u (pred j) uj_1
+    normalize_u (ulen - 1) u_hi
+    if   dlen == 1
+    then do
+     -- normalized divisor is small
+      !un_final <- PA.unsafeFreezePrimArray un
+      !r <- quotrem_by1 quo un_final dn_0
+      pure (Word256 (r .>>. shift) 0 0 0)
+    else do
+      quotrem_knuth quo un dn dlen
+      -- compute unnormalized remainder
+      let unn_rem !j !(Word256 r0 r1 r2 r3) !un_j
+            | j == dlen = pure $ case j of
+                2 -> Word256 r0 (un_j .>>. shift) r2 r3
+                3 -> Word256 r0 r1 (un_j .>>. shift) r3
+                4 -> Word256 r0 r1 r2 (un_j .>>. shift)
+                _ -> error "ppad-fixed (quotrem): bad index"
+            | otherwise = do
+                un_j_1 <- PA.readPrimArray un (j + 1)
+                let !unn_j = (un_j .>>. shift) .|. (un_j_1 .<<. (64 - shift))
+                    !nacc = case j of
+                      0 -> Word256 unn_j 0 0 0
+                      1 -> Word256 r0 unn_j 0 0
+                      2 -> Word256 r0 r1 unn_j 0
+                      3 -> Word256 r0 r1 r2 unn_j
+                      _ -> error "ppad-fixed (quotrem): bad index"
+                unn_rem (j + 1) nacc un_j_1
+      !un_0 <- PA.readPrimArray un 0
+      unn_rem 0 zero un_0
 
-    step1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
-      0 ->
-        let !(P t car1) = add_c u1 d1 car
-        in  Word640 (Word576 u0 t u2 u3 u4 u5 u6 u7 u8) car1
-      1 ->
-        let !(P t car1) = add_c u2 d1 car
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
-      2 ->
-        let !(P t car1) = add_c u3 d1 car
-        in  Word640 (Word576 u0 u1 u3 t u4 u5 u6 u7 u8) car1
-      3 ->
-        let !(P t car1) = add_c u4 d1 car
-        in  Word640 (Word576 u0 u1 u3 u4 t u5 u6 u7 u8) car1
-      4 ->
-        let !(P t car1) = add_c u5 d1 car
-        in  Word640 (Word576 u0 u1 u3 u4 u5 t u6 u7 u8) car1
-      5 ->
-        let !(P t car1) = add_c u6 d1 car
-        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) car1
-      6 ->
-        let !(P t car1) = add_c u7 d1 car
-        in  Word640 (Word576 u0 u1 u3 u4 u5 u6 t u7 u8) car1
-      _ ->
-        error "ppad-fixed (step1): bad index"
+quotrem_knuth
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64  -- quotient (potentially large)
+  -> PA.MutablePrimArray (PrimState m)  Word64 -- normalized dividend
+  -> Word256                                   -- normalized divisor
+  -> Int                                       -- words in normalized divisor
+  -> m ()
+quotrem_knuth quo u d@(Word256 d0 d1 d2 d3) ld = do
+  !lu <- PA.getSizeofMutablePrimArray u
+  let (dh, dl) = case ld of
+        4 -> (d3, d2)
+        3 -> (d2, d1)
+        2 -> (d1, d0)
+        _ -> error "ppad-fixed (quotrem_knuth): bad index"
+      !rec = recip_2by1 dh
+      loop !j
+        | j < 0 = pure ()
+        | otherwise = do
+            !u2 <- PA.readPrimArray u (j + ld)
+            !u1 <- PA.readPrimArray u (j + ld - 1)
+            !u0 <- PA.readPrimArray u (j + ld - 2)
+            let !qhat
+                  | u2 >= dh  = 0xffff_ffff_ffff_ffff
+                  | otherwise =
+                      let !(P qh rh) = quotrem_2by1 u2 u1 dh rec
+                          !(P ph pl) = mul_c qh dl
+                      in  if   ph > rh || (ph == rh && pl > u0)
+                          then qh - 1
+                          else qh
 
-    step2 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
-      0 ->
-        let !(P t car1) = add_c u2 d2 car
-        in  Word640 (Word576 u0 u1 t u3 u4 u5 u6 u7 u8) car1
-      1 ->
-        let !(P t car1) = add_c u3 d2 car
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
-      2 ->
-        let !(P t car1) = add_c u4 d2 car
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
-      3 ->
-        let !(P t car1) = add_c u5 d2 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
-      4 ->
-        let !(P t car1) = add_c u6 d2 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
-      5 ->
-        let !(P t car1) = add_c u7 d2 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) car1
-      6 ->
-        let !(P t car1) = add_c u8 d2 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) car1
-      _ ->
-        error "ppad-fixed (step2): bad index"
-
-    step3 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) car = case u_start of
-      0 ->
-        let !(P t car1) = add_c u3 d3 car
-        in  Word640 (Word576 u0 u1 u2 t u4 u5 u6 u7 u8) car1
-      1 ->
-        let !(P t car1) = add_c u4 d3 car
-        in  Word640 (Word576 u0 u1 u2 u3 t u5 u6 u7 u8) car1
-      2 ->
-        let !(P t car1) = add_c u5 d3 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 t u6 u7 u8) car1
-      3 ->
-        let !(P t car1) = add_c u6 d3 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 t u7 u8) car1
-      4 ->
-        let !(P t car1) = add_c u7 d3 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 t u8) car1
-      5 ->
-        let !(P t car1) = add_c u8 d3 car
-        in  Word640 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 t) car1
-      _ ->
-        error "ppad-fixed (step3): bad index"
+            borrow <- sub_mul u j d ld qhat
+            PA.writePrimArray u (j + ld) (u2 - borrow)
+            if   u2 < borrow
+            then do
+              let !qh = qhat - 1
+              r <- add_to u j d ld
+              PA.writePrimArray u (j + ld) r
+              PA.writePrimArray quo j qh
+            else
+              PA.writePrimArray quo j qhat
+            loop (pred j)
+  loop (lu - ld - 1)
 
 -- quotient, remainder of (hi, lo) divided by y
 -- translated from Div64 in go's math/bits package
@@ -795,261 +663,50 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
-quotrem_by1
-  :: Word576  -- dividend
-  -> Int      -- dividend length
-  -> Word64   -- divisor
-  -> Word640
-quotrem_by1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
-    9 ->
-      let !r_0 = u8
-          !(Word640 q0 r0) = step7 zero576 r_0
-          !(Word640 q1 r1) = step6 q0 r0
-          !(Word640 q2 r2) = step5 q1 r1
-          !(Word640 q3 r3) = step4 q2 r2
-          !(Word640 q4 r4) = step3 q3 r3
-          !(Word640 q5 r5) = step2 q4 r4
-          !(Word640 q6 r6) = step1 q5 r5
-      in                     step0 q6 r6
-    8 ->
-      let !r_0 = u7
-          !(Word640 q0 r0) = step6 zero576 r_0
-          !(Word640 q1 r1) = step5 q0 r0
-          !(Word640 q2 r2) = step4 q1 r1
-          !(Word640 q3 r3) = step3 q2 r2
-          !(Word640 q4 r4) = step2 q3 r3
-          !(Word640 q5 r5) = step1 q4 r4
-      in                     step0 q5 r5
-    7 ->
-      let !r_0 = u6
-          !(Word640 q0 r0) = step5 zero576 r_0
-          !(Word640 q1 r1) = step4 q0 r0
-          !(Word640 q2 r2) = step3 q1 r1
-          !(Word640 q3 r3) = step2 q2 r2
-          !(Word640 q4 r4) = step1 q3 r3
-      in                     step0 q4 r4
-    6 ->
-      let !r_0 = u5
-          !(Word640 q0 r0) = step4 zero576 r_0
-          !(Word640 q1 r1) = step3 q0 r0
-          !(Word640 q2 r2) = step2 q1 r1
-          !(Word640 q3 r3) = step1 q2 r2
-      in                     step0 q3 r3
-    5 ->
-      let !r_0 = u4
-          !(Word640 q0 r0) = step3 zero576 r_0
-          !(Word640 q1 r1) = step2 q0 r0
-          !(Word640 q2 r2) = step1 q1 r1
-      in                     step0 q2 r2
-    4 ->
-      let !r_0 = u3
-          !(Word640 q0 r0) = step2 zero576 r_0
-          !(Word640 q1 r1) = step1 q0 r0
-      in                     step0 q1 r1
-    3 ->
-      let !r_0 = u2
-          !(Word640 q0 r0) = step1 zero576 r_0
-      in                     step0 q0 r0
-    2 ->
-      let !r_0 = u1
-      in                     step0 zero576 r_0
-    _ ->
-      error "ppad-fixed (quotrem_by1): bad index"
-  where
-    !rec = recip_2by1 d
 
-    step0 (Word576 _ q1 q2 q3 q4 q5 q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u0 d rec
-      in  Word640 (Word576 q q1 q2 q3 q4 q5 q6 q7 q8) nr
-
-    step1 (Word576 q0 _ q2 q3 q4 q5 q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u1 d rec
-      in  Word640 (Word576 q0 q q2 q3 q4 q5 q6 q7 q8) nr
-
-    step2 (Word576 q0 q1 _ q3 q4 q5 q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u2 d rec
-      in  Word640 (Word576 q0 q1 q q3 q4 q5 q6 q7 q8) nr
-
-    step3 (Word576 q0 q1 q2 _ q4 q5 q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u3 d rec
-      in  Word640 (Word576 q0 q1 q2 q q4 q5 q6 q7 q8) nr
-
-    step4 (Word576 q0 q1 q2 q3 _ q5 q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u4 d rec
-      in  Word640 (Word576 q0 q1 q2 q3 q q5 q6 q7 q8) nr
-
-    step5 (Word576 q0 q1 q2 q3 q4 _ q6 q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u5 d rec
-      in  Word640 (Word576 q0 q1 q2 q3 q4 q q6 q7 q8) nr
-
-    step6 (Word576 q0 q1 q2 q3 q4 q5 _ q7 q8) r =
-      let !(P q nr) = quotrem_2by1 r u6 d rec
-      in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q q7 q8) nr
-
-    step7 (Word576 q0 q1 q2 q3 q4 q5 q6 _ q8) r =
-      let !(P q nr) = quotrem_2by1 r u7 d rec
-      in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q6 q q8) nr
-
- -- XX expensive
-quotrem_knuth
-  :: Word576
-  -> Int
-  -> Word256
-  -> Int
-  -> Word1152
-quotrem_knuth u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
-  !d_hi = sel256 d (dlen - 1)
-  !d_lo = sel256 d (dlen - 2)
-  !rec = recip_2by1 d_hi
-  loop j !qacc !uacc
-    | j < 0 = Word1152 qacc uacc
-    | otherwise =
-        let !u_2 = sel576 u (j + dlen)
-            !u_1 = sel576 u (j + dlen - 1)
-            !u_0 = sel576 u (j + dlen - 2)
-            !qhat
-              | u_2 >= d_hi = 0xffff_ffff_ffff_ffff
-              | otherwise   =
-                  let !(P qh rh) = quotrem_2by1 u_2 u_1 d_hi rec
-                      !(P ph pl) = mul_c qh d_lo
-                  in  if   ph > rh || (ph == rh && pl > u_0)
-                      then qh - 1
-                      else qh
-
-            !(Word640 u0 borrow) = sub_mul uacc j d dlen qhat
-            !u1 = set576 u0 (j + dlen) (u_2 - borrow)
-        in  if   u_2 < borrow
-            then
-              let !qh = qhat - 1
-                  !(Word640 u2 r)  = add_big u1 j d dlen
-                  !u3 = set576 u2 (j + dlen) r
-                  !q  = set576 qacc j qh
-              in  loop (pred j) q u3
-            else
-              let !q = set576 qacc j qhat
-              in  loop (pred j) q u1
-
-quotrem
-  :: Word576
-  -> Word256
-  -> Word832
-quotrem u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
-    let !dlen   = setlen_256 d
-        !shift  = B.countLeadingZeros d3
-        !dn     = fill256 (dlen - 1) shift
-        !ulen   = setlen_576 u
-    in  if   ulen < dlen
-        then Word832 zero576 (Word256 u0 u1 u2 u3)
-        else
-          let !u_ulen  = sel576 u (ulen - 1)
-              !un_pre0 = set576 zero576 ulen (u_ulen .>>. (64 - shift))
-              !un      = fill576 (ulen - 1) un_pre0 shift
-          in  if   dlen == 1
-              then
-                let !dn_0 = sel256 dn 0
-                    !(Word640 q r) = quotrem_by1 un (ulen + 1) dn_0
-                in  Word832 q (Word256 (r .>>. shift) 0 0 0)
-              else
-                let !(Word1152 q un0) = quotrem_knuth un (ulen + 1) dn dlen
-                    !r_pre     = fill_rem dlen un0 shift
-                    !un_dlen_1 = sel576 un0 (dlen - 1)
-                    !r         = set256 r_pre (dlen - 1) (un_dlen_1 .>>.shift)
-                in  Word832 q r
-  where
-    fill_rem !dl !(Word576 w0 w1 w2 w3 w4 _ _ _ _) !s =
-      let v0 = (w0 .>>. s) .|. (w1 .<<. (64 - s))
-          v1 = (w1 .>>. s) .|. (w2 .<<. (64 - s))
-          v2 = (w2 .>>. s) .|. (w3 .<<. (64 - s))
-          v3 = (w3 .>>. s) .|. (w4 .<<. (64 - s))
-      in  case dl of
-            0 -> zero
-            1 -> Word256 v0 0 0 0
-            2 -> Word256 v0 v1 0 0
-            3 -> Word256 v0 v1 v2 0
-            4 -> Word256 v0 v1 v2 v3
-            _ -> error "ppad-fixed (fill_rem): bad index"
-
-    fill576
-      !start
-      (Word576 _ tar1 tar2 tar3 tar4 tar5 tar6 tar7 tar8)
-      !s =
-        let v8 = (u8 .<<. s) .|. (u7 .>>. (64 - s))
-            v7 = (u7 .<<. s) .|. (u6 .>>. (64 - s))
-            v6 = (u6 .<<. s) .|. (u5 .>>. (64 - s))
-            v5 = (u5 .<<. s) .|. (u4 .>>. (64 - s))
-            v4 = (u4 .<<. s) .|. (u3 .>>. (64 - s))
-            v3 = (u3 .<<. s) .|. (u2 .>>. (64 - s))
-            v2 = (u2 .<<. s) .|. (u1 .>>. (64 - s))
-            v1 = (u1 .<<. s) .|. (u0 .>>. (64 - s))
-        in  case start of
-              8 -> Word576 (u0 .<<. s) v1 v2 v3 v4 v5 v6 v7 v8
-              7 -> Word576 (u0 .<<. s) v1 v2 v3 v4 v5 v6 v7 tar8
-              6 -> Word576 (u0 .<<. s) v1 v2 v3 v4 v5 v6 tar7 tar8
-              5 -> Word576 (u0 .<<. s) v1 v2 v3 v4 v5 tar6 tar7 tar8
-              4 -> Word576 (u0 .<<. s) v1 v2 v3 v4 tar5 tar6 tar7 tar8
-              3 -> Word576 (u0 .<<. s) v1 v2 v3 tar4 tar5 tar6 tar7 tar8
-              2 -> Word576 (u0 .<<. s) v1 v2 tar3 tar4 tar5 tar6 tar7 tar8
-              1 -> Word576 (u0 .<<. s) v1 tar2 tar3 tar4 tar5 tar6 tar7 tar8
-              0 -> Word576 (u0 .<<. s) tar1 tar2 tar3 tar4 tar5 tar6 tar7 tar8
-              _ -> error "ppad-fixed (fill576): bad index"
-
-    fill256 !start !s =
-      let v3 = (d3 .<<. s) .|. (d2 .>>. (64 - s))
-          v2 = (d2 .<<. s) .|. (d1 .>>. (64 - s))
-          v1 = (d1 .<<. s) .|. (d0 .>>. (64 - s))
-      in  case start of
-            3 -> Word256 (d0 .<<. s) v1 v2 v3
-            2 -> Word256 (d0 .<<. s) v1 v2 0
-            1 -> Word256 (d0 .<<. s) v1 0 0
-            0 -> Word256 (d0 .<<. s) 0 0 0
-            _ -> error "ppad-fixed (fill576): bad index"
-
-    setlen_256 :: Word256 -> Int
-    setlen_256 (Word256 z0 z1 z2 z3)
-      | z3 /= 0 = 4
-      | z2 /= 0 = 3
-      | z1 /= 0 = 2
-      | z0 /= 0 = 1
-      | otherwise = error "ppad-fixed (quotrem_256): division by zero"
-
-    setlen_576 :: Word576 -> Int
-    setlen_576 (Word576 z0 z1 z2 z3 z4 z5 z6 z7 z8)
-      | z8 /= 0 = 9
-      | z7 /= 0 = 8
-      | z6 /= 0 = 7
-      | z5 /= 0 = 6
-      | z4 /= 0 = 5
-      | z3 /= 0 = 4
-      | z2 /= 0 = 3
-      | z1 /= 0 = 2
-      | z0 /= 0 = 1
-      | otherwise = error "ppad-fixed (quotrem_256): division by zero"
-
--- | Division on 'Word256' values.
---
---   >>> to_word256 0xFFFFFFFFFF `div` to_word256 0xFFFFFF
---   65536
 div :: Word256 -> Word256 -> Word256
-div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
-  | is_zero b || b `gt` a = zero -- ?
-  | a == b                = one
-  | is_word64 a           = Word256 (a0 `quot` b0) 0 0 0
-  | otherwise =
-      let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
-          !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem u b
-      in  Word256 q0 q1 q2 q3
+div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
+  | is_zero d || d `gt` u = zero -- ?
+  | u == d                = one
+  | is_word64 u           = Word256 (u0 `quot` d0) 0 0 0
+  | otherwise = runST $ do
+      -- allocate quotient
+      quo <- PA.newPrimArray 4
+      PA.setPrimArray quo 0 4 0
+      -- allocate dividend
+      u_arr <- PA.newPrimArray 4
+      PA.setPrimArray u_arr 0 4 0
+      PA.writePrimArray u_arr 0 u0
+      PA.writePrimArray u_arr 1 u1
+      PA.writePrimArray u_arr 2 u2
+      PA.writePrimArray u_arr 3 u3
+      u_final <- PA.unsafeFreezePrimArray u_arr
+      _ <- quotrem quo u_final d
+      q0 <- PA.readPrimArray quo 0
+      q1 <- PA.readPrimArray quo 1
+      q2 <- PA.readPrimArray quo 2
+      q3 <- PA.readPrimArray quo 3
+      pure (Word256 q0 q1 q2 q3)
 
 -- | Modulo operation on 'Word256' values.
 --
 --   >>> to_word256 0xFFFFFFFFFF `mod` to_word256 0xFFFFFF
 --   65535
 mod :: Word256 -> Word256 -> Word256
-mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
-  | is_zero b || a == b = zero -- ?
-  | a `lt` b = a
-  | is_word64 a = Word256 (a0 `Prelude.rem` b0) 0 0 0
-  | otherwise =
-      let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
-          !(Word832 _ r) = quotrem u b
-      in  r
-
+mod u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
+  | is_zero d || d `gt` u = zero -- ?
+  | u == d                = one
+  | is_word64 u           = Word256 (u0 `quot` d0) 0 0 0
+  | otherwise = runST $ do
+      -- allocate quotient
+      quo <- PA.newPrimArray 4
+      PA.setPrimArray quo 0 4 0
+      -- allocate dividend
+      u_arr <- PA.newPrimArray 4
+      PA.setPrimArray u_arr 0 4 0
+      PA.writePrimArray u_arr 0 u0
+      PA.writePrimArray u_arr 1 u1
+      PA.writePrimArray u_arr 2 u2
+      PA.writePrimArray u_arr 3 u3
+      u_final <- PA.unsafeFreezePrimArray u_arr
+      quotrem quo u_final d

@@ -27,6 +27,7 @@ library
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6
+    , primitive >= 0.8 && < 0.10
 
 test-suite fixed-tests
   type:                exitcode-stdio-1.0
@@ -58,6 +59,7 @@ benchmark fixed-bench
       base
     , criterion
     , ppad-fixed
+    , primitive
 
 benchmark fixed-weigh
   type:                exitcode-stdio-1.0
@@ -71,5 +73,6 @@ benchmark fixed-weigh
   build-depends:
       base
     , ppad-fixed
+    , primitive
     , weigh
 
