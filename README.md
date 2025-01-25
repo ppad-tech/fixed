@@ -139,5 +139,10 @@ $ cabal repl ppad-fixed
 
 to get a REPL for the main library.
 
+## Attribution
+
+This library is more or less a Haskell translation of the golang
+[uint256](https://github.com/holiman/uint256) library.
+
 [nixos]: https://nixos.org/
 [flake]: https://nixos.org/manual/nix/unstable/command-ref/new-cli/nix3-flake.html
