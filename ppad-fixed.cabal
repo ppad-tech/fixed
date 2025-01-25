@@ -1,7 +1,7 @@
 cabal-version:      3.0
 name:               ppad-fixed
 version:            0.0.1
-synopsis:           Fixed-width integers.
+synopsis:           A large fixed-width integer library.
 license:            MIT
 license-file:       LICENSE
 author:             Jared Tobin
@@ -11,7 +11,7 @@ build-type:         Simple
 tested-with:        GHC == { 9.8.1 }
 extra-doc-files:    CHANGELOG
 description:
-  Fixed-width integer types and operations.
+  Representations for, and operations on, large fixed-width integers.
 
 source-repository head
   type:     git

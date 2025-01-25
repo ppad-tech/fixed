@@ -4,6 +4,15 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- Module: Data.Word.Extended
+-- Copyright: (c) 2025 Jared Tobin
+-- License: MIT
+-- Maintainer: Jared Tobin <jared@ppad.tech>
+--
+-- Large fixed-width words, complete with support for conversion,
+-- comparison, bitwise operations, arithmetic, and modular arithmetic.
+
 module Data.Word.Extended (
     Word256(..)
   , zero
@@ -71,15 +80,20 @@ data Word256 = Word256
   {-# UNPACK #-} !Word64
   {-# UNPACK #-} !Word64
   {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
+  deriving (Eq, Generic)
 
 instance NFData Word256
 
+instance Show Word256 where
+  show = show . to_integer
+
+-- XX avoid
 sel256 :: Word256 -> Int -> Word64
 sel256 (Word256 a0 a1 a2 a3) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3
   _ -> error "ppad-fixed (sel256): bad index"
 
+-- XX avoid
 set256 :: Word256 -> Int -> Word64 -> Word256
 set256 (Word256 a0 a1 a2 a3) j wo = case j of
   0 -> Word256 wo a1 a2 a3
@@ -135,12 +149,14 @@ instance NFData Word576
 zero576 :: Word576
 zero576 = Word576 0 0 0 0 0 0 0 0 0
 
+-- XX avoid
 sel576 :: Word576 -> Int -> Word64
 sel576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) = \case
   0 -> a0; 1 -> a1; 2 -> a2; 3 -> a3; 4 -> a4
   5 -> a5; 6 -> a6; 7 -> a7; 8 -> a8
   _ -> error "ppad-fixed (sel576): bad index"
 
+-- XX avoid
 set576 :: Word576 -> Int -> Word64 -> Word576
 set576 (Word576 a0 a1 a2 a3 a4 a5 a6 a7 a8) j wo = case j of
   0 -> Word576 wo a1 a2 a3 a4 a5 a6 a7 a8
@@ -168,7 +184,7 @@ data Word832 = Word832
 
 instance NFData Word832
 
-data Word1152 = Word1152 -- yikes
+data Word1152 = Word1152
   {-# UNPACK #-} !Word576
   {-# UNPACK #-} !Word576
   deriving (Eq, Show, Generic)
@@ -177,6 +193,11 @@ instance NFData Word1152
 
 -- conversion -----------------------------------------------------------------
 
+-- | Convert a fixed-width 'Word256' into a variable-length 'Integer'.
+--
+--   >>> let foo = to_integer (Word256 0x1 0x10 0x100 0x1000)
+--   >>> foo
+--   25711008708143844408758505763390361887002166947932397379780609
 to_integer :: Word256 -> Integer
 to_integer (Word256 w0 w1 w2 w3) =
       fi w3 .<<. 192
@@ -184,6 +205,10 @@ to_integer (Word256 w0 w1 w2 w3) =
   .|. fi w1 .<<. 64
   .|. fi w0
 
+-- | Convert a fixed-width 'Word256' into a variable-length 'Integer'.
+--
+--   >>> (\(Word256 l _ _ _) -> l) (to_word256 foo)
+--   1
 to_word256 :: Integer -> Word256
 to_word256 n =
   let !mask64 = 2 ^ (64 :: Int) - 1
@@ -219,6 +244,12 @@ to_word512 n =
 
 -- comparison -----------------------------------------------------------------
 
+-- | Strict less-than comparison on 'Word256' values.
+--
+--   >>> to_word256 0 `lt` to_word256 1
+--   True
+--   >>> to_word256 0 `lt` to_word256 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+--   True
 lt :: Word256 -> Word256 -> Bool
 lt (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   let !(P _ c0) = sub_b a0 b0 0
@@ -227,15 +258,24 @@ lt (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
       !(P _ c3) = sub_b a3 b3 c2
   in  c3 /= 0
 
+-- | Strict greater-than comparison on 'Word256' values.
+--
+--   >>> to_word256 0 `gt` to_word256 1
+--   False
+--   >>> to_word256 0 `gt` to_word256 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+--   False
 gt :: Word256 -> Word256 -> Bool
 gt a b = lt b a
 
+-- | Zero, as a 'Word256'.
 zero :: Word256
 zero = Word256 0 0 0 0
 
+-- | One, as a 'Word256'.
 one :: Word256
 one = Word256 1 0 0 0
 
+-- | Test if a 'Word256' value is zero.
 is_zero :: Word256 -> Bool
 is_zero w = w == zero
 
@@ -244,14 +284,17 @@ is_word64 (Word256 _ a b c) = a == 0 && b == 0 && c == 0
 
 -- bits -----------------------------------------------------------------------
 
+-- | Bitwise-or on 'Word256' values.
 or :: Word256 -> Word256 -> Word256
 or (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   Word256 (a0 .|. b0) (a1 .|. b1) (a2 .|. b2) (a3 .|. b3)
 
+-- | Bitwise-and on 'Word256' values.
 and :: Word256 -> Word256 -> Word256
 and (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   Word256 (a0 .&. b0) (a1 .&. b1) (a2 .&. b2) (a3 .&. b3)
 
+-- | Bitwise-xor on 'Word256' values.
 xor :: Word256 -> Word256 -> Word256
 xor (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   Word256 (a0 .^. b0) (a1 .^. b1) (a2 .^. b2) (a3 .^. b3)
@@ -281,7 +324,10 @@ add_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
       !(P s3 c3) = add_c a3 b3 c2
   in  Word320 (Word256 s0 s1 s2 s3) c3
 
--- | Addition on 'Word256' values.
+-- | Addition on 'Word256' values, with overflow.
+--
+--   >>> to_word256 0xFFFFFFFFFF `add` to_word256 0xFFFFFF
+--   18446742974181146625
 add :: Word256 -> Word256 -> Word256
 add w0 w1 = s where
   !(Word320 s _) = add_of w0 w1
@@ -309,6 +355,9 @@ sub_of (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   in  Word320 (Word256 s0 s1 s2 s3) c3
 
 -- | Subtraction on 'Word256' values.
+--
+--   >>> to_word256 0xFFFFFFFFFF `sub` to_word256 0xFFFFFF
+--   1099494850560
 sub :: Word256 -> Word256 -> Word256
 sub w0 w1 = d where
   !(Word320 d _) = sub_of w0 w1
@@ -358,6 +407,9 @@ umul_step z x y c =
   in  P hi lo
 
 -- | Multiplication on 'Word256' values, with overflow.
+--
+--   >>> to_word256 0xFFFFFFFFFF `mul` to_word256 0xFFFFFF
+--   18446742974181146625
 mul :: Word256 -> Word256 -> Word256
 mul (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   let !(P c0_0 s0) = mul_c a0 b0
@@ -973,6 +1025,10 @@ quotrem u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
       | z0 /= 0 = 1
       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
+-- | Division on 'Word256' values.
+--
+--   >>> to_word256 0xFFFFFFFFFF `div` to_word256 0xFFFFFF
+--   65536
 div :: Word256 -> Word256 -> Word256
 div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
   | is_zero b || b `gt` a = zero -- ?
@@ -983,6 +1039,10 @@ div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
           !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem u b
       in  Word256 q0 q1 q2 q3
 
+-- | Modulo operation on 'Word256' values.
+--
+--   >>> to_word256 0xFFFFFFFFFF `mod` to_word256 0xFFFFFF
+--   65535
 mod :: Word256 -> Word256 -> Word256
 mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
   | is_zero b || a == b = zero -- ?
@@ -992,3 +1052,4 @@ mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
       let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
           !(Word832 _ r) = quotrem u b
       in  r
+
