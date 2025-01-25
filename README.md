@@ -52,8 +52,8 @@ code. Most operations beat out their variable-length Integer variants,
 *but*, we have yet to reach parity with the all-important division and
 modulo operations.
 
-Current benchmark figures on 1kb inputs on my mid-2020 MacBook Air look
-like (use `cabal bench` to run the benchmark suite):
+Current benchmark figures on my mid-2020 MacBook Air look like (use
+`cabal bench` to run the benchmark suite):
 
 ```
   benchmarking baseline comparison/add (baseline)
@@ -134,7 +134,7 @@ $ nix develop
 Then do e.g.:
 
 ```
-$ cabal repl ppad-base16
+$ cabal repl ppad-fixed
 ```
 
 to get a REPL for the main library.
