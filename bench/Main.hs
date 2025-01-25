@@ -3,20 +3,12 @@
 
 module Main where
 
-import Control.DeepSeq
 import Criterion.Main
 import Data.Bits ((.|.), (.&.), (.^.))
 import qualified Data.Bits as B
 import qualified Data.Word.Extended as W
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
-
-instance NFData W.Word256
-instance NFData W.Word320
-instance NFData W.Word512
-instance NFData W.Word576
-instance NFData W.Word640
-instance NFData W.Word1152
 
 or_baseline :: Benchmark
 or_baseline = bench "or (baseline)" $ nf ((.|.) w0) w1 where
@@ -114,8 +106,8 @@ div_baseline = bench "div (baseline)" $ nf (Prelude.div w0) w1 where
   !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
   !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
-div_pure :: Benchmark
-div_pure = bench "div_pure" $ nf (W.div_pure w0) w1 where
+div :: Benchmark
+div = bench "div" $ nf (W.div w0) w1 where
   !w0 = W.to_word256
     0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
   !w1 = W.to_word256
@@ -135,23 +127,23 @@ mod_baseline = bench "mod (baseline)" $ nf (Prelude.rem w0) w1 where
   !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
   !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
-mod_pure :: Benchmark
-mod_pure = bench "mod (pure)" $ nf (W.mod_pure w0) w1 where
+mod :: Benchmark
+mod = bench "mod (pure)" $ nf (W.mod w0) w1 where
   !w0 = W.to_word256
     0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
-quotrem_by1_gen :: Benchmark
-quotrem_by1_gen =
-  bench "quotrem_by1_gen" $
-    nf (W.quotrem_by1_gen (W.Word576 300 200 100 0 0 0 0 0 0) 3)
+quotrem_by1 :: Benchmark
+quotrem_by1 =
+  bench "quotrem_by1" $
+    nf (W.quotrem_by1 (W.Word576 300 200 100 0 0 0 0 0 0) 3)
       (B.complement 50)
 
-quotrem_knuth_gen :: Benchmark
-quotrem_knuth_gen =
-    bench "quotrem_knuth_gen" $
-      nf (W.quotrem_knuth_gen u 5 d) 4
+quotrem_knuth :: Benchmark
+quotrem_knuth =
+    bench "quotrem_knuth" $
+      nf (W.quotrem_knuth u 5 d) 4
   where
     !u = W.Word576
       2162362899639802732 8848548347662387477 13702897166684377657
@@ -162,28 +154,25 @@ quotrem_knuth_gen =
 
 main :: IO ()
 main = defaultMain [
-  --  quotrem_knuth_gen
-  --  quotrem_by1
-  --, quotrem_by1_gen
-    div_baseline
-  , div_pure
-  --, div
-  --, mul_baseline
-  --, mul
-  --, mod_baseline
-  --, mod_pure
-  --, mod
-  --, div_baseline_small
-  --, div_small
-  --, or_baseline
-  --, or
-  --, and_baseline
-  --, and
-  --, xor_baseline
-  --, xor
-  --, add_baseline
-  --, add
-  --, sub_baseline
-  --, sub
+    quotrem_by1
+  , quotrem_knuth
+  , div_baseline
+  , div
+  , div_baseline_small
+  , div_small
+  , mul_baseline
+  , mul
+  , add_baseline
+  , add
+  , sub_baseline
+  , sub
+  , mod_baseline
+  , mod
+  , or_baseline
+  , or
+  , and_baseline
+  , and
+  , xor_baseline
+  , xor
   ]
 

@@ -19,6 +19,6 @@ main = do
           1286679968202709238
           3741537094902495500
 
-  let foo = quotrem_gen u d
+  let foo = quotrem u d
   print foo
 

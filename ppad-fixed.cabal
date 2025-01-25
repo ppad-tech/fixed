@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               ppad-fixed
-version:            0.1.0
+version:            0.0.1
 synopsis:           Fixed-width integers.
 license:            MIT
 license-file:       LICENSE
@@ -26,6 +26,7 @@ library
       Data.Word.Extended
   build-depends:
       base >= 4.9 && < 5
+    , deepseq >= 1.5 && < 1.6
 
 test-suite fixed-tests
   type:                exitcode-stdio-1.0
@@ -56,7 +57,6 @@ benchmark fixed-bench
   build-depends:
       base
     , criterion
-    , deepseq
     , ppad-fixed
 
 benchmark fixed-weigh
@@ -70,7 +70,6 @@ benchmark fixed-weigh
 
   build-depends:
       base
-    , deepseq
     , ppad-fixed
     , weigh
 
@@ -85,6 +84,5 @@ executable fixed-profile
   build-depends:
       base
     , criterion
-    , deepseq
     , ppad-fixed
 

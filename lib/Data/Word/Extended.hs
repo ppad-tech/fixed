@@ -4,13 +4,60 @@
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module Data.Word.Extended where
+module Data.Word.Extended (
+    Word256(..)
+  , zero
+  , one
 
+  -- * Conversion
+  , to_integer
+  , to_word256
+
+  -- * Comparison
+  , lt
+  , gt
+  , is_zero
+
+  -- * Bit Operations
+  , or
+  , and
+  , xor
+
+  -- * Arithmetic
+  , add
+  , sub
+  , mul
+  , div
+
+  -- * Modular Arithmetic
+  , mod
+
+  -- for testing/benchmarking
+  , Word128(..)
+  , Word576(..)
+  , Word640(..)
+  , Word832(..)
+  , Word1152(..)
+  , quotrem
+  , quotrem_r
+  , quotrem_by1
+  , quotrem_2by1
+  , quotrem_knuth
+  , recip_2by1
+  , to_word512
+  , word512_to_integer
+  , mul_512
+  , mul_c
+  , umul_hop
+  , umul_step
+  ) where
+
+import Control.DeepSeq
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
 import qualified Data.Bits as B
 import Data.Word (Word64)
 import GHC.Generics
-import Prelude hiding (div, mod)
+import Prelude hiding (div, mod, or, and)
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
@@ -25,6 +72,8 @@ data Word256 = Word256
   {-# UNPACK #-} !Word64
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
+
+instance NFData Word256
 
 sel256 :: Word256 -> Int -> Word64
 sel256 (Word256 a0 a1 a2 a3) = \case
@@ -51,17 +100,23 @@ data Word512 = Word512
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+instance NFData Word512
+
 -- utility words ------------------------------------------------------------
 
 data Word128 = P
   {-# UNPACK #-} !Word64
   {-# UNPACK #-} !Word64
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
+
+instance NFData Word128
 
 data Word320 = Word320
   !Word256
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
+
+instance NFData Word320
 
 data Word576 = Word576
   {-# UNPACK #-} !Word64
@@ -74,6 +129,8 @@ data Word576 = Word576
   {-# UNPACK #-} !Word64
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
+
+instance NFData Word576
 
 zero576 :: Word576
 zero576 = Word576 0 0 0 0 0 0 0 0 0
@@ -102,15 +159,21 @@ data Word640 = Word640
   {-# UNPACK #-} !Word64
   deriving (Eq, Show, Generic)
 
+instance NFData Word640
+
 data Word832 = Word832
   {-# UNPACK #-} !Word576
   {-# UNPACK #-} !Word256
   deriving (Eq, Show, Generic)
 
+instance NFData Word832
+
 data Word1152 = Word1152 -- yikes
   {-# UNPACK #-} !Word576
   {-# UNPACK #-} !Word576
   deriving (Eq, Show, Generic)
+
+instance NFData Word1152
 
 -- conversion -----------------------------------------------------------------
 
@@ -680,12 +743,12 @@ quotrem_2by1 uh ul d rec =
       then P (qh_y + 1) (r_y - d)
       else P qh_y r_y
 
-quotrem_by1_gen
+quotrem_by1
   :: Word576  -- dividend
   -> Int      -- dividend length
   -> Word64   -- divisor
   -> Word640
-quotrem_by1_gen (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
+quotrem_by1 (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
     9 ->
       let !r_0 = u8
           !(Word640 q0 r0) = step7 zero576 r_0
@@ -739,7 +802,7 @@ quotrem_by1_gen (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
       let !r_0 = u1
       in                     step0 zero576 r_0
     _ ->
-      error "ppad-fixed (quotrem_by1_gen): bad index"
+      error "ppad-fixed (quotrem_by1): bad index"
   where
     !rec = recip_2by1 d
 
@@ -776,13 +839,13 @@ quotrem_by1_gen (Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) ulen d = case ulen of
       in  Word640 (Word576 q0 q1 q2 q3 q4 q5 q6 q q8) nr
 
  -- XX expensive
-quotrem_knuth_gen
+quotrem_knuth
   :: Word576
   -> Int
   -> Word256
   -> Int
   -> Word1152
-quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
+quotrem_knuth u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
   !d_hi = sel256 d (dlen - 1)
   !d_lo = sel256 d (dlen - 2)
   !rec = recip_2by1 d_hi
@@ -814,11 +877,11 @@ quotrem_knuth_gen u ulen d dlen = loop (ulen - dlen - 1) zero576 u where
               let !q = set576 qacc j qhat
               in  loop (pred j) q u1
 
-quotrem_gen
+quotrem
   :: Word576
   -> Word256
   -> Word832
-quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
+quotrem u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
     let !dlen   = setlen_256 d
         !shift  = B.countLeadingZeros d3
         !dn     = fill256 (dlen - 1) shift
@@ -832,10 +895,10 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
           in  if   dlen == 1
               then
                 let !dn_0 = sel256 dn 0
-                    !(Word640 q r) = quotrem_by1_gen un (ulen + 1) dn_0
+                    !(Word640 q r) = quotrem_by1 un (ulen + 1) dn_0
                 in  Word832 q (Word256 (r .>>. shift) 0 0 0)
               else
-                let !(Word1152 q un0) = quotrem_knuth_gen un (ulen + 1) dn dlen
+                let !(Word1152 q un0) = quotrem_knuth un (ulen + 1) dn dlen
                     !r_pre     = fill_rem dlen un0 shift
                     !un_dlen_1 = sel576 un0 (dlen - 1)
                     !r         = set256 r_pre (dlen - 1) (un_dlen_1 .>>.shift)
@@ -910,22 +973,22 @@ quotrem_gen u@(Word576 u0 u1 u2 u3 u4 u5 u6 u7 u8) d@(Word256 d0 d1 d2 d3) =
       | z0 /= 0 = 1
       | otherwise = error "ppad-fixed (quotrem_256): division by zero"
 
-div_pure :: Word256 -> Word256 -> Word256
-div_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
+div :: Word256 -> Word256 -> Word256
+div a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
   | is_zero b || b `gt` a = zero -- ?
   | a == b                = one
   | is_word64 a           = Word256 (a0 `quot` b0) 0 0 0
   | otherwise =
       let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
-          !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem_gen u b
+          !(Word832 (Word576 q0 q1 q2 q3 _ _ _ _ _) _) = quotrem u b
       in  Word256 q0 q1 q2 q3
 
-mod_pure :: Word256 -> Word256 -> Word256
-mod_pure a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
+mod :: Word256 -> Word256 -> Word256
+mod a@(Word256 a0 a1 a2 a3) b@(Word256 b0 _ _ _)
   | is_zero b || a == b = zero -- ?
   | a `lt` b = a
   | is_word64 a = Word256 (a0 `Prelude.rem` b0) 0 0 0
   | otherwise =
       let !u = Word576 a0 a1 a2 a3 0 0 0 0 0
-          !(Word832 _ r) = quotrem_gen u b
+          !(Word832 _ r) = quotrem u b
       in  r

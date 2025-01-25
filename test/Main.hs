@@ -13,6 +13,10 @@ import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
 
+fi :: (Integral a, Num b) => a -> b
+fi = fromIntegral
+{-# INLINE fi #-}
+
 instance Q.Arbitrary Word256 where
   arbitrary = do
     w0 <- Q.arbitrary
@@ -140,15 +144,15 @@ mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
       !rite = to_word512 (a * b)
   in  left == rite
 
-div_pure_matches :: DivMonotonic -> Bool
-div_pure_matches (DivMonotonic (a, b)) =
-  let !left = to_word256 a `div_pure` to_word256 b
+div_matches :: DivMonotonic -> Bool
+div_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `div` to_word256 b
       !rite = to_word256 (a `Prelude.div` b)
   in  left == rite
 
-mod_pure_matches :: DivMonotonic -> Bool
-mod_pure_matches (DivMonotonic (a, b)) =
-  let !left = to_word256 a `mod_pure` to_word256 b
+mod_matches :: DivMonotonic -> Bool
+mod_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `mod` to_word256 b
       !rite = to_word256 (a `rem` b)
   in  left == rite
 
@@ -180,28 +184,28 @@ quotrem_2by1_case0 = do
       !o = quotrem_2by1 8 4 d (recip_2by1 d)
   H.assertEqual mempty (P 8 2052) o
 
-quotrem_by1_gen_case0 :: H.Assertion
-quotrem_by1_gen_case0 = do
+quotrem_by1_case0 :: H.Assertion
+quotrem_by1_case0 = do
   let !u = Word576 8 4 0 0 0 0 0 0 0
       !d = B.complement 0xFF :: Word64
-      !(Word640 q r) = quotrem_by1_gen u 2 d
+      !(Word640 q r) = quotrem_by1 u 2 d
   let pec_quo = Word576 4 0 0 0 0 0 0 0 0
       pec_rem = 1032
   H.assertEqual "remainder matches" pec_rem r
   H.assertEqual "quotient matches" pec_quo q
 
-quotrem_by1_gen_case1 :: H.Assertion
-quotrem_by1_gen_case1 = do
+quotrem_by1_case1 :: H.Assertion
+quotrem_by1_case1 = do
   let !u = Word576 8 26 0 0 0 0 0 0 0
       !d = B.complement 0xFF :: Word64
-      !(Word640 q r) = quotrem_by1_gen u 2 d
+      !(Word640 q r) = quotrem_by1 u 2 d
   let pec_quo = Word576 26 0 0 0 0 0 0 0 0
       pec_rem = 6664
   H.assertEqual "remainder matches" pec_rem r
   H.assertEqual "quotient matches" pec_quo q
 
-quotrem_knuth_gen_case0 :: H.Assertion
-quotrem_knuth_gen_case0 = do
+quotrem_knuth_case0 :: H.Assertion
+quotrem_knuth_case0 = do
   let !u = Word576
         2162362899639802732
         8848548347662387477
@@ -214,7 +218,7 @@ quotrem_knuth_gen_case0 = do
         2612788699139816405
         5146719872810836952
         14966148379609982000
-      !(Word1152 q nu) = quotrem_knuth_gen u 5 d 4
+      !(Word1152 q nu) = quotrem_knuth u 5 d 4
       !pec_q = Word576 2 0 0 0 0 0 0 0 0
       !pec_u = Word576
         5154254025493923764
@@ -226,15 +230,15 @@ quotrem_knuth_gen_case0 = do
   H.assertEqual "divisor matches" pec_u nu
   H.assertEqual "quotient matches" pec_q q
 
-quotrem_gen_case0 :: H.Assertion
-quotrem_gen_case0 = do
+quotrem_case0 :: H.Assertion
+quotrem_case0 = do
   let !u = Word576
         0x1234567890ABCDEF
         0xFEDCBA0987654321
         0x123456789ABCDEF0
         0 0 0 0 0 0
       !d = Word256 0x0 0x0 0x1 0x100000000
-      !(Word832 q r) = quotrem_gen u d
+      !(Word832 q r) = quotrem u d
       !pec_q = Word576 0 0 0 0 0 0 0 0 0
       !pec_r = Word256
         1311768467294899695
@@ -244,8 +248,8 @@ quotrem_gen_case0 = do
   H.assertEqual "remainder matches" pec_r r
   H.assertEqual "quotient matches" pec_q q
 
-quotrem_gen_case1 :: H.Assertion
-quotrem_gen_case1 = do
+quotrem_case1 :: H.Assertion
+quotrem_case1 = do
   let !u = Word576
         5152276743337338587
         6823823105342984773
@@ -257,7 +261,7 @@ quotrem_gen_case1 = do
         653197174784954101
         1286679968202709238
         3741537094902495500
-      !(Word832 q r) = quotrem_gen u d
+      !(Word832 q r) = quotrem u d
       !pec_q = Word576 2 0 0 0 0 0 0 0 0
       !pec_r = Word256
         5900249524800868845
@@ -301,12 +305,12 @@ arithmetic = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 add_matches
   , Q.testProperty "subtraction matches (nonneg, monotonic)" $
       Q.withMaxSuccess 1000 sub_matches
-  , Q.testProperty "multiplication matches (nonneg, low bits)" $
+  , Q.testProperty "512-bit multiplication matches (nonneg, low bits)" $
       Q.withMaxSuccess 1000 mul_512_matches
-  , Q.testProperty "pure division matches" $
-      Q.withMaxSuccess 1000 div_pure_matches
-  , Q.testProperty "pure mod matches" $
-      Q.withMaxSuccess 1000 mod_pure_matches
+  , Q.testProperty "division matches" $
+      Q.withMaxSuccess 1000 div_matches
+  , Q.testProperty "mod matches" $
+      Q.withMaxSuccess 1000 mod_matches
   ]
 
 utils :: TestTree
@@ -335,11 +339,11 @@ main = defaultMain $
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
-    , H.testCase "quotrem_by1_gen matches case0" quotrem_by1_gen_case0
-    , H.testCase "quotrem_by1_gen matches case1" quotrem_by1_gen_case1
-    , H.testCase "quotrem_knuth_gen matches case0" quotrem_knuth_gen_case0
-    , H.testCase "quotrem_gen matches case0" quotrem_gen_case0
-    , H.testCase "quotrem_gen matches case1" quotrem_gen_case1
+    , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
+    , H.testCase "quotrem_by1 matches case1" quotrem_by1_case1
+    , H.testCase "quotrem_knuth matches case0" quotrem_knuth_case0
+    , H.testCase "quotrem matches case0" quotrem_case0
+    , H.testCase "quotrem matches case1" quotrem_case1
     ]
   ]
 
