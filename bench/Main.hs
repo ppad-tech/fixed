@@ -152,27 +152,45 @@ quotrem_knuth =
       16950798510782491100 2612788699139816405
       5146719872810836952 14966148379609982000
 
-main :: IO ()
-main = defaultMain [
-    quotrem_by1
-  , quotrem_knuth
-  , div_baseline
-  , div
-  , div_baseline_small
-  , div_small
-  , mul_baseline
+arithmetic :: Benchmark
+arithmetic = bgroup "arithmetic" [
+    add
+  , sub
   , mul
-  , add_baseline
+  , div
+  , mod
+  ]
+
+baseline_arithmetic :: Benchmark
+baseline_arithmetic = bgroup "baseline arithmetic" [
+    add_baseline
+  , sub_baseline
+  , mul_baseline
+  , div_baseline
+  , mod_baseline
+  ]
+
+baseline_comparison :: Benchmark
+baseline_comparison = bgroup "baseline comparison" [
+    add_baseline
   , add
   , sub_baseline
   , sub
-  , mod_baseline
-  , mod
-  , or_baseline
+  , mul_baseline
+  , mul
+  , div_baseline
+  , div
+  ]
+
+bits :: Benchmark
+bits = bgroup "bits" [
+    and
   , or
-  , and_baseline
-  , and
-  , xor_baseline
   , xor
+  ]
+
+main :: IO ()
+main = defaultMain [
+    baseline_comparison
   ]
 
