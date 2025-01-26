@@ -5,7 +5,6 @@ module Main where
 
 import Criterion.Main
 import Data.Bits ((.|.), (.&.), (.^.))
-import qualified Data.Bits as B
 import qualified Data.Word.Extended as W
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
@@ -134,24 +133,6 @@ mod = bench "mod (pure)" $ nf (W.mod w0) w1 where
   !w1 = W.to_word256
     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
-quotrem_by1 :: Benchmark
-quotrem_by1 =
-  bench "quotrem_by1" $
-    nf (W.quotrem_by1 (W.Word576 300 200 100 0 0 0 0 0 0) 3)
-      (B.complement 50)
-
-quotrem_knuth :: Benchmark
-quotrem_knuth =
-    bench "quotrem_knuth" $
-      nf (W.quotrem_knuth u 5 d) 4
-  where
-    !u = W.Word576
-      2162362899639802732 8848548347662387477 13702897166684377657
-      16799544643779908154 1 0 0 0 0
-    !d = W.Word256
-      16950798510782491100 2612788699139816405
-      5146719872810836952 14966148379609982000
-
 arithmetic :: Benchmark
 arithmetic = bgroup "arithmetic" [
     add
@@ -191,6 +172,7 @@ bits = bgroup "bits" [
 
 main :: IO ()
 main = defaultMain [
-    baseline_comparison
+    div
+  , div_baseline
   ]
 
