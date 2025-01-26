@@ -41,17 +41,38 @@ A sample GHCi session:
   65535
 ```
 
-## Documentation
-
-Haddocks (API documentation, etc.) are hosted at
-[docs.ppad.tech/fixed](https://docs.ppad.tech/fixed).
-
 ## Performance
 
 The aim is best-in-class performance for pure, highly-auditable Haskell
 code. Most operations beat out their variable-length Integer variants,
 *but*, we have yet to reach parity with the all-important division and
 modulo operations.
+
+There are a few ways I can imagine this being improved:
+
+* Extremely careful use of Data.Primitive.PrimArray can likely beat
+  the pure code that currently implements most of the library. A
+  single allocation of a maximum 21-long mutable PrimArray is not
+  terribly expensive. In particular finding a remainder, e.g. for
+  modulo, requires comparatively few expensive writes.
+
+  We require, for cases like modular multplication, at most 8 elements
+  for the quotient, 9 elements for the dividend/normalized dividend
+  (i.e. reusing the same area for both), and 8 elements for the
+  divisor/normalized divisor (ditto), assuming we stick with Knuth's division
+  algorithm. In other situations, e.g. division or modulo, we need less.
+
+* Avoid unnecessarily calculating the quotient or remainder if only one
+  of the two is desired.
+
+* It's possible that manually writing internals using primitives (think
+  MagicHash, UnboxedTuples, GHC.Exts) could yield an improvement; I've
+  noticed that GHC doesn't always unbox everything automatically. This
+  is possibly due to register contention, though, so it could also
+  potentially degrade performance.
+
+* An alternative division algorithm might be worth looking into, if it
+  proves to be impossible to squeeze more out of Knuth's.
 
 Current benchmark figures on my mid-2020 MacBook Air look like (use
 `cabal bench` to run the benchmark suite):
