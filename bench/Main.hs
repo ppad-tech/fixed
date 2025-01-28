@@ -23,7 +23,12 @@ multiplication = bgroup "multiplication" [
   ]
 
 division = bgroup "division" [
-    quotrem_by1
+    div
+  , div_baseline
+  , mod
+  , mod_baseline
+  , recip_2by1
+  , quotrem_by1
   , rem_by1
   , quotrem_2by1
   , quot_r
@@ -87,6 +92,10 @@ quot_r :: Benchmark
 quot_r = bench "quot_r" $
   nf (W.quot_r 4 0xffffffffffffffff) (B.complement 4)
 
+recip_2by1 :: Benchmark
+recip_2by1 = bench "recip_2by1" $
+    nf W.recip_2by1 0xFFFF_FFFF_FFFF_FF00
+
 quotrem_2by1 :: Benchmark
 quotrem_2by1 = bench "quotrem_2by1" $
     nf (W.quotrem_2by1 8 4 0xFFFF_FFFF_FFFF_FF00) r
@@ -96,7 +105,7 @@ quotrem_2by1 = bench "quotrem_2by1" $
 quotrem_by1 :: Benchmark
 quotrem_by1 = env setup $ \ ~(q, u, d) ->
     bench "quotrem_by1" $
-      nfIO (W.quotrem_by1 q u d)
+      nfAppIO (W.quotrem_by1 q u) d
   where
     setup = do
       qm <- PA.newPrimArray 2
@@ -108,6 +117,32 @@ quotrem_by1 = env setup $ \ ~(q, u, d) ->
 rem_by1 :: Benchmark
 rem_by1 = bench "rem_by1" $
   nf (W.rem_by1 (PA.primArrayFromList [4, 8])) (B.complement 0xFF :: Word64)
+
+div_baseline :: Benchmark
+div_baseline = bench "div (baseline)" $ nf (Prelude.div w0) w1 where
+  w0, w1 :: Integer
+  !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
+div :: Benchmark
+div = bench "div" $ nf (W.div w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
+mod_baseline :: Benchmark
+mod_baseline = bench "mod (baseline)" $ nf (Prelude.rem w0) w1 where
+  w0, w1 :: Integer
+  !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
+
+mod :: Benchmark
+mod = bench "mod" $ nf (W.mod w0) w1 where
+  !w0 = W.to_word256
+    0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
+  !w1 = W.to_word256
+    0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
 
 
 -- quotrem_by1_case0 :: H.Assertion
@@ -171,41 +206,7 @@ rem_by1 = bench "rem_by1" $
 -- mul128 = bench "mul128" $ nf (W.mul w0) w1 where
 --   !w0 = W.to_word256 0x7fffffffffffffffffffffffffffffed
 --   !w1 = W.to_word256 0x7ffffffffffffffbffffffffffffffed
---
--- div_baseline :: Benchmark
--- div_baseline = bench "div (baseline)" $ nf (Prelude.div w0) w1 where
---   w0, w1 :: Integer
---   !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
---   !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
---
--- div :: Benchmark
--- div = bench "div" $ nf (W.div w0) w1 where
---   !w0 = W.to_word256
---     0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
---   !w1 = W.to_word256
---     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
---
--- div_baseline_small :: Benchmark
--- div_baseline_small =
---     bench "div, small (baseline)" $ nf (Prelude.div w0) w1
---   where
---     w0, w1 :: Integer
---     !w0 = 0x7fffffed
---     !w1 = 0x7ffbffed
---
--- mod_baseline :: Benchmark
--- mod_baseline = bench "mod (baseline)" $ nf (Prelude.rem w0) w1 where
---   w0, w1 :: Integer
---   !w0 = 0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
---   !w1 = 0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
---
--- mod :: Benchmark
--- mod = bench "mod (pure)" $ nf (W.mod w0) w1 where
---   !w0 = W.to_word256
---     0x41cf50c7d0d65afabcf5ba37750dba71c7db29ec9f20a216d3ef013a59b9188a
---   !w1 = W.to_word256
---     0x066bd4c3c10e30260cb6e7832af25f15527b089b258a1fef13b6eec3ce73bf06
---
+
 -- arithmetic :: Benchmark
 -- arithmetic = bgroup "arithmetic" [
 --     add

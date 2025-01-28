@@ -36,7 +36,15 @@ instance Q.Arbitrary Monotonic where
       `Q.suchThat` (\b -> b <= a)
     pure (Monotonic (a, b))
 
--- properties -----------------------------------------------------------------
+newtype DivMonotonic = DivMonotonic (Integer, Integer)
+  deriving Show
+
+instance Q.Arbitrary DivMonotonic where
+  arbitrary = do
+    a <- Q.chooseInteger (1, 2 ^ (256 :: Int) - 1)
+    b <- (Q.chooseInteger (1, 2 ^ (256 :: Int) - 1))
+      `Q.suchThat` (\b -> b <= a)
+    pure (DivMonotonic (a, b))
 
 -- addition / subtraction ----------------
 
@@ -85,6 +93,18 @@ mul_lo_matches (Q.NonNegative a) (Q.NonNegative b) =
 
 -- division ------------------------------
 
+div_matches :: DivMonotonic -> Bool
+div_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `div` to_word256 b
+      !rite = to_word256 (a `Prelude.div` b)
+  in  left == rite
+
+mod_matches :: DivMonotonic -> Bool
+mod_matches (DivMonotonic (a, b)) =
+  let !left = to_word256 a `mod` to_word256 b
+      !rite = to_word256 (a `rem` b)
+  in  left == rite
+
 quotrem_r_case0 :: H.Assertion
 quotrem_r_case0 = do
   let !(P q r) = quotrem_r 2 4 4
@@ -129,8 +149,6 @@ quotrem_by1_case0 = do
 
 -- tests ----------------------------------------------------------------------
 
-
-
 add_sub :: TestTree
 add_sub = testGroup "addition & subtraction" [
     Q.testProperty "addition matches (nonneg)" $
@@ -149,10 +167,10 @@ multiplication = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 umul_step_predicate_holds
   , Q.testProperty "mul matches (nonneg, low bits)" $
       Q.withMaxSuccess 1000 mul_lo_matches
-  -- , Q.testProperty "division matches" $
-  --     Q.withMaxSuccess 1000 div_matches
-  -- , Q.testProperty "mod matches" $
-  --     Q.withMaxSuccess 1000 mod_matches
+  , Q.testProperty "division matches" $
+      Q.withMaxSuccess 1000 div_matches
+  , Q.testProperty "mod matches" $
+      Q.withMaxSuccess 1000 mod_matches
   ]
 
 main :: IO ()
@@ -193,17 +211,7 @@ main = defaultMain $ testGroup "ppad-fixed" [
 --     Q.NonNegative b <-
 --       Q.arbitrary `Q.suchThat` (\(Q.NonNegative b) -> b * m <= a)
 --     pure (MulMonotonic (a, b, m))
---
--- newtype DivMonotonic = DivMonotonic (Integer, Integer)
---   deriving Show
---
--- instance Q.Arbitrary DivMonotonic where
---   arbitrary = do
---     a <- Q.chooseInteger (1, 2 ^ (256 :: Int) - 1)
---     b <- (Q.chooseInteger (1, 2 ^ (256 :: Int) - 1))
---       `Q.suchThat` (\b -> b <= a)
---     pure (DivMonotonic (a, b))
---
+
 -- -- properties -----------------------------------------------------------------
 --
 -- lt_matches :: Different (Q.NonNegative Integer) -> Bool
@@ -239,19 +247,6 @@ main = defaultMain $ testGroup "ppad-fixed" [
 -- sub_matches :: Monotonic -> Bool
 -- sub_matches (Monotonic (a, b)) =
 --   to_integer (to_word256 a `sub` to_word256 b) == a - b
---
--- div_matches :: DivMonotonic -> Bool
--- div_matches (DivMonotonic (a, b)) =
---   let !left = to_word256 a `div` to_word256 b
---       !rite = to_word256 (a `Prelude.div` b)
---   in  left == rite
---
--- mod_matches :: DivMonotonic -> Bool
--- mod_matches (DivMonotonic (a, b)) =
---   let !left = to_word256 a `mod` to_word256 b
---       !rite = to_word256 (a `rem` b)
---   in  left == rite
---
 -- -- assertions ------------------------------------------------------------------
 --
 -- quotrem_r_case0 :: H.Assertion

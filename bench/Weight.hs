@@ -36,17 +36,8 @@ main = W.mainWith $ do
     W.func "mul" (E.mul w0) w1
     W.func "quotrem_r" (E.quotrem_r 4 0xffffffffffffffff) (B.complement 4)
     W.func "quotrem_2by1" (E.quotrem_2by1 8 4 0xffffffffffffffff) r
+    W.func "div (baseline)" (Prelude.div i2) i3
+    W.func "div" (E.div w2) w3
   where
     !r = E.recip_2by1 0xFFFF_FFFF_FFFF_FF00
-
--- main :: IO ()
--- main = W.mainWith $ do
---   W.func "add (baseline)" ((+) i0) i1
---   W.func "add" (E.add w0) w1
---   W.func "sub (baseline)" ((-) i0) i1
---   W.func "sub" (E.sub w0) w1
---   W.func "mul (baseline)" ((*) i0) i1
---   W.func "mul" (E.mul w0) w1
---   W.func "div (baseline)" (Prelude.div i2) i3
---   W.func "div" (E.div w2) w3
 
