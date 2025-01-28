@@ -99,31 +99,6 @@ quotrem_r_case2 = do
   let !(P q r) = quotrem_r 4 0xffffffffffffffff (B.complement 4)
   H.assertEqual mempty (P 5 24) (P q r)
 
-quotrem_r_case0# :: H.Assertion
-quotrem_r_case0# = do
-  let !(# q, r #) =
-        quotrem_r# (wordToWord64# 2##) (wordToWord64# 4##) (wordToWord64# 4##)
-  H.assertEqual mempty (P 9223372036854775809 0) (P (W64# q) (W64# r))
-
-quotrem_r_case1# :: H.Assertion
-quotrem_r_case1# = do
-  let !(# q, r #) =
-        quotrem_r# (wordToWord64# 0##) (wordToWord64# 4##) (wordToWord64# 2##)
-  H.assertEqual mempty (P 2 0) (P (W64# q) (W64# r))
-
-quotrem_r_case2# :: H.Assertion
-quotrem_r_case2# = do
-  let !(# q, r #) =
-        quotrem_r#
-          (wordToWord64# 4##)
-          (wordToWord64# 0xffffffffffffffff##)
-          (not64# (wordToWord64# 4##))
-  H.assertEqual mempty (P 5 24) (P (W64# q) (W64# r))
-
--- recip_2by1 :: Word64 -> Word64
--- recip_2by1 d = r where
---   !(P r _) = quotrem_r (B.complement d) 0xffffffffffffffff d
-
 recip_2by1_case0 :: H.Assertion
 recip_2by1_case0 = do
   let !q = recip_2by1 (B.complement 4)
@@ -133,6 +108,15 @@ recip_2by1_case1 :: H.Assertion
 recip_2by1_case1 = do
   let !q = recip_2by1 (B.complement 0xff)
   H.assertEqual mempty 256 q
+
+quotrem_2by1_case0 :: H.Assertion
+quotrem_2by1_case0 = do
+  let !d = B.complement 0xFF :: Word64
+      !o = quotrem_2by1 8 4 d (recip_2by1 d)
+  H.assertEqual mempty (P 8 2052) o
+
+
+
 
 add_sub :: TestTree
 add_sub = testGroup "addition & subtraction" [
@@ -168,14 +152,9 @@ main = defaultMain $ testGroup "ppad-fixed" [
       H.testCase "quotrem_r matches case0" quotrem_r_case0
     , H.testCase "quotrem_r matches case1" quotrem_r_case1
     , H.testCase "quotrem_r matches case2" quotrem_r_case2
-    , H.testCase "quotrem_r# matches case0" quotrem_r_case0#
-    , H.testCase "quotrem_r# matches case1" quotrem_r_case1#
-    , H.testCase "quotrem_r# matches case2" quotrem_r_case2#
-    -- , H.testCase "quotrem_r# matches case2" quotrem_r_case2
-    -- , H.testCase "quotrem_r' matches case2" quotrem_r_case2'
-    -- , H.testCase "quotrem_r_recip_case0 matches case0" quotrem_r_recip_case0
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
+    , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
     ]
   ]
 
@@ -280,13 +259,7 @@ main = defaultMain $ testGroup "ppad-fixed" [
 -- recip_2by1_case1 = do
 --   let !q = recip_2by1 (B.complement 0xff)
 --   H.assertEqual mempty 256 q
---
--- quotrem_2by1_case0 :: H.Assertion
--- quotrem_2by1_case0 = do
---   let !d = B.complement 0xFF :: Word64
---       !o = quotrem_2by1 8 4 d (recip_2by1 d)
---   H.assertEqual mempty (P 8 2052) o
---
+
 -- -- main -----------------------------------------------------------------------
 --
 -- comparison :: TestTree
