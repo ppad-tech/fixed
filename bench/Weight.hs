@@ -32,6 +32,16 @@ main = W.mainWith $ do
   W.func "sub" (E.sub w0) w1
   W.func "mul (baseline)" ((*) i0) i1
   W.func "mul" (E.mul w0) w1
-  W.func "div (baseline)" (Prelude.div i2) i3
-  W.func "div" (E.div w2) w3
+  W.func "quotrem_r" (E.quotrem_r 2 4) 4
+
+-- main :: IO ()
+-- main = W.mainWith $ do
+--   W.func "add (baseline)" ((+) i0) i1
+--   W.func "add" (E.add w0) w1
+--   W.func "sub (baseline)" ((-) i0) i1
+--   W.func "sub" (E.sub w0) w1
+--   W.func "mul (baseline)" ((*) i0) i1
+--   W.func "mul" (E.mul w0) w1
+--   W.func "div (baseline)" (Prelude.div i2) i3
+--   W.func "div" (E.div w2) w3
 
