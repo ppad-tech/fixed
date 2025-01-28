@@ -42,6 +42,7 @@ test-suite fixed-tests
       base
     , bytestring
     , ppad-fixed
+    , primitive
     , tasty
     , tasty-hunit
     , tasty-quickcheck

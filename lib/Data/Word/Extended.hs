@@ -469,6 +469,7 @@ quotrem_r# hi lo y_0
               (if   (isTrue# (s ==# 0#))
                then wordToWord64# 0##
                else uncheckedShiftRL64# lo (64# -# s))
+
             !un10 = uncheckedShiftL64# lo s
             !un1 = uncheckedShiftRL64# un10 32#
             !un0 = and64# un10 mask32
@@ -606,112 +607,41 @@ recip_2by1# :: Word64# -> Word64#
 recip_2by1# d = quot_r# (not64# d) (wordToWord64# 0xffffffffffffffff##) d
 {-# INLINE recip_2by1# #-}
 
--- -- remainder by normalized word
--- rem_by_norm_word
---   :: PrimMonad m
---   => Memory m       -- memory
---   -> Int            -- normalized dividend offset
---   -> Int            -- length of normalized dividend
---   -> Int            -- normalized divisor offset
---   -> m Word64       -- remainder
--- rem_by_norm_word (Memory buf) un_offset lun dn_offset = do
---   d <- PA.readPrimArray buf dn_offset
---   let rec = recip_2by1 d
---   r0 <- PA.readPrimArray buf (un_offset + lun - 1)
---   let loop !j !racc
---         | j < 0 = pure racc
---         | otherwise = do
---             !uj <- PA.readPrimArray buf (un_offset + j)
---             let !(P _ rnex) = quotrem_2by1 racc uj d rec
---             -- PA.writePrimArray buf j qj
---             loop (j - 1) rnex
---   loop (lun - 2) r0
---
--- -- quotient & remainder by normalized word
--- quotrem_by_norm_word
---   :: PrimMonad m
---   => Memory m       -- memory
---   -> Int            -- normalized dividend offset
---   -> Int            -- length of normalized dividend
---   -> Int            -- normalized divisor offset
---   -> m Word64       -- remainder
--- quotrem_by_norm_word (Memory buf) un_offset lun dn_offset = do
---   d <- PA.readPrimArray buf dn_offset
---   let rec = recip_2by1 d
---   r0 <- PA.readPrimArray buf (un_offset + lun - 1)
---   let loop !j !racc
---         | j < 0 = pure racc
---         | otherwise = do
---             !uj <- PA.readPrimArray buf (un_offset + j)
---             let !(P _ rnex) = quotrem_2by1 racc uj d rec
---             PA.writePrimArray buf j qj
---             loop (j - 1) rnex
---   loop (lun - 2) r0
-
--- x =- y * m
--- requires (len x - x_offset) >= len y > 0
-sub_mul
+quotrem_by1
   :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> Int
-  -> PA.PrimArray Word64
-  -> Int
-  -> Word64
-  -> m Word64
-sub_mul x x_offset y l m = do
-  let loop !j !borrow
-        | j == l = pure borrow
+  => PA.MutablePrimArray (PrimState m) Word64 -- quotient
+  -> PA.PrimArray Word64                      -- variable-length dividend
+  -> Word64                                   -- divisor
+  -> m Word64                                 -- remainder
+quotrem_by1 q u d = do
+  let !rec = recip_2by1 d
+      loop !j !hj
+        | j < 0 = pure hj
         | otherwise = do
-            !x_j <- PA.readPrimArray x (j + x_offset)
-            let !y_j = PA.indexPrimArray y j
-            let !(P s carry1) = sub_b x_j borrow 0
-                !(P ph pl)    = mul_c y_j m
-                !(P t carry2) = sub_b s pl 0
-            PA.writePrimArray x (j + x_offset) t
-            loop (succ j) (ph + carry1 + carry2)
-  loop 0 0
+            let !lj = PA.indexPrimArray u j
+                !(P qj rj) = quotrem_2by1 hj lj d rec
+            PA.writePrimArray q j qj
+            loop (j - 1) rj
+      !l  = PA.sizeofPrimArray u
+      !hl = PA.indexPrimArray u (l - 1)
+  loop (l - 2) hl
 
--- quotrem_by1
---   :: PrimMonad m
---   => PA.MutablePrimArray (PrimState m) Word64
---   -> PA.PrimArray Word64
---   -> Word64
---   -> m Word64
--- quotrem_by1 quo u d = do
---   let !rec = recip_2by1 d
---       !lu  = PA.sizeofPrimArray u
---       !r0  = PA.indexPrimArray u (lu - 1)
---       loop !j !racc
---         | j < 0 = pure racc
---         | otherwise = do
---             let uj = PA.indexPrimArray u j
---                 !(P qj rnex) = quotrem_2by1 racc uj d rec
---             PA.writePrimArray quo j qj
---             loop (pred j) rnex
---   loop (lu - 2) r0
---
--- add_to
---   :: PrimMonad m
---   => PA.MutablePrimArray (PrimState m) Word64
---   -> Int
---   -> Word256
---   -> Int
---   -> m Word64
--- add_to x x_offset (Word256 y0 y1 y2 y3) l = do
---   let loop !j !cacc
---         | j == l = pure cacc
---         | otherwise = do
---             xj <- PA.readPrimArray x (j + x_offset)
---             let !(P nex carry) = case j of
---                   0 -> add_c xj y0 cacc
---                   1 -> add_c xj y1 cacc
---                   2 -> add_c xj y2 cacc
---                   3 -> add_c xj y3 cacc
---                   _ -> error "ppad-fixed (add_to): bad index"
---             PA.writePrimArray x (j + x_offset) nex
---             loop (succ j) carry
---   loop 0 0
---
+rem_by1
+  :: PA.PrimArray Word64                      -- variable-length dividend
+  -> Word64                                   -- divisor
+  -> Word64                                   -- remainder
+rem_by1 u d = do
+  let !rec = recip_2by1 d
+      loop !j !hj
+        | j < 0 = hj
+        | otherwise = do
+            let !lj = PA.indexPrimArray u j
+                !(P _ rj) = quotrem_2by1 hj lj d rec
+            loop (j - 1) rj
+      !l  = PA.sizeofPrimArray u
+      !hl = PA.indexPrimArray u (l - 1)
+  loop (l - 2) hl
+
 -- quotrem
 --   :: PrimMonad m
 --   => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
@@ -779,6 +709,91 @@ sub_mul x x_offset y l m = do
 --
 --       !un_0 <- PA.readPrimArray un 0
 --       {-# SCC "unn_rem" #-} unn_rem 0 un_0
+
+-- x =- y * m
+-- requires (len x - x_offset) >= len y > 0
+sub_mul
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> Int
+  -> PA.PrimArray Word64
+  -> Int
+  -> Word64
+  -> m Word64
+sub_mul x x_offset y l m = do
+  let loop !j !borrow
+        | j == l = pure borrow
+        | otherwise = do
+            !x_j <- PA.readPrimArray x (j + x_offset)
+            let !y_j = PA.indexPrimArray y j
+            let !(P s carry1) = sub_b x_j borrow 0
+                !(P ph pl)    = mul_c y_j m
+                !(P t carry2) = sub_b s pl 0
+            PA.writePrimArray x (j + x_offset) t
+            loop (succ j) (ph + carry1 + carry2)
+  loop 0 0
+
+-- -- quotrem of dividend divided by word
+-- quotrem_by1
+--   :: PrimMonad m
+--   => Memory m       -- memory
+--   -> Int            -- normalized dividend offset
+--   -> Int            -- length of normalized dividend
+--   -> Int            -- normalized divisor offset
+--   -> m Word64       -- remainder
+-- quotrem_by1 (Memory buf) un_offset lun dn_offset = do
+--   d <- PA.readPrimArray buf dn_offset
+--   let rec = recip_2by1 d
+--   r0 <- PA.readPrimArray buf (un_offset + lun - 1)
+--   let loop !j !racc
+--         | j < 0 = pure racc
+--         | otherwise = do
+--             !uj <- PA.readPrimArray buf (un_offset + j)
+--             let !(P qj rnex) = quotrem_2by1 racc uj d rec
+--             PA.writePrimArray buf j qj
+--             loop (j - 1) rnex
+--   loop (lun - 2) r0
+
+-- quotrem_by1
+--   :: PrimMonad m
+--   => PA.MutablePrimArray (PrimState m) Word64
+--   -> PA.PrimArray Word64
+--   -> Word64
+--   -> m Word64
+-- quotrem_by1 quo u d = do
+--   let !rec = recip_2by1 d
+--       !lu  = PA.sizeofPrimArray u
+--       !r0  = PA.indexPrimArray u (lu - 1)
+--       loop !j !racc
+--         | j < 0 = pure racc
+--         | otherwise = do
+--             let uj = PA.indexPrimArray u j
+--                 !(P qj rnex) = quotrem_2by1 racc uj d rec
+--             PA.writePrimArray quo j qj
+--             loop (pred j) rnex
+--   loop (lu - 2) r0
+--
+-- add_to
+--   :: PrimMonad m
+--   => PA.MutablePrimArray (PrimState m) Word64
+--   -> Int
+--   -> Word256
+--   -> Int
+--   -> m Word64
+-- add_to x x_offset (Word256 y0 y1 y2 y3) l = do
+--   let loop !j !cacc
+--         | j == l = pure cacc
+--         | otherwise = do
+--             xj <- PA.readPrimArray x (j + x_offset)
+--             let !(P nex carry) = case j of
+--                   0 -> add_c xj y0 cacc
+--                   1 -> add_c xj y1 cacc
+--                   2 -> add_c xj y2 cacc
+--                   3 -> add_c xj y3 cacc
+--                   _ -> error "ppad-fixed (add_to): bad index"
+--             PA.writePrimArray x (j + x_offset) nex
+--             loop (succ j) carry
+--   loop 0 0
 --
 -- quotrem_knuth
 --   :: PrimMonad m
@@ -828,27 +843,6 @@ sub_mul x x_offset y l m = do
 --               PA.writePrimArray quo j qhat
 --             loop (pred j)
 --   loop (lu - ld - 1)
-
---
--- recip_2by1 :: Word64 -> Word64
--- recip_2by1 d = r where
---   !(P r _) = quotrem_r (B.complement d) 0xffffffffffffffff d
---
--- quotrem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> Word128
--- quotrem_2by1 uh ul d rec =
---   let !(P qh_0 ql) = mul_c rec uh
---       !(P ql_0 c)  = add_c ql ul 0
---       !(P (succ -> qh_1) _)  = add_c qh_0 uh c
---       !r = ul - qh_1 * d
---
---       !(P qh_y r_y)
---         | r > ql_0  = P (qh_1 - 1) (r + d)
---         | otherwise = P qh_1 r
---
---   in  if   r_y >= d
---       then P (qh_y + 1) (r_y - d)
---       else P qh_y r_y
---
 --
 -- div :: Word256 -> Word256 -> Word256
 -- div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)

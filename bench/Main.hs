@@ -7,7 +7,9 @@ module Main where
 import Criterion.Main
 import Data.Bits ((.|.), (.&.), (.^.))
 import qualified Data.Bits as B
+import qualified Data.Primitive.PrimArray as PA
 import qualified Data.Word.Extended as W
+import Data.Word (Word64)
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
 
@@ -21,9 +23,11 @@ multiplication = bgroup "multiplication" [
   ]
 
 division = bgroup "division" [
-    quotrem_r
-  , quot_r
+    quotrem_by1
+  , rem_by1
   , quotrem_2by1
+  , quot_r
+  , quotrem_r
   ]
 
 main :: IO ()
@@ -88,6 +92,34 @@ quotrem_2by1 = bench "quotrem_2by1" $
     nf (W.quotrem_2by1 8 4 0xFFFF_FFFF_FFFF_FF00) r
   where
     !r = W.recip_2by1 0xFFFF_FFFF_FFFF_FF00
+
+quotrem_by1 :: Benchmark
+quotrem_by1 = env setup $ \ ~(q, u, d) ->
+    bench "quotrem_by1" $
+      nfIO (W.quotrem_by1 q u d)
+  where
+    setup = do
+      qm <- PA.newPrimArray 2
+      PA.setPrimArray qm 0 2 0
+      let !u = PA.primArrayFromList [4, 8]
+          !d = B.complement 0xFF :: Word64
+      pure (qm, u, d)
+
+rem_by1 :: Benchmark
+rem_by1 = bench "rem_by1" $
+  nf (W.rem_by1 (PA.primArrayFromList [4, 8])) (B.complement 0xFF :: Word64)
+
+
+-- quotrem_by1_case0 :: H.Assertion
+-- quotrem_by1_case0 = do
+--   qm <- PA.newPrimArray 2
+--   PA.setPrimArray qm 0 2 0
+--   let !u = PA.primArrayFromList [4, 8]
+--       !d = B.complement 0xFF :: Word64
+--   r <- quotrem_by1 qm u d
+--   q <- PA.unsafeFreezePrimArray qm
+--   H.assertEqual "quotient" (PA.primArrayFromList [8, 0]) q
+--   H.assertEqual "remainder" 2052 r
 
 
 -- or_baseline :: Benchmark

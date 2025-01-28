@@ -8,6 +8,7 @@ module Main where
 
 import Data.Bits ((.|.), (.&.), (.>>.), (.^.))
 import qualified Data.Bits as B
+import qualified Data.Primitive.PrimArray as PA
 import Data.Word.Extended
 import GHC.Exts
 import GHC.Word
@@ -115,6 +116,18 @@ quotrem_2by1_case0 = do
       !o = quotrem_2by1 8 4 d (recip_2by1 d)
   H.assertEqual mempty (P 8 2052) o
 
+quotrem_by1_case0 :: H.Assertion
+quotrem_by1_case0 = do
+  qm <- PA.newPrimArray 2
+  PA.setPrimArray qm 0 2 0
+  let !u = PA.primArrayFromList [4, 8]
+      !d = B.complement 0xFF :: Word64
+  r <- quotrem_by1 qm u d
+  q <- PA.unsafeFreezePrimArray qm
+  H.assertEqual "quotient" (PA.primArrayFromList [8, 0]) q
+  H.assertEqual "remainder" 2052 r
+
+-- tests ----------------------------------------------------------------------
 
 
 
@@ -155,6 +168,7 @@ main = defaultMain $ testGroup "ppad-fixed" [
     , H.testCase "recip_2by1 matches case0" recip_2by1_case0
     , H.testCase "recip_2by1 matches case1" recip_2by1_case1
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
+    , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
     ]
   ]
 
