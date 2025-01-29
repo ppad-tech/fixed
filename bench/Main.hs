@@ -5,7 +5,6 @@
 module Main where
 
 import Criterion.Main
-import Data.Bits ((.|.), (.&.), (.^.))
 import qualified Data.Bits as B
 import qualified Data.Primitive.PrimArray as PA
 import qualified Data.Word.Extended as W
@@ -13,31 +12,39 @@ import Data.Word (Word64)
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
 
+add_sub :: Benchmark
 add_sub = bgroup "addition & subtraction" [
     add
+  , add_baseline
   , sub
+  , sub_baseline
   ]
 
+multiplication :: Benchmark
 multiplication = bgroup "multiplication" [
     mul
+  , mul_baseline
   ]
 
+division :: Benchmark
 division = bgroup "division" [
     div
   , div_baseline
   , mod
   , mod_baseline
-  , recip_2by1
-  , quotrem_by1
-  , rem_by1
-  , quotrem_2by1
-  , quot_r
-  , quotrem_r
+  -- , recip_2by1
+  -- , quotrem_by1
+  -- , rem_by1
+  -- , quotrem_2by1
+  -- , quot_r
+  -- , quotrem_r
   ]
 
 main :: IO ()
 main = defaultMain [
     division
+  , multiplication
+  , add_sub
   ]
 
 -- addition and subtraction ---------------------------------------------------
