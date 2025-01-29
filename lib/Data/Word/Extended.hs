@@ -14,51 +14,48 @@
 -- Large fixed-width words, complete with support for conversion,
 -- comparison, bitwise operations, arithmetic, and modular arithmetic.
 
--- module Data.Word.Extended (
---     Word256(..)
---   , zero
---   , one
---
---   -- * Conversion
---   , to_integer
---   , to_word256
---
---   -- * Comparison
---   , lt
---   , gt
---   , is_zero
---
---   -- * Bit Operations
---   , or
---   , and
---   , xor
---
---   -- * Arithmetic
---   , add
---   , sub
---   , mul
---   , div
---
---   -- * Modular Arithmetic
---   , mod
---
---   -- for testing/benchmarking
---   , Word128(..)
---   , quotrem
---   , quotrem_r
---   , quotrem_by1
---   , quotrem_2by1
---   , quotrem_knuth
---   , recip_2by1
---   , to_word512
---   , word512_to_integer
---   , mul_512
---   , mul_c
---   , umul_hop
---   , umul_step
---   ) where
+module Data.Word.Extended (
+    Word256(..)
+  , zero
+  , one
 
-module Data.Word.Extended where
+  -- * Conversion
+  , to_integer
+  , to_word256
+
+  -- * Comparison
+  , lt
+  , gt
+  , is_zero
+
+  -- * Bit Operations
+  , or
+  , and
+  , xor
+
+  -- * Arithmetic
+  , add
+  , sub
+  , mul
+  , div
+
+  -- * Modular Arithmetic
+  , mod
+
+  -- for testing/benchmarking
+  , Word128(..)
+  , quotrem
+  , quot_r
+  , quotrem_r
+  , quotrem_by1
+  , rem_by1
+  , quotrem_2by1
+  , quotrem_knuth
+  , recip_2by1
+  , to_word512
+  , word512_to_integer
+  , mul_c
+  ) where
 
 import Control.DeepSeq
 import Control.Monad.Primitive
@@ -69,7 +66,8 @@ import qualified Data.Primitive.PrimArray as PA
 import GHC.Exts
 import GHC.Generics
 import GHC.Word
-import Prelude hiding (div, mod, or, and)
+import Prelude hiding (div, mod, or, and, quot)
+import qualified Prelude (mod, quot)
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
@@ -642,6 +640,47 @@ rem_by1 u d = do
       !hl = PA.indexPrimArray u (l - 1)
   loop (l - 2) hl
 
+-- x =- y * m
+-- requires (len x - x_offset) >= len y > 0
+sub_mul
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> Int
+  -> PA.PrimArray Word64
+  -> Int
+  -> Word64
+  -> m Word64
+sub_mul x x_offset y l (W64# m) = do
+  let loop !j !borrow
+        | j == l = pure (W64# borrow)
+        | otherwise = do
+            !(W64# x_j) <- PA.readPrimArray x (j + x_offset)
+            let !(W64# y_j) = PA.indexPrimArray y j
+            let !(# s, carry1 #) = sub_b# x_j borrow (wordToWord64# 0##)
+                !(# ph, pl #)    = mul_c# y_j m
+                !(# t, carry2 #) = sub_b# s pl (wordToWord64# 0##)
+            PA.writePrimArray x (j + x_offset) (W64# t)
+            loop (succ j) (plusWord64# (plusWord64# ph carry1) carry2)
+  loop 0 (wordToWord64# 0##)
+
+add_to
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64
+  -> Int
+  -> PA.PrimArray Word64
+  -> Int
+  -> m Word64
+add_to x x_offset y l = do
+  let loop !j !cacc
+        | j == l = pure cacc
+        | otherwise = do
+            xj <- PA.readPrimArray x (j + x_offset)
+            let yj = PA.indexPrimArray y j
+                !(P nex carry) = add_c xj yj cacc
+            PA.writePrimArray x (j + x_offset) nex
+            loop (succ j) carry
+  loop 0 0
+
 quotrem_knuth
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64  -- quotient (potentially large)
@@ -785,52 +824,11 @@ quotrem quo u d = do
       !un_0 <- PA.readPrimArray u 0
       unn_rem 0 un_0
 
--- x =- y * m
--- requires (len x - x_offset) >= len y > 0
-sub_mul
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> Int
-  -> PA.PrimArray Word64
-  -> Int
-  -> Word64
-  -> m Word64
-sub_mul x x_offset y l m = do
-  let loop !j !borrow
-        | j == l = pure borrow
-        | otherwise = do
-            !x_j <- PA.readPrimArray x (j + x_offset)
-            let !y_j = PA.indexPrimArray y j
-            let !(P s carry1) = sub_b x_j borrow 0
-                !(P ph pl)    = mul_c y_j m
-                !(P t carry2) = sub_b s pl 0
-            PA.writePrimArray x (j + x_offset) t
-            loop (succ j) (ph + carry1 + carry2)
-  loop 0 0
-
-add_to
-  :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64
-  -> Int
-  -> PA.PrimArray Word64
-  -> Int
-  -> m Word64
-add_to x x_offset y l = do
-  let loop !j !cacc
-        | j == l = pure cacc
-        | otherwise = do
-            xj <- PA.readPrimArray x (j + x_offset)
-            let yj = PA.indexPrimArray y j
-                !(P nex carry) = add_c xj yj cacc
-            PA.writePrimArray x (j + x_offset) nex
-            loop (succ j) carry
-  loop 0 0
-
 div :: Word256 -> Word256 -> Word256
 div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | is_zero d || d `gt` u = zero -- ?
   | u == d                = one
-  | is_word64 u           = Word256 (u0 `quot` d0) 0 0 0
+  | is_word64 u           = Word256 (u0 `Prelude.quot` d0) 0 0 0
   | otherwise = runST $ do
       -- allocate quotient
       quo <- PA.newPrimArray 4
@@ -857,7 +855,7 @@ mod :: Word256 -> Word256 -> Word256
 mod u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | is_zero d || d `gt` u = zero -- ?
   | u == d                = one
-  | is_word64 u           = Word256 (u0 `quot` d0) 0 0 0
+  | is_word64 u           = Word256 (u0 `Prelude.mod` d0) 0 0 0
   | otherwise = runST $ do
       -- allocate quotient
       quo <- PA.newPrimArray 4
