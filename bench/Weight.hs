@@ -38,6 +38,8 @@ main = W.mainWith $ do
     W.func "quotrem_2by1" (E.quotrem_2by1 8 4 0xffffffffffffffff) r
     W.func "div (baseline)" (Prelude.div i2) i3
     W.func "div" (E.div w2) w3
+    W.func "mod (baseline)" (Prelude.mod i2) i3
+    W.func "mod" (E.mod w2) w3
   where
     !r = E.recip_2by1 0xFFFF_FFFF_FFFF_FF00
 

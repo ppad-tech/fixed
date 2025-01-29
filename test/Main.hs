@@ -13,7 +13,7 @@ import Data.Word.Extended
 import GHC.Exts
 import GHC.Word
 import Prelude hiding (and, or, div, mod)
-import qualified Prelude (div)
+import qualified Prelude (div, rem)
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
@@ -106,7 +106,7 @@ div_matches (DivMonotonic (a, b)) =
 mod_matches :: DivMonotonic -> Bool
 mod_matches (DivMonotonic (a, b)) =
   let !left = to_word256 a `mod` to_word256 b
-      !rite = to_word256 (a `rem` b)
+      !rite = to_word256 (a `Prelude.rem` b)
   in  left == rite
 
 quotrem_r_case0 :: H.Assertion
