@@ -833,12 +833,13 @@ div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
       -- allocate quotient
       quo <- PA.newPrimArray 4
       PA.setPrimArray quo 0 4 0
-      -- allocate dividend
-      u_arr <- PA.newPrimArray 4
+      -- allocate dividend, leaving enough space for normalization
+      u_arr <- PA.newPrimArray 5
       PA.writePrimArray u_arr 0 u0
       PA.writePrimArray u_arr 1 u1
       PA.writePrimArray u_arr 2 u2
       PA.writePrimArray u_arr 3 u3
+      -- last index of u_hot intentionally unset
       _ <- quotrem quo u_arr d
       q0 <- PA.readPrimArray quo 0
       q1 <- PA.readPrimArray quo 1
