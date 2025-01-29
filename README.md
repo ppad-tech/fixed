@@ -95,18 +95,18 @@ Current benchmark figures on my mid-2020 MacBook Air look like (use
   variance introduced by outliers: 54% (severely inflated)
 
   benchmarking division/div
-  time                 90.87 ns   (89.74 ns .. 92.07 ns)
-                       0.999 R²   (0.999 R² .. 0.999 R²)
-  mean                 91.45 ns   (90.43 ns .. 92.55 ns)
-  std dev              3.503 ns   (2.899 ns .. 4.626 ns)
-  variance introduced by outliers: 59% (severely inflated)
+  time                 81.94 ns   (81.11 ns .. 82.84 ns)
+                       0.999 R²   (0.999 R² .. 1.000 R²)
+  mean                 81.97 ns   (81.43 ns .. 82.89 ns)
+  std dev              2.422 ns   (1.696 ns .. 3.578 ns)
+  variance introduced by outliers: 46% (moderately inflated)
 
   benchmarking division/div (baseline)
-  time                 77.31 ns   (76.25 ns .. 78.93 ns)
-                       0.998 R²   (0.997 R² .. 0.999 R²)
-  mean                 78.42 ns   (77.56 ns .. 79.76 ns)
-  std dev              3.492 ns   (2.790 ns .. 4.688 ns)
-  variance introduced by outliers: 66% (severely inflated)
+  time                 72.08 ns   (71.26 ns .. 72.89 ns)
+                       0.999 R²   (0.999 R² .. 0.999 R²)
+  mean                 72.35 ns   (71.52 ns .. 73.15 ns)
+  std dev              2.566 ns   (2.203 ns .. 3.044 ns)
+  variance introduced by outliers: 55% (severely inflated)
 
   benchmarking division/mod
   time                 106.6 ns   (105.7 ns .. 107.5 ns)

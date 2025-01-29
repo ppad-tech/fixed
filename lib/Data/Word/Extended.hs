@@ -61,7 +61,6 @@ module Data.Word.Extended (
   ) where
 
 import Control.DeepSeq
-import Control.Monad (void)
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
@@ -765,6 +764,7 @@ normalize_divisor (Word256 d0 d1 d2 d3) = do
   dn_0 <- norm (dlen - 1) d_last
   d_final <- PA.unsafeFreezePrimArray dn
   pure (d_final, shift, dn_0)
+{-# INLINE normalize_divisor #-}
 
 quotrem
   :: PrimMonad m
@@ -827,19 +827,21 @@ quotrem quo u d = do
 
       !un_0 <- PA.readPrimArray u 0
       unn_rem 0 un_0
+{-# INLINE quotrem #-}
 
 quot
   :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
+  => PA.MutablePrimArray (PrimState m) Word64 -- quotient
   -> PA.MutablePrimArray (PrimState m) Word64 -- unnormalized dividend
   -> Word256                                  -- unnormalized divisor
-  -> m ()
+  -> m Int                                    -- length of quotient
 quot quo u d = do
   -- normalize divisor
   !(dn, shift, dn_0) <- normalize_divisor d
   let !dlen = PA.sizeofPrimArray dn
 
   -- get size of normalized dividend
+  -- XX extract this
   !lu <- PA.getSizeofMutablePrimArray u
   !ulen <- let loop !j
                  | j < 0 = pure 0
@@ -848,9 +850,10 @@ quot quo u d = do
                     if uj /= 0 then pure (j + 1) else loop (j - 1)
            in  loop (lu - 2) -- don't touch the uninitialized word
   if   ulen < dlen
-  then pure ()
+  then pure 0
   else do
     -- normalize dividend
+    -- XX extract this
     u_hi <- PA.readPrimArray u (ulen - 1)
     PA.writePrimArray u ulen (u_hi .>>. (64 - shift))
     let normalize_u !j !uj
@@ -866,9 +869,12 @@ quot quo u d = do
     then do
      -- normalized divisor is small
       !un <- PA.unsafeFreezePrimArray u
-      void (quotrem_by1 quo un dn_0)
-    else
+      _ <- quotrem_by1 quo un dn_0
+      pure ulen
+    else do
       quotrem_knuth quo u (ulen + 1) dn
+      pure (ulen + 1 - dlen)
+{-# INLINE quot #-}
 
 div :: Word256 -> Word256 -> Word256
 div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
@@ -878,7 +884,6 @@ div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | otherwise = runST $ do
       -- allocate quotient
       quo <- PA.newPrimArray 4
-      PA.setPrimArray quo 0 4 0
       -- allocate dividend, leaving enough space for normalization
       u_arr <- PA.newPrimArray 5
       PA.writePrimArray u_arr 0 u0
@@ -886,12 +891,27 @@ div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
       PA.writePrimArray u_arr 2 u2
       PA.writePrimArray u_arr 3 u3
       -- last index of u_hot intentionally unset
-      quot quo u_arr d
-      q0 <- PA.readPrimArray quo 0
-      q1 <- PA.readPrimArray quo 1
-      q2 <- PA.readPrimArray quo 2
-      q3 <- PA.readPrimArray quo 3
-      pure (Word256 q0 q1 q2 q3)
+      l <- quot quo u_arr d
+      case l of
+        1 -> do
+          q0 <- PA.readPrimArray quo 0
+          pure (Word256 q0 0 0 0)
+        2 -> do
+          q0 <- PA.readPrimArray quo 0
+          q1 <- PA.readPrimArray quo 1
+          pure (Word256 q0 q1 0 0)
+        3 -> do
+          q0 <- PA.readPrimArray quo 0
+          q1 <- PA.readPrimArray quo 1
+          q2 <- PA.readPrimArray quo 2
+          pure (Word256 q0 q1 q2 0)
+        4 -> do
+          q0 <- PA.readPrimArray quo 0
+          q1 <- PA.readPrimArray quo 1
+          q2 <- PA.readPrimArray quo 2
+          q3 <- PA.readPrimArray quo 3
+          pure (Word256 q0 q1 q2 q3)
+        _ -> error "ppad-fixed (quot): invalid quotient length"
 
 -- | Modulo operation on 'Word256' values.
 --
@@ -905,7 +925,7 @@ mod u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | otherwise = runST $ do
       -- allocate quotient
       quo <- PA.newPrimArray 4
-      PA.setPrimArray quo 0 4 0
+      PA.setPrimArray quo 0 4 0 -- XX avoid
       -- allocate dividend, leaving enough space for normalization
       u_hot <- PA.newPrimArray 5
       PA.writePrimArray u_hot 0 u0

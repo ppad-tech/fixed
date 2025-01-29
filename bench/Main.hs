@@ -42,9 +42,9 @@ division = bgroup "division" [
 
 main :: IO ()
 main = defaultMain [
-    add_sub
-  , multiplication
-  , division
+  --  add_sub
+  --, multiplication
+    division
   ]
 
 -- addition and subtraction ---------------------------------------------------
