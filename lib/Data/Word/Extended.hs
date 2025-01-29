@@ -725,7 +725,6 @@ quotrem quo u (Word256 d0 d1 d2 d3) = do
   else do
     -- normalize dividend
     !un <- PA.newPrimArray (ulen + 1)
-    PA.setPrimArray un 0 (ulen + 1) 0
     let u_hi = PA.indexPrimArray u (ulen - 1)
     PA.writePrimArray un ulen (u_hi .>>. (64 - shift))
     let normalize_u !j !uj
@@ -815,7 +814,6 @@ div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
       PA.setPrimArray quo 0 4 0
       -- allocate dividend
       u_arr <- PA.newPrimArray 4
-      PA.setPrimArray u_arr 0 4 0
       PA.writePrimArray u_arr 0 u0
       PA.writePrimArray u_arr 1 u1
       PA.writePrimArray u_arr 2 u2
@@ -843,7 +841,6 @@ mod u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
       PA.setPrimArray quo 0 4 0
       -- allocate dividend
       u_arr <- PA.newPrimArray 4
-      PA.setPrimArray u_arr 0 4 0
       PA.writePrimArray u_arr 0 u0
       PA.writePrimArray u_arr 1 u1
       PA.writePrimArray u_arr 2 u2
