@@ -55,9 +55,13 @@ module Data.Word.Extended (
   , to_word512
   , word512_to_integer
   , mul_c
+  , mul_c#
+  , umul_hop#
+  , umul_step#
   ) where
 
 import Control.DeepSeq
+import Control.Monad (void)
 import Control.Monad.Primitive
 import Control.Monad.ST
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.), (.^.))
@@ -824,6 +828,48 @@ quotrem quo u d = do
       !un_0 <- PA.readPrimArray u 0
       unn_rem 0 un_0
 
+quot
+  :: PrimMonad m
+  => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
+  -> PA.MutablePrimArray (PrimState m) Word64 -- unnormalized dividend
+  -> Word256                                  -- unnormalized divisor
+  -> m ()
+quot quo u d = do
+  -- normalize divisor
+  !(dn, shift, dn_0) <- normalize_divisor d
+  let !dlen = PA.sizeofPrimArray dn
+
+  -- get size of normalized dividend
+  !lu <- PA.getSizeofMutablePrimArray u
+  !ulen <- let loop !j
+                 | j < 0 = pure 0
+                 | otherwise = do
+                    uj <- PA.readPrimArray u j
+                    if uj /= 0 then pure (j + 1) else loop (j - 1)
+           in  loop (lu - 2) -- don't touch the uninitialized word
+  if   ulen < dlen
+  then pure ()
+  else do
+    -- normalize dividend
+    u_hi <- PA.readPrimArray u (ulen - 1)
+    PA.writePrimArray u ulen (u_hi .>>. (64 - shift))
+    let normalize_u !j !uj
+          | j == 0 =
+              PA.writePrimArray u 0 (uj .<<. shift)
+          | otherwise = do
+              !uj_1 <- PA.readPrimArray u (j - 1)
+              PA.writePrimArray u j $
+                (uj .<<. shift) .|. (uj_1 .>>. (64 - shift))
+              normalize_u (j - 1) uj_1
+    normalize_u (ulen - 1) u_hi
+    if   dlen == 1
+    then do
+     -- normalized divisor is small
+      !un <- PA.unsafeFreezePrimArray u
+      void (quotrem_by1 quo un dn_0)
+    else
+      quotrem_knuth quo u (ulen + 1) dn
+
 div :: Word256 -> Word256 -> Word256
 div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | is_zero d || d `gt` u = zero -- ?
@@ -840,7 +886,7 @@ div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
       PA.writePrimArray u_arr 2 u2
       PA.writePrimArray u_arr 3 u3
       -- last index of u_hot intentionally unset
-      _ <- quotrem quo u_arr d
+      quot quo u_arr d
       q0 <- PA.readPrimArray quo 0
       q1 <- PA.readPrimArray quo 1
       q2 <- PA.readPrimArray quo 2

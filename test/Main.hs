@@ -18,6 +18,10 @@ import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
 
+fi :: (Integral a, Num b) => a -> b
+fi = fromIntegral
+{-# INLINE fi #-}
+
 instance Q.Arbitrary Word256 where
   arbitrary = do
     w0 <- Q.arbitrary
