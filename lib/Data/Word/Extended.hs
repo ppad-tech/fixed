@@ -38,9 +38,6 @@ module Data.Word.Extended (
   , sub
   , mul
   , div
-  , rem
-
-  -- * Modular Arithmetic
   , mod
 
   -- for testing/benchmarking
@@ -53,8 +50,6 @@ module Data.Word.Extended (
   , quotrem_2by1
   , quotrem_knuth
   , recip_2by1
-  , to_word512
-  , word512_to_integer
   , mul_c
   , mul_c#
   , umul_hop#
@@ -77,7 +72,7 @@ fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
 
--- word256, word512 -----------------------------------------------------------
+-- word256 --------------------------------------------------------------------
 
 -- | Little-endian Word256.
 data Word256 = Word256
@@ -92,20 +87,6 @@ instance NFData Word256
 instance Show Word256 where
   show = show . to_integer
 
--- | Little-endian Word512.
-data Word512 = Word512
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
-
-instance NFData Word512
-
 -- utility words ------------------------------------------------------------
 
 data Word128 = P
@@ -114,48 +95,6 @@ data Word128 = P
   deriving (Eq, Show, Generic)
 
 instance NFData Word128
-
-data Word320 = Word320
-  !Word256
-  {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
-
-instance NFData Word320
-
-data Word576 = Word576
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
-
-instance NFData Word576
-
-data Word640 = Word640
-  {-# UNPACK #-} !Word576
-  {-# UNPACK #-} !Word64
-  deriving (Eq, Show, Generic)
-
-instance NFData Word640
-
-data Word832 = Word832
-  {-# UNPACK #-} !Word576
-  {-# UNPACK #-} !Word256
-  deriving (Eq, Show, Generic)
-
-instance NFData Word832
-
-data Word1152 = Word1152
-  {-# UNPACK #-} !Word576
-  {-# UNPACK #-} !Word576
-  deriving (Eq, Show, Generic)
-
-instance NFData Word1152
 
 -- conversion -----------------------------------------------------------------
 
@@ -183,30 +122,6 @@ to_word256 n =
       !w2 = fi ((n .>>. 128) .&. mask64)
       !w3 = fi ((n .>>. 192) .&. mask64)
   in  Word256 w0 w1 w2 w3
-
-word512_to_integer :: Word512 -> Integer
-word512_to_integer (Word512 w0 w1 w2 w3 w4 w5 w6 w7) =
-      fi w7 .<<. 448
-  .|. fi w6 .<<. 384
-  .|. fi w5 .<<. 320
-  .|. fi w4 .<<. 256
-  .|. fi w3 .<<. 192
-  .|. fi w2 .<<. 128
-  .|. fi w1 .<<. 64
-  .|. fi w0
-
-to_word512 :: Integer -> Word512
-to_word512 n =
-  let !mask64 = 2 ^ (64 :: Int) - 1
-      !w0 = fi (n .&. mask64)
-      !w1 = fi ((n .>>. 64) .&. mask64)
-      !w2 = fi ((n .>>. 128) .&. mask64)
-      !w3 = fi ((n .>>. 192) .&. mask64)
-      !w4 = fi ((n .>>. 256) .&. mask64)
-      !w5 = fi ((n .>>. 320) .&. mask64)
-      !w6 = fi ((n .>>. 384) .&. mask64)
-      !w7 = fi ((n .>>. 448) .&. mask64)
-  in  Word512 w0 w1 w2 w3 w4 w5 w6 w7
 
 -- comparison -----------------------------------------------------------------
 
