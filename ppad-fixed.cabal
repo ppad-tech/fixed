@@ -89,4 +89,5 @@ executable fixed-profile
       base
     , criterion
     , ppad-fixed
+    , primitive
 

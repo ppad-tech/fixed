@@ -2,25 +2,33 @@
 
 module Main where
 
+import qualified Data.Primitive.PrimArray as PA
 import Data.Word.Extended
 
 main :: IO ()
-main = pure ()
---main :: IO ()
---main = do
---  let !u = Word576
---        5152276743337338587
---        6823823105342984773
---        12649096328525870222
---        8811572179372364942
---        0 0 0 0 0
---
---      !d = Word256
---          8849385646123010679
---          653197174784954101
---          1286679968202709238
---          3741537094902495500
---
---  let foo = quotrem u d
---  print foo
---
+main = do
+  let !u = PA.primArrayFromList [
+          5152276743337338587
+        , 6823823105342984773
+        , 12649096328525870222
+        , 8811572179372364942
+        ]
+      !d = Word256
+          8849385646123010679
+          653197174784954101
+          1286679968202709238
+          3741537094902495500
+
+  quo <- PA.newPrimArray 5
+  let go !j _
+        | j == 50000 = pure ()
+        | otherwise = do
+            PA.setPrimArray quo 0 5 0
+            w <- quotrem quo u d
+            go (succ j) w
+
+  r <- go (0 :: Int) (PA.primArrayFromList [0, 0, 0, 0])
+  q <- PA.unsafeFreezePrimArray quo
+  print r
+  print q
+
