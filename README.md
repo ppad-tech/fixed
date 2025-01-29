@@ -48,91 +48,79 @@ code. Most operations beat out their variable-length Integer variants,
 *but*, we have yet to reach parity with the all-important division and
 modulo operations.
 
-There are a few ways I can imagine this being improved:
-
-* Extremely careful use of Data.Primitive.PrimArray can likely beat
-  the pure code that currently implements most of the library. A
-  single allocation of a maximum 21-long mutable PrimArray is not
-  terribly expensive. In particular finding a remainder, e.g. for
-  modulo, requires comparatively few expensive writes.
-
-  We require, for cases like modular multplication, at most 8 elements
-  for the quotient, 9 elements for the dividend/normalized dividend
-  (i.e. reusing the same area for both), and 8 elements for the
-  divisor/normalized divisor (ditto), assuming we stick with Knuth's division
-  algorithm. In other situations, e.g. division or modulo, we need less.
-
-* Avoid unnecessarily calculating the quotient or remainder if only one
-  of the two is desired.
-
-* It's possible that manually writing internals using primitives (think
-  MagicHash, UnboxedTuples, GHC.Exts) could yield an improvement; I've
-  noticed that GHC doesn't always unbox everything automatically. This
-  is possibly due to register contention, though, so it could also
-  potentially degrade performance.
-
-* An alternative division algorithm might be worth looking into, if it
-  proves to be impossible to squeeze more out of Knuth's.
-
 Current benchmark figures on my mid-2020 MacBook Air look like (use
 `cabal bench` to run the benchmark suite):
 
 ```
-  benchmarking baseline comparison/add (baseline)
-  time                 24.60 ns   (24.42 ns .. 24.78 ns)
-                       1.000 R²   (1.000 R² .. 1.000 R²)
-  mean                 24.69 ns   (24.56 ns .. 24.81 ns)
-  std dev              438.0 ps   (373.9 ps .. 550.6 ps)
-  variance introduced by outliers: 25% (moderately inflated)
-
-  benchmarking baseline comparison/add
-  time                 13.72 ns   (13.46 ns .. 13.97 ns)
-                       0.998 R²   (0.998 R² .. 0.999 R²)
-  mean                 13.53 ns   (13.39 ns .. 13.70 ns)
-  std dev              513.9 ps   (413.5 ps .. 660.9 ps)
-  variance introduced by outliers: 61% (severely inflated)
-
-  benchmarking baseline comparison/sub (baseline)
-  time                 31.59 ns   (31.34 ns .. 31.93 ns)
-                       0.999 R²   (0.998 R² .. 0.999 R²)
-  mean                 32.32 ns   (31.86 ns .. 33.06 ns)
-  std dev              1.987 ns   (1.383 ns .. 2.990 ns)
+  benchmarking addition & subtraction/add
+  time                 11.20 ns   (11.11 ns .. 11.30 ns)
+                       0.999 R²   (0.999 R² .. 1.000 R²)
+  mean                 11.47 ns   (11.32 ns .. 11.75 ns)
+  std dev              679.6 ps   (380.7 ps .. 1.038 ns)
   variance introduced by outliers: 80% (severely inflated)
 
-  benchmarking baseline comparison/sub
-  time                 12.34 ns   (12.16 ns .. 12.53 ns)
-                       0.999 R²   (0.998 R² .. 0.999 R²)
-  mean                 12.39 ns   (12.26 ns .. 12.53 ns)
-  std dev              446.6 ps   (366.2 ps .. 547.7 ps)
-  variance introduced by outliers: 59% (severely inflated)
+  benchmarking addition & subtraction/add (baseline)
+  time                 25.09 ns   (24.36 ns .. 26.00 ns)
+                       0.991 R²   (0.981 R² .. 0.998 R²)
+  mean                 24.81 ns   (24.27 ns .. 25.85 ns)
+  std dev              2.408 ns   (1.289 ns .. 4.439 ns)
+  variance introduced by outliers: 91% (severely inflated)
 
-  benchmarking baseline comparison/mul (baseline)
-  time                 48.55 ns   (47.05 ns .. 51.12 ns)
-                       0.990 R²   (0.973 R² .. 0.999 R²)
-  mean                 47.76 ns   (47.02 ns .. 49.82 ns)
-  std dev              3.797 ns   (1.911 ns .. 7.726 ns)
-  variance introduced by outliers: 87% (severely inflated)
-
-  benchmarking baseline comparison/mul
-  time                 30.70 ns   (30.35 ns .. 31.03 ns)
-                       0.999 R²   (0.998 R² .. 0.999 R²)
-  mean                 30.81 ns   (30.46 ns .. 31.23 ns)
-  std dev              1.286 ns   (991.8 ps .. 1.903 ns)
+  benchmarking addition & subtraction/sub
+  time                 11.51 ns   (11.42 ns .. 11.63 ns)
+                       0.999 R²   (0.999 R² .. 1.000 R²)
+  mean                 11.66 ns   (11.54 ns .. 11.81 ns)
+  std dev              475.9 ps   (350.7 ps .. 642.7 ps)
   variance introduced by outliers: 65% (severely inflated)
 
-  benchmarking baseline comparison/div (baseline)
-  time                 81.75 ns   (80.71 ns .. 82.84 ns)
-                       0.998 R²   (0.998 R² .. 0.999 R²)
-  mean                 82.12 ns   (81.11 ns .. 83.44 ns)
-  std dev              3.844 ns   (3.209 ns .. 4.565 ns)
-  variance introduced by outliers: 68% (severely inflated)
+  benchmarking addition & subtraction/sub (baseline)
+  time                 31.93 ns   (31.71 ns .. 32.13 ns)
+                       1.000 R²   (0.999 R² .. 1.000 R²)
+  mean                 31.65 ns   (31.39 ns .. 31.89 ns)
+  std dev              841.0 ps   (710.8 ps .. 1.002 ns)
+  variance introduced by outliers: 42% (moderately inflated)
 
-  benchmarking baseline comparison/div
-  time                 182.2 ns   (178.8 ns .. 185.3 ns)
-                       0.997 R²   (0.996 R² .. 0.998 R²)
-  mean                 182.9 ns   (179.3 ns .. 186.3 ns)
-  std dev              11.07 ns   (9.342 ns .. 13.50 ns)
-  variance introduced by outliers: 77% (severely inflated)
+  benchmarking multiplication/mul
+  time                 29.41 ns   (29.06 ns .. 29.84 ns)
+                       0.995 R²   (0.988 R² .. 0.999 R²)
+  mean                 30.50 ns   (29.58 ns .. 33.10 ns)
+  std dev              4.628 ns   (1.452 ns .. 9.437 ns)
+  variance introduced by outliers: 96% (severely inflated)
+
+  benchmarking multiplication/mul (baseline)
+  time                 46.08 ns   (45.71 ns .. 46.43 ns)
+                       0.999 R²   (0.999 R² .. 1.000 R²)
+  mean                 46.12 ns   (45.65 ns .. 46.56 ns)
+  std dev              1.564 ns   (1.218 ns .. 2.063 ns)
+  variance introduced by outliers: 54% (severely inflated)
+
+  benchmarking division/div
+  time                 90.87 ns   (89.74 ns .. 92.07 ns)
+                       0.999 R²   (0.999 R² .. 0.999 R²)
+  mean                 91.45 ns   (90.43 ns .. 92.55 ns)
+  std dev              3.503 ns   (2.899 ns .. 4.626 ns)
+  variance introduced by outliers: 59% (severely inflated)
+
+  benchmarking division/div (baseline)
+  time                 77.31 ns   (76.25 ns .. 78.93 ns)
+                       0.998 R²   (0.997 R² .. 0.999 R²)
+  mean                 78.42 ns   (77.56 ns .. 79.76 ns)
+  std dev              3.492 ns   (2.790 ns .. 4.688 ns)
+  variance introduced by outliers: 66% (severely inflated)
+
+  benchmarking division/mod
+  time                 106.6 ns   (105.7 ns .. 107.5 ns)
+                       0.999 R²   (0.999 R² .. 0.999 R²)
+  mean                 107.9 ns   (106.5 ns .. 109.2 ns)
+  std dev              4.520 ns   (3.705 ns .. 6.013 ns)
+  variance introduced by outliers: 63% (severely inflated)
+
+  benchmarking division/mod (baseline)
+  time                 77.94 ns   (76.87 ns .. 79.02 ns)
+                       0.998 R²   (0.998 R² .. 0.999 R²)
+  mean                 78.50 ns   (77.49 ns .. 79.74 ns)
+  std dev              3.694 ns   (2.729 ns .. 5.235 ns)
+  variance introduced by outliers: 68% (severely inflated)
 ```
 
 ## Security
