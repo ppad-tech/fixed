@@ -770,15 +770,17 @@ quotrem quo u d = do
     else do
       quotrem_knuth quo u (ulen + 1) dn
       -- unnormalize remainder
-      let unn_rem !j !un_j
+      let unn_rem !j !unj
             | j == dlen = do
-                PA.writePrimArray u (j - 1) (un_j .>>. shift)
+                PA.unsafeFreezePrimArray u
+            | j + 1 == ulen = do
+                PA.writePrimArray u j (unj .>>. shift)
                 PA.unsafeFreezePrimArray u
             | otherwise = do
-                !un_j_1 <- PA.readPrimArray u (j + 1)
-                let !unn_j = (un_j .>>. shift) .|. (un_j_1 .<<. (64 - shift))
-                PA.writePrimArray u j unn_j
-                unn_rem (j + 1) un_j_1
+                !unj_1 <- PA.readPrimArray u (j + 1)
+                PA.writePrimArray u j $
+                  (unj .>>. shift) .|. (unj_1 .<<. (64 - shift))
+                unn_rem (j + 1) unj_1
 
       !un_0 <- PA.readPrimArray u 0
       unn_rem 0 un_0
