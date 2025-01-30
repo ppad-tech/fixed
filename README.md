@@ -1,7 +1,7 @@
 # ppad-fixed
 
-A pure (**pre-release**, under construction) implementation of large
-fixed-width integers and supporting operations.
+A pure (**pre-release**, under construction, not-yet-constant-time)
+implementation of large fixed-width integers and supporting operations.
 
 ## Usage
 
