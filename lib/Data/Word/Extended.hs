@@ -54,6 +54,7 @@ module Data.Word.Extended (
   , mul_c#
   , umul_hop#
   , umul_step#
+  , mul_512#
   ) where
 
 import Control.DeepSeq
@@ -350,6 +351,33 @@ mul (Word256 (W64# a0) (W64# a1) (W64# a2) (W64# a3))
                  (plusWord64# (timesWord64# a1 b2)
                    (plusWord64# c0_2 (plusWord64# c1_1 c2)))))
   in  Word256 (W64# s0) (W64# s1) (W64# s2) (W64# s3)
+
+-- full 256-bit x 256-bit -> 512-bit multiplication
+mul_512#
+  :: (# Word64#, Word64#, Word64#, Word64# #)
+  -> (# Word64#, Word64#, Word64#, Word64# #)
+  -> (# Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64# #)
+mul_512# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
+  let !(# c4_0,   r0 #) = mul_c#    x0 y0
+      !(# c4_1, r0_1 #) = umul_hop# c4_0 x1 y0
+      !(# c4_2, r0_2 #) = umul_hop# c4_1 x2 y0
+      !(# c4,   r0_3 #) = umul_hop# c4_2 x3 y0
+
+      !(# c5_0,   r1 #) = umul_hop#  r0_1 x0 y1
+      !(# c5_1, r1_2 #) = umul_step# r0_2 x1 y1 c5_0
+      !(# c5_2, r1_3 #) = umul_step# r0_3 x2 y1 c5_1
+      !(# c5,   r1_4 #) = umul_step# c4 x3 y1 c5_2
+
+      !(# c6_0,   r2 #) = umul_hop#  r1_2 x0 y2
+      !(# c6_1, r2_3 #) = umul_step# r1_3 x1 y2 c6_0
+      !(# c6_2, r2_4 #) = umul_step# r1_4 x2 y2 c6_1
+      !(# c6,   r2_5 #) = umul_step# c5 x3 y2 c6_2
+
+      !(# c7_0,   r3 #) = umul_hop#  r2_3 x0 y3
+      !(# c7_1,   r4 #) = umul_step# r2_4 x1 y3 c7_0
+      !(# c7_2,   r5 #) = umul_step# r2_5 x2 y3 c7_1
+      !(# r7,     r6 #) = umul_step# c6 x3 y3 c7_2
+  in  (# r0, r1, r2, r3, r4, r5, r6, r7 #)
 
 -- division -------------------------------------------------------------------
 
