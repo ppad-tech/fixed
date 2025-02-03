@@ -6,7 +6,7 @@
 
 module Main where
 
-import Data.Bits ((.|.), (.&.), (.>>.), (.^.))
+import Data.Bits ((.|.), (.&.), (.>>.), (.<<.), (.^.))
 import qualified Data.Bits as B
 import qualified Data.Primitive.PrimArray as PA
 import Data.Word.Extended
@@ -21,6 +21,34 @@ import qualified Test.Tasty.QuickCheck as Q
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
+
+to_word512
+  :: Integer
+  -> (# Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64# #)
+to_word512 n =
+  let !mask64 = 2 ^ (64 :: Int) - 1
+      !(W64# w0) = fi (n .&. mask64)
+      !(W64# w1) = fi ((n .>>. 64) .&. mask64)
+      !(W64# w2) = fi ((n .>>. 128) .&. mask64)
+      !(W64# w3) = fi ((n .>>. 192) .&. mask64)
+      !(W64# w4) = fi ((n .>>. 256) .&. mask64)
+      !(W64# w5) = fi ((n .>>. 320) .&. mask64)
+      !(W64# w6) = fi ((n .>>. 384) .&. mask64)
+      !(W64# w7) = fi ((n .>>. 448) .&. mask64)
+  in  (# w0, w1, w2, w3, w4, w5, w6, w7 #)
+
+word512_to_integer
+  :: (# Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64#, Word64# #)
+  -> Integer
+word512_to_integer (# w0, w1, w2, w3, w4, w5, w6, w7 #) =
+      fi (W64# w7) .<<. 448
+  .|. fi (W64# w6) .<<. 384
+  .|. fi (W64# w5) .<<. 320
+  .|. fi (W64# w4) .<<. 256
+  .|. fi (W64# w3) .<<. 192
+  .|. fi (W64# w2) .<<. 128
+  .|. fi (W64# w1) .<<. 64
+  .|. fi (W64# w0)
 
 instance Q.Arbitrary Word256 where
   arbitrary = do
@@ -94,6 +122,15 @@ mul_lo_matches (Q.NonNegative a) (Q.NonNegative b) =
       !b_lo = b .&. mask128
 
   in  to_word256 a_lo `mul` to_word256 b_lo == to_word256 (a_lo * b_lo)
+
+mul_512_matches :: Q.NonNegative Integer -> Q.NonNegative Integer -> Bool
+mul_512_matches (Q.NonNegative a) (Q.NonNegative b) =
+  let !(Word256 (W64# a0) (W64# a1) (W64# a2) (W64# a3)) = to_word256 a
+      !(Word256 (W64# b0) (W64# b1) (W64# b2) (W64# b3)) = to_word256 b
+      !left = word512_to_integer $
+        (# a0, a1, a2, a3 #) `mul_512#` (# b0, b1, b2, b3 #)
+      !rite = a * b
+  in  left == rite
 
 -- division ------------------------------
 
@@ -171,7 +208,13 @@ multiplication = testGroup "arithmetic" [
       Q.withMaxSuccess 1000 umul_step_predicate_holds
   , Q.testProperty "mul matches (nonneg, low bits)" $
       Q.withMaxSuccess 1000 mul_lo_matches
-  , Q.testProperty "division matches" $
+  , Q.testProperty "mul_512# matches" $
+      Q.withMaxSuccess 1000 mul_512_matches
+  ]
+
+division :: TestTree
+division = testGroup "division" [
+    Q.testProperty "division matches" $
       Q.withMaxSuccess 1000 div_matches
   , Q.testProperty "mod matches" $
       Q.withMaxSuccess 1000 mod_matches
@@ -182,6 +225,7 @@ main = defaultMain $ testGroup "ppad-fixed" [
     testGroup "property tests" [
       add_sub
     , multiplication
+    , division
     ]
   , testGroup "unit tests" [
       H.testCase "quotrem_r matches case0" quotrem_r_case0
