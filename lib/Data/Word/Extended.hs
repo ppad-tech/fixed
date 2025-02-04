@@ -617,6 +617,34 @@ sub_mul x x_offset y l (W64# m) = do
             loop (succ j) (plusWord64# (plusWord64# ph carry1) carry2)
   loop 0 (wordToWord64# 0##)
 
+sub_mul#
+  :: (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 320-bit dividend
+  -> (# Word64#, Word64#, Word64#, Word64# #)          -- 256-bit divisor
+  -> Word64#                                           -- 64-bit multiplier
+  -> (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 256b diff, 64b rem
+sub_mul# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) m =
+  let !(# s_0,  c1_0 #) = sub_b# u0 (wordToWord64# 0##) (wordToWord64# 0##)
+      !(# ph_0, pl_0 #) = mul_c# d0 m
+      !(# t_0, c2_0 #)  = sub_b# s_0 pl_0 (wordToWord64# 0##)
+      !b_0              = plusWord64# (plusWord64# ph_0 c1_0) c2_0
+
+      !(# s_1,  c1_1 #) = sub_b# u1 b_0 (wordToWord64# 0##)
+      !(# ph_1, pl_1 #) = mul_c# d1 m
+      !(# t_1, c2_1 #)  = sub_b# s_1 pl_1 (wordToWord64# 0##)
+      !b_1              = plusWord64# (plusWord64# ph_1 c1_1) c2_1
+
+      !(# s_2,  c1_2 #) = sub_b# u2 b_1 (wordToWord64# 0##)
+      !(# ph_2, pl_2 #) = mul_c# d2 m
+      !(# t_2, c2_2 #)  = sub_b# s_2 pl_2 (wordToWord64# 0##)
+      !b_2              = plusWord64# (plusWord64# ph_2 c1_2) c2_2
+
+      !(# s_3,  c1_3 #) = sub_b# u3 b_2 (wordToWord64# 0##)
+      !(# ph_3, pl_3 #) = mul_c# d3 m
+      !(# t_3, c2_3 #)  = sub_b# s_3 pl_3 (wordToWord64# 0##)
+      !b_3              = plusWord64# (plusWord64# ph_3 c1_3) c2_3
+  in  (# t_0, t_1, t_2, t_3, b_3 #)
+{-# INLINE sub_mul# #-}
+
 add_to
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -634,6 +662,18 @@ add_to x x_offset y l = do
             PA.writePrimArray x (j + x_offset) nex
             loop (succ j) carry
   loop 0 0
+
+add_to#
+  :: (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 320-bit dividend
+  -> (# Word64#, Word64#, Word64#, Word64# #)          -- 256-bit divisor
+  -> (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 256b sum, 64b carry
+add_to# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) =
+  let !(# t0, c0 #) = add_c# u0 d0 (wordToWord64# 0##)
+      !(# t1, c1 #) = add_c# u1 d1 c0
+      !(# t2, c2 #) = add_c# u2 d2 c1
+      !(# t3, c3 #) = add_c# u3 d3 c2
+  in  (# t0, t1, t2, t3, c3 #)
+{-# INLINE add_to# #-}
 
 quotrem_knuth
   :: PrimMonad m
