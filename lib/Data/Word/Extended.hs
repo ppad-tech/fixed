@@ -566,6 +566,18 @@ quotrem_by1 q u d = do
       !hl = PA.indexPrimArray u (l - 1)
   loop (l - 2) hl
 
+quotrem_4by1#
+  :: (# Word64#, Word64#, Word64#, Word64# #) -- 256-bit dividend
+  -> Word64#                                  -- 64-bit divisor
+  -> (# Word64#, Word64#, Word64#, Word64# #) -- 192-bit quotient, 64-bit rem
+quotrem_4by1# (# u0, u1, u2, u3 #) d =
+  let !rec = recip_2by1# d
+      !(# q2, r2 #) = quotrem_2by1# u3 u2 d rec
+      !(# q1, r1 #) = quotrem_2by1# r2 u1 d rec
+      !(# q0, r0 #) = quotrem_2by1# r1 u0 d rec
+  in  (# q0, q1, q2, r0 #)
+{-# INLINE quotrem_4by1# #-}
+
 rem_by1
   :: PA.PrimArray Word64                      -- variable-length dividend
   -> Word64                                   -- divisor
