@@ -552,19 +552,6 @@ quotrem_by1 q u d = do
       !hl = PA.indexPrimArray u (l - 1)
   loop (l - 2) hl
 
--- quotient and remainder of 256-bit u divided by 64-bit d
-quotrem_4by1#
-  :: (# Word64#, Word64#, Word64#, Word64# #) -- 256-bit dividend
-  -> Word64#                                  -- 64-bit divisor
-  -> (# Word64#, Word64#, Word64#, Word64# #) -- 192-bit quotient, 64-bit rem
-quotrem_4by1# (# u0, u1, u2, u3 #) d =
-  let !rec = recip_2by1# d
-      !(# q2, r2 #) = quotrem_2by1# u3 u2 d rec
-      !(# q1, r1 #) = quotrem_2by1# r2 u1 d rec
-      !(# q0, r0 #) = quotrem_2by1# r1 u0 d rec
-  in  (# q0, q1, q2, r0 #)
-{-# INLINE quotrem_4by1# #-}
-
 -- remainder of variable-length u divided by 64-bit d
 rem_by1
   :: PA.PrimArray Word64                      -- variable-length dividend
@@ -605,34 +592,6 @@ sub_mul x x_offset y l (W64# m) = do
             loop (succ j) (plusWord64# (plusWord64# ph carry1) carry2)
   loop 0 (wordToWord64# 0##)
 
-sub_mul#
-  :: (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 320-bit dividend
-  -> (# Word64#, Word64#, Word64#, Word64# #)          -- 256-bit divisor
-  -> Word64#                                           -- 64-bit multiplier
-  -> (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 256b diff, 64b rem
-sub_mul# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) m =
-  let !(# s_0,  c1_0 #) = sub_b# u0 (wordToWord64# 0##) (wordToWord64# 0##)
-      !(# ph_0, pl_0 #) = mul_c# d0 m
-      !(# t_0, c2_0 #)  = sub_b# s_0 pl_0 (wordToWord64# 0##)
-      !b_0              = plusWord64# (plusWord64# ph_0 c1_0) c2_0
-
-      !(# s_1,  c1_1 #) = sub_b# u1 b_0 (wordToWord64# 0##)
-      !(# ph_1, pl_1 #) = mul_c# d1 m
-      !(# t_1, c2_1 #)  = sub_b# s_1 pl_1 (wordToWord64# 0##)
-      !b_1              = plusWord64# (plusWord64# ph_1 c1_1) c2_1
-
-      !(# s_2,  c1_2 #) = sub_b# u2 b_1 (wordToWord64# 0##)
-      !(# ph_2, pl_2 #) = mul_c# d2 m
-      !(# t_2, c2_2 #)  = sub_b# s_2 pl_2 (wordToWord64# 0##)
-      !b_2              = plusWord64# (plusWord64# ph_2 c1_2) c2_2
-
-      !(# s_3,  c1_3 #) = sub_b# u3 b_2 (wordToWord64# 0##)
-      !(# ph_3, pl_3 #) = mul_c# d3 m
-      !(# t_3, c2_3 #)  = sub_b# s_3 pl_3 (wordToWord64# 0##)
-      !b_3              = plusWord64# (plusWord64# ph_3 c1_3) c2_3
-  in  (# t_0, t_1, t_2, t_3, b_3 #)
-{-# INLINE sub_mul# #-}
-
 -- x += y
 add_to
   :: PrimMonad m
@@ -651,18 +610,6 @@ add_to x x_offset y l = do
             PA.writePrimArray x (j + x_offset) nex
             loop (succ j) carry
   loop 0 0
-
-add_to#
-  :: (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 320-bit dividend
-  -> (# Word64#, Word64#, Word64#, Word64# #)          -- 256-bit divisor
-  -> (# Word64#, Word64#, Word64#, Word64#, Word64# #) -- 256b sum, 64b carry
-add_to# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) =
-  let !(# t0, c0 #) = add_c# u0 d0 (wordToWord64# 0##)
-      !(# t1, c1 #) = add_c# u1 d1 c0
-      !(# t2, c2 #) = add_c# u2 d2 c1
-      !(# t3, c3 #) = add_c# u3 d3 c2
-  in  (# t0, t1, t2, t3, c3 #)
-{-# INLINE add_to# #-}
 
 -- knuth's algorithm 4.3.1 for variable-length division
 -- divides normalized dividend by normalized divisor, writing quotient to
@@ -760,17 +707,6 @@ normalized_dividend_length u = do
             if uj /= 0 then pure (j + 1) else loop (j - 1)
   loop (lu - 2) -- last word will be uninitialized, skip it
 {-# INLINE normalized_dividend_length #-}
-
-normalized_dividend_length_256#
-  :: (# Word64#, Word64#, Word64#, Word64# #)
-  -> Int#
-normalized_dividend_length_256# (# u0, u1, u2, u3 #)
-  | isTrue# (neWord64# u3 (wordToWord64# 0##)) = 4#
-  | isTrue# (neWord64# u2 (wordToWord64# 0##)) = 3#
-  | isTrue# (neWord64# u1 (wordToWord64# 0##)) = 2#
-  | isTrue# (neWord64# u0 (wordToWord64# 0##)) = 1#
-  | otherwise = 0#
-{-# INLINE normalized_dividend_length_256# #-}
 
 -- normalize 256-bit divisor
 normalize_divisor
