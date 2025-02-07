@@ -181,17 +181,9 @@ xor :: Word256 -> Word256 -> Word256
 xor (Word256 a0 a1 a2 a3) (Word256 b0 b1 b2 b3) =
   Word256 (a0 .^. b0) (a1 .^. b1) (a2 .^. b2) (a3 .^. b3)
 
--- XX rename add_c, sub_b, mul_c to something that conveys hi/lo bits stuff
-
 -- addition, subtraction ------------------------------------------------------
 
 -- add-with-carry
---
--- x86-64 ADDQ rX, rY
---        ADCQ $0, rCarry
---
--- ARM    ADDS
---        ADC
 add_c :: Word64 -> Word64 -> Word64 -> Word128
 add_c (W64# a) (W64# b) (W64# c) =
   let !(# s, n #) = add_c# a b c
@@ -205,6 +197,7 @@ add_c# w64_0 w64_1 c =
   in  (# s, wordToWord64# (int2Word# n) #)
 {-# INLINE add_c# #-}
 
+-- add with overflow
 add_of#
   :: (# Word64#, Word64#, Word64#, Word64# #)
   -> (# Word64#, Word64#, Word64#, Word64# #)
@@ -231,12 +224,6 @@ add (Word256 (W64# a0) (W64# a1) (W64# a2) (W64# a3))
   in  Word256 (W64# c0) (W64# c1) (W64# c2) (W64# c3)
 
 -- subtract-with-borrow
---
--- x86-64  SUBQ rY, rX
---         SBBQ $0, rBorrow
---
--- ARM     SUBS
---         SBC
 sub_b :: Word64 -> Word64 -> Word64 -> Word128
 sub_b (W64# wa) (W64# wb) (W64# b) =
   let !(# d, n #) = sub_b# wa wb b
@@ -250,6 +237,7 @@ sub_b# w64_0 w64_1 b =
   in  (# d, n #)
 {-# INLINE sub_b# #-}
 
+-- subtract-with-overflow
 sub_of#
   :: (# Word64#, Word64#, Word64#, Word64# #)
   -> (# Word64#, Word64#, Word64#, Word64# #)
@@ -277,17 +265,13 @@ sub (Word256 (W64# a0) (W64# a1) (W64# a2) (W64# a3))
 
 -- multiplication -------------------------------------------------------------
 
--- x86-64 (BMI2)    MULX
---        (RDX:RAX) MULQ
---
--- ARM    UMULH
---
--- translated from Mul64 in go's math/bits package
+-- multiply-with-carry
 mul_c :: Word64 -> Word64 -> Word128
 mul_c (W64# x) (W64# y) =
   let !(# hi, lo #) = mul_c# x y
   in  P (W64# hi) (W64# lo)
 
+-- translated from Mul64 in go's math/bits package
 mul_c# :: Word64# -> Word64# -> (# Word64#, Word64# #)
 mul_c# x y =
   let !mask32 = wordToWord64# 0xffffffff##
@@ -382,14 +366,12 @@ mul_512# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
 -- division -------------------------------------------------------------------
 
 -- quotient, remainder of (hi, lo) divided by y
--- translated from Div64 in go's math/bits package
---
--- x86-64 (RDX:RAX)  DIV
 quotrem_r :: Word64 -> Word64 -> Word64 -> Word128
 quotrem_r (W64# hi) (W64# lo) (W64# y) =
   let !(# q, r #) = quotrem_r# hi lo y
   in  P (W64# q) (W64# r)
 
+-- translated from Div64 in go's math/bits package
 quotrem_r# :: Word64# -> Word64# -> Word64# -> (# Word64#, Word64# #)
 quotrem_r# hi lo y_0
     | isTrue# (eqWord64# y_0 (wordToWord64# 0##)) =
@@ -463,7 +445,7 @@ quot_r (W64# hi) (W64# lo) (W64# y) =
 quot_r# :: Word64# -> Word64# -> Word64# -> Word64#
 quot_r# hi lo y_0
     | isTrue# (eqWord64# y_0 (wordToWord64# 0##)) =
-        error "ppad-fixed (quotrem_r): division by zero"
+        error "ppad-fixed (quot_r): division by zero"
     | isTrue# (leWord64# y_0 hi) =
         error "ppad-fixed: overflow"
     | isTrue# (eqWord64# hi (wordToWord64# 0##)) =
@@ -517,6 +499,9 @@ quot_r# hi lo y_0
     {-# INLINE q_loop# #-}
 {-# INLINE quot_r# #-}
 
+-- XX these 2by1 names suck
+
+-- quotient and remainder of (hi, lo) divided by d, using reciprocal
 quotrem_2by1 :: Word64 -> Word64 -> Word64 -> Word64 -> Word128
 quotrem_2by1 (W64# uh) (W64# ul) (W64# d) (W64# rec) =
   let !(# q, r #) = quotrem_2by1# uh ul d rec
@@ -547,6 +532,7 @@ recip_2by1# :: Word64# -> Word64#
 recip_2by1# d = quot_r# (not64# d) (wordToWord64# 0xffffffffffffffff##) d
 {-# INLINE recip_2by1# #-}
 
+-- quotient and remainder of variable-length u divided by 64-bit d
 quotrem_by1
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64 -- quotient
@@ -566,6 +552,7 @@ quotrem_by1 q u d = do
       !hl = PA.indexPrimArray u (l - 1)
   loop (l - 2) hl
 
+-- quotient and remainder of 256-bit u divided by 64-bit d
 quotrem_4by1#
   :: (# Word64#, Word64#, Word64#, Word64# #) -- 256-bit dividend
   -> Word64#                                  -- 64-bit divisor
@@ -578,6 +565,7 @@ quotrem_4by1# (# u0, u1, u2, u3 #) d =
   in  (# q0, q1, q2, r0 #)
 {-# INLINE quotrem_4by1# #-}
 
+-- remainder of variable-length u divided by 64-bit d
 rem_by1
   :: PA.PrimArray Word64                      -- variable-length dividend
   -> Word64                                   -- divisor
@@ -645,6 +633,7 @@ sub_mul# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) m =
   in  (# t_0, t_1, t_2, t_3, b_3 #)
 {-# INLINE sub_mul# #-}
 
+-- x += y
 add_to
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -675,9 +664,12 @@ add_to# (# u0, u1, u2, u3, _ #) (# d0, d1, d2, d3 #) =
   in  (# t0, t1, t2, t3, c3 #)
 {-# INLINE add_to# #-}
 
+-- knuth's algorithm 4.3.1 for variable-length division
+-- divides normalized dividend by normalized divisor, writing quotient to
+-- 'quo' and remainder to dividend
 quotrem_knuth
   :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64  -- quotient (potentially large)
+  => PA.MutablePrimArray (PrimState m) Word64  -- variable-length quotient
   -> PA.MutablePrimArray (PrimState m) Word64  -- normalized dividend
   -> Int                                       -- size of normalize dividend
   -> PA.PrimArray Word64                       -- normalized divisor
@@ -716,6 +708,7 @@ quotrem_knuth quo u ulen d = do
             loop (pred j)
   loop (ulen - ld - 1)
 
+-- knuth's algorithm again, but only compute remainder
 rem_knuth
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64  -- normalized dividend
@@ -768,6 +761,18 @@ normalized_dividend_length u = do
   loop (lu - 2) -- last word will be uninitialized, skip it
 {-# INLINE normalized_dividend_length #-}
 
+normalized_dividend_length_256#
+  :: (# Word64#, Word64#, Word64#, Word64# #)
+  -> Int#
+normalized_dividend_length_256# (# u0, u1, u2, u3 #)
+  | isTrue# (neWord64# u3 (wordToWord64# 0##)) = 4#
+  | isTrue# (neWord64# u2 (wordToWord64# 0##)) = 3#
+  | isTrue# (neWord64# u1 (wordToWord64# 0##)) = 2#
+  | isTrue# (neWord64# u0 (wordToWord64# 0##)) = 1#
+  | otherwise = 0#
+{-# INLINE normalized_dividend_length_256# #-}
+
+-- normalize 256-bit divisor
 normalize_divisor
   :: PrimMonad m
   => Word256
@@ -810,6 +815,7 @@ normalize_divisor (Word256 d0 d1 d2 d3) = do
   pure (d_final, dlen, shift, dn_0)
 {-# INLINE normalize_divisor #-}
 
+-- normalize variable-length dividend
 normalize_dividend
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64
@@ -830,9 +836,10 @@ normalize_dividend u ulen s = do
   loop (ulen - 1) u_hi
 {-# INLINE normalize_dividend #-}
 
+-- quotient and remainder of variable-length u divided by variable-length d
 quotrem
   :: PrimMonad m
-  => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
+  => PA.MutablePrimArray (PrimState m) Word64 -- quotient (potentially large)
   -> PA.MutablePrimArray (PrimState m) Word64 -- unnormalized dividend
   -> Word256                                  -- unnormalized divisor
   -> m (PA.PrimArray Word64)                  -- remainder (256-bit)
@@ -872,6 +879,7 @@ quotrem quo u d = do
       unn_rem 0 un_0
 {-# INLINE quotrem #-}
 
+-- quotient of u variable-length u divided by variable-length d
 quot
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64 -- quotient
@@ -898,6 +906,7 @@ quot quo u d = do
       pure (ulen + 1 - dlen)
 {-# INLINE quot #-}
 
+-- remainder of variable-length u divided by variable-length d
 rem
   :: PrimMonad m
   => PA.MutablePrimArray (PrimState m) Word64 -- quotient  (potentially large)
@@ -940,6 +949,10 @@ rem quo u d = do
       unn_rem 0 un_0
 {-# INLINE rem #-}
 
+-- | Division on 'Word256' values.
+--
+--   >>> to_word256 0xFFFFFFFFFF `div` to_word256 0xFFFFFF
+--   65536
 div :: Word256 -> Word256 -> Word256
 div u@(Word256 u0 u1 u2 u3) d@(Word256 d0 _ _ _)
   | is_zero d || d `gt` u = zero -- ?
