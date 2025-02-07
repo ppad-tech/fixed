@@ -32,7 +32,11 @@ division = bgroup "division" [
   , div_baseline
   , mod
   , mod_baseline
-  , recip_2by1
+  ]
+
+division_utils :: Benchmark
+division_utils = bgroup "division utilities" [
+    recip_2by1
   , quotrem_by1
   , rem_by1
   , quotrem_2by1
