@@ -24,6 +24,7 @@ library
       -Wall
   exposed-modules:
       Data.Word.Extended
+    , Data.Word.Word256
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6
