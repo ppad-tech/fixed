@@ -28,7 +28,7 @@ module Data.Choice (
   , eq_c#
 
   -- * Constant-time Selection
-  , ct_select#
+  , ct_select_word#
   , ct_select_wide#
 
   ) where
@@ -195,9 +195,9 @@ eq_c# c0 c1 = not_c# (ne_c# c0 c1)
 
 -- constant-time selection ----------------------------------------------------
 
-ct_select# :: Word# -> Word# -> Choice -> Word#
-ct_select# a b (Choice c) = xor# a (and# c (xor# a b))
-{-# INLINE ct_select# #-}
+ct_select_word# :: Word# -> Word# -> Choice -> Word#
+ct_select_word# a b (Choice c) = xor# a (and# c (xor# a b))
+{-# INLINE ct_select_word# #-}
 
 ct_select_wide#
   :: (# Word#, Word# #)

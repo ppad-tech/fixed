@@ -26,6 +26,7 @@ library
       Data.Choice
     , Data.Word.Extended
     , Data.Word.Word256
+    , Data.Word.Wide
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6
