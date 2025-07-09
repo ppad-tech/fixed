@@ -46,6 +46,9 @@ mul_c# a b =
   in  (# l, h #)
 {-# INLINE mul_c# #-}
 
+mul_c :: Word -> Word -> Wide
+mul_c (W# a) (W# b) = Wide (mul_c# a b)
+
 -- constant-time quotient, given maximum bitsizes
 div1by1# :: Word# -> Word# -> Word# -> Word# -> Word#
 div1by1# dividend dividend_bits divisor divisor_bits =
@@ -271,9 +274,15 @@ new_recip :: Word -> Reciprocal
 new_recip (W# w) = new_recip# w
 
 -- quotient and remainder of wide word (lo, hi), divided by divisor
-quotrem_2by1# :: (# Word#, Word# #) -> Word# -> (# Word#, Word# #)
-quotrem_2by1# (# l, h #) d = quotRemWord2# h l d
-{-# INLINE quotrem_2by1# #-}
+quotrem2by1# :: (# Word#, Word# #) -> Word# -> (# Word#, Word# #)
+quotrem2by1# (# l, h #) d = quotRemWord2# h l d
+{-# INLINE quotrem2by1# #-}
+
+-- ~6x slower than div2by1, but useful for testing
+quotrem2by1 :: Wide -> Word -> (Word, Word)
+quotrem2by1 (Wide u) (W# d) =
+  let !(# q, r #) = quotrem2by1# u d
+  in  (W# q, W# r)
 
 -- quotient and remainder of wide word (lo, hi) divided using reciprocal
 div2by1# :: (# Word#, Word# #) -> Reciprocal -> (# Word#, Word# #)

@@ -17,6 +17,7 @@ import qualified Prelude (div, rem)
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
+import qualified Wide as W
 
 fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
@@ -236,5 +237,6 @@ main = defaultMain $ testGroup "ppad-fixed" [
     , H.testCase "quotrem_2by1 matches case0" quotrem_2by1_case0
     , H.testCase "quotrem_by1 matches case0" quotrem_by1_case0
     ]
+  , W.tests
   ]
 
