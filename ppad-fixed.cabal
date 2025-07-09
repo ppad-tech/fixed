@@ -23,7 +23,8 @@ library
   ghc-options:
       -Wall
   exposed-modules:
-      Data.Word.Extended
+      Data.Choice
+    , Data.Word.Extended
     , Data.Word.Word256
   build-depends:
       base >= 4.9 && < 5
