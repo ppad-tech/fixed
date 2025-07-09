@@ -18,6 +18,9 @@ tests = testGroup "wide unit tests" [
   , H.testCase "div2by1, case 0" div2by1_case0
   , H.testCase "div2by1, case 1" div2by1_case1
   , H.testCase "div2by1, case 2" div2by1_case2
+  , H.testCase "div2by1, case 3 (GHC.Exts reference)" div2by1_case3
+  , H.testCase "div2by1, case 4 (GHC.Exts reference)" div2by1_case4
+  , H.testCase "div2by1, case 5 (GHC.Exts reference)" div2by1_case5
   ]
 
 mul_c_case0 :: H.Assertion
@@ -82,3 +85,25 @@ div2by1_case2 = do
       r  = W.div2by1 (W.wide 0x0000000000000000 0x8000000000000000) d
       e  = (0xfffffffffffffffe, 0x2)
   H.assertEqual "matches" e r
+
+div2by1_case3 :: H.Assertion
+div2by1_case3 = do
+  let d  = maxBound - 1
+      r  = W.div2by1 (W.wide (maxBound - 63) (maxBound - 2)) d
+      e  = W.quotrem2by1 (W.wide (maxBound - 63) (maxBound - 2)) d
+  H.assertEqual "matches" e r
+
+div2by1_case4 :: H.Assertion
+div2by1_case4 = do
+  let d  = 0x8000000000000000  -- 2^63
+      r  = W.div2by1 (W.wide 0xffffffffffffffff 0x7fffffffffffffff) d
+      e  = W.quotrem2by1 (W.wide 0xffffffffffffffff 0x7fffffffffffffff) d
+  H.assertEqual "matches" e r
+
+div2by1_case5 :: H.Assertion
+div2by1_case5 = do
+  let d  = 0x8000000000000001  -- 2^63 + 1
+      r  = W.div2by1 (W.wide 0x0000000000000000 0x8000000000000000) d
+      e  = W.quotrem2by1 (W.wide 0x0000000000000000 0x8000000000000000) d
+  H.assertEqual "matches" e r
+
