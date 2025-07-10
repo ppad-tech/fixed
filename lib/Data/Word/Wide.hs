@@ -15,6 +15,8 @@ import qualified Data.Bits as B
 import GHC.Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
+-- XX much of this can probably be moved to a Data.Word.Limb module
+
 -- utilities ------------------------------------------------------------------
 
 fi :: (Integral a, Num b) => a -> b
@@ -204,8 +206,8 @@ mul_w# (# a0, a1 #) (# b0, b1 #) =
   in  (# p0_lo, s1 #)
 {-# INLINE mul_w# #-}
 
-mul_w :: Wide -> Wide -> Wide
-mul_w (Wide a) (Wide b) = Wide (mul_w# a b)
+mul :: Wide -> Wide -> Wide
+mul (Wide a) (Wide b) = Wide (mul_w# a b)
 
 -- division -------------------------------------------------------------------
 
