@@ -19,6 +19,7 @@ module Data.Word.Limb (
 
   -- * Boxed Wrappers
   , quot
+  , recip
   ) where
 
 import Data.Choice
@@ -147,4 +148,8 @@ quot# dividend dividend_bits divisor divisor_bits =
 -- short (one-word) division
 quot :: Word -> Word -> Word -> Word -> Word
 quot (W# a) (W# b) (W# c) (W# d) = W# (quot# a b c d)
+
+recip :: Word -> Word
+recip (W# w) = case recip# w of
+  Reciprocal (# _, _, r #) -> W# r
 

@@ -11,7 +11,8 @@ import qualified Data.Word.Extended as W
 import Data.Word (Word64)
 import Prelude hiding (or, and, div, mod)
 import qualified Prelude (div)
-import qualified Criterion.Wide as W
+import qualified Criterion.Limb as Limb
+import qualified Criterion.Wide as Wide
 
 add_sub :: Benchmark
 add_sub = bgroup "addition & subtraction" [
@@ -51,7 +52,8 @@ main = defaultMain [
   , multiplication
   , division
   , division_utils
-  , W.benches
+  , Wide.benches
+  , Limb.benches
   ]
 
 -- addition and subtraction ---------------------------------------------------

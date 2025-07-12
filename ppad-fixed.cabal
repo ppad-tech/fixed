@@ -56,8 +56,9 @@ benchmark fixed-bench
   hs-source-dirs:      bench
   main-is:             Main.hs
   other-modules:
-      Criterion.Wide
-    , Criterion.Choice
+      Criterion.Choice
+    , Criterion.Limb
+    , Criterion.Wide
 
   ghc-options:
     -rtsopts -O2 -Wall

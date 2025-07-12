@@ -8,30 +8,23 @@ import Prelude hiding (recip)
 
 benches :: Benchmark
 benches = bgroup "wide arithmetic" [
-    div1by1_big
-  , div1by1_small
-  , recip
-  , div2by1_bench
-  , quotrem2by1_bench
+    quotrem_by1_bench
+  , shr_bench_small
+  , shr_bench_big
   ]
 
-div1by1_big :: Benchmark
-div1by1_big = bench "wide div1by1 (big)" $
-  nf (Wide.div1by1 4294967294 32 4294967293) 32
+quotrem_by1_bench :: Benchmark
+quotrem_by1_bench = bench "wide quotrem_by1" $
+  nf (Wide.quotrem_by1 (Wide.wide 4294967294 32)) 18446744073709551606
 
-div1by1_small :: Benchmark
-div1by1_small = bench "wide div1by1 (small)" $
-  nf (Wide.div1by1 4294967294 32 2) 2
+_quotrem_by1_bench :: Benchmark
+_quotrem_by1_bench = bench "wide _quotrem_by1" $
+  nf (Wide._quotrem_by1 (Wide.wide 4294967294 32)) 18446744073709551606
 
-recip :: Benchmark
-recip = bench "wide recip" $
-  nf Wide.recip 18446744073709551606
+shr_bench_small :: Benchmark
+shr_bench_small = bench "wide shr (small)" $
+  nf (Wide.shr (Wide.wide maxBound maxBound)) 1
 
-div2by1_bench :: Benchmark
-div2by1_bench = bench "wide div2by1" $
-  nf (Wide.div2by1 (Wide.wide 4294967294 32)) 18446744073709551606
-
-quotrem2by1_bench :: Benchmark
-quotrem2by1_bench = bench "wide quotrem2by1" $
-  nf (Wide.quotrem2by1 (Wide.wide 4294967294 32)) 18446744073709551606
-
+shr_bench_big :: Benchmark
+shr_bench_big = bench "wide shr (big)" $
+  nf (Wide.shr (Wide.wide maxBound maxBound)) 127
