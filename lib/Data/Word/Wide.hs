@@ -25,6 +25,7 @@ module Data.Word.Wide (
   , xor
   , not
   , shr
+  , unchecked_shr
 
   -- * Arithmetic
   , add
@@ -157,8 +158,8 @@ shr_of_vartime# (# l, h #) s
                     !l_0 = or# shf car
                 in  (# l_0, h_0 #)
               1# ->
-                let !l_0 = uncheckedShiftRL# l rem
-                in  (# l_0, h #)
+                let !l_0 = uncheckedShiftRL# h rem
+                in  (# l_0, 0## #)
               2# ->
                 (# l, h #)
               _  -> error "ppad-fixed (shr_of_vartime#): internal error"
@@ -201,8 +202,18 @@ shr# :: (# Word#, Word# #) -> Int# -> (# Word#, Word# #)
 shr# w s = C.expect_wide# (shr_of# w s) "invalid shift"
 {-# INLINE shr# #-}
 
+-- wrapping
+unchecked_shr# :: (# Word#, Word# #) -> Int# -> (# Word#, Word# #)
+unchecked_shr# w s = C.expect_wide_or# (shr_of# w s) (# 0##, 0## #)
+{-# INLINE unchecked_shr# #-}
+
+-- constant-time shr, ErrorCall on invalid shift
 shr :: Wide -> Int -> Wide
 shr (Wide w) (I# s) = Wide (shr# w s)
+
+-- constant-time shr, saturating
+unchecked_shr :: Wide -> Int -> Wide
+unchecked_shr (Wide w) (I# s) = Wide (unchecked_shr# w s)
 
 -- addition, subtraction ------------------------------------------------------
 

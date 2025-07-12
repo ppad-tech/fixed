@@ -19,6 +19,7 @@ module Data.Choice (
   , just_wide#
   , none_wide#
   , expect_wide#
+  , expect_wide_or#
 
   -- * Construction
   , from_word_lsb#
@@ -151,6 +152,15 @@ expect_wide# (MaybeWide# (# w, Choice c #)) msg
     | otherwise = error $ "ppad-fixed (expect_wide#): " <> msg
   where
     !(Choice t#) = true# ()
+{-# INLINE expect_wide# #-}
+
+expect_wide_or# :: MaybeWide# -> (# Word#, Word# #) -> (# Word#, Word# #)
+expect_wide_or# (MaybeWide# (# w, Choice c #)) alt
+    | isTrue# (eqWord# c t#) = w
+    | otherwise = alt
+  where
+    !(Choice t#) = true# ()
+{-# INLINE expect_wide_or# #-}
 
 -- construction ---------------------------------------------------------------
 
