@@ -7,6 +7,18 @@
 module Data.Choice (
   -- * Choice
     Choice
+  , true#
+  , false#
+
+  , MaybeWord#(..)
+  , some_word#
+  , none_word#
+
+  , MaybeWide#(..)
+  , some_wide#
+  , just_wide#
+  , none_wide#
+  , expect_wide#
 
   -- * Construction
   , from_word_lsb#
@@ -96,18 +108,54 @@ sub_w# a b =
 
 -- choice ---------------------------------------------------------------------
 
--- choice encoded as a mask
+-- constant-time choice, encoded as a mask
 newtype Choice = Choice Word#
+
+false# :: () -> Choice
+false# _ = Choice 0##
+{-# INLINE false# #-}
+
+true# :: () -> Choice
+true# _ = case maxBound :: Word of
+  W# w -> Choice w
+{-# INLINE true# #-}
+
+-- constant time 'Maybe Word#'
+newtype MaybeWord# = MaybeWord# (# Word#, Choice #)
+
+some_word# :: Word# -> MaybeWord#
+some_word# w = MaybeWord# (# w, true# () #)
+{-# INLINE some_word# #-}
+
+none_word# :: Word# -> MaybeWord#
+none_word# w = MaybeWord# (# w, false# () #)
+{-# INLINE none_word# #-}
+
+newtype MaybeWide# = MaybeWide# (# (# Word#, Word# #), Choice #)
+
+just_wide# :: (# Word#, Word# #) -> Choice -> MaybeWide#
+just_wide# w c = MaybeWide# (# w, c #)
+{-# INLINE just_wide# #-}
+
+some_wide# :: (# Word#, Word# #) -> MaybeWide#
+some_wide# w = MaybeWide# (# w, true# () #)
+{-# INLINE some_wide# #-}
+
+none_wide# :: (# Word#, Word# #) -> MaybeWide#
+none_wide# w = MaybeWide# (# w, false# () #)
+{-# INLINE none_wide# #-}
+
+expect_wide# :: MaybeWide# -> String -> (# Word#, Word# #)
+expect_wide# (MaybeWide# (# w, Choice c #)) msg
+    | isTrue# (eqWord# c t#) = w
+    | otherwise = error $ "ppad-fixed (expect_wide#): " <> msg
+  where
+    !(Choice t#) = true# ()
 
 -- construction ---------------------------------------------------------------
 
--- XX remove "debug" conditional before releases
 from_word_lsb# :: Word# -> Choice
-from_word_lsb# w
-  | isTrue# (gtWord# w 1##) =
-      error "ppad-fixed (from_word_lsb#): internal error (non-bit input)"
-  | otherwise =
-      Choice (wrapping_neg# w)
+from_word_lsb# w = Choice (wrapping_neg# w)
 {-# INLINE from_word_lsb# #-}
 
 from_wide_lsb# :: (# Word#, Word# #) -> Choice
