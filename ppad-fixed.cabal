@@ -27,6 +27,8 @@ library
     , Data.Word.Extended
     , Data.Word.Limb
     , Data.Word.Wide
+    , Data.Word.Wider
+    , Data.Word.Montgomery
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6

@@ -48,10 +48,12 @@ division_utils = bgroup "division utilities" [
 
 main :: IO ()
 main = defaultMain [
-    add_sub
-  , multiplication
-  , division
-  , division_utils
+    bgroup "extended" [
+        add_sub
+      , multiplication
+      , division
+      , division_utils
+      ]
   , Wide.benches
   , Limb.benches
   ]

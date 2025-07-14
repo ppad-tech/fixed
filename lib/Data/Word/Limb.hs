@@ -11,8 +11,10 @@ module Data.Word.Limb (
     add_c#
   , sub_b#
   , mul_c#
+  , mul_w#
   , recip#
   , quot#
+  , mul_add_c#
 
   -- * Reciprocal
   , Reciprocal(..)
@@ -55,6 +57,37 @@ mul_c# a b =
   let !(# h, l #) = timesWord2# a b
   in  (# l, h #)
 {-# INLINE mul_c# #-}
+
+-- wrapping multiplication
+mul_w# :: Word# -> Word# -> Word#
+mul_w# a b =
+  let !(# _, l #) = timesWord2# a b
+  in  l
+{-# INLINE mul_w# #-}
+
+mul_add_c# :: Word# -> Word# -> Word# -> Word# -> (# Word#, Word# #)
+mul_add_c# lhs rhs addend carry =
+    let !(# l_0, h_0 #) = add_w# (mul_c# lhs rhs) (# addend, 0## #)
+        !(# l_1, c #) = add_c# l_0 carry 0##
+        !h_1 = plusWord# h_0 c
+    in  (# l_1, h_1 #)
+  where
+    -- duplicated w/Data.Word.Wide to avoid awkward module structuring
+    add_wc#
+      :: (# Word#, Word# #)
+      -> (# Word#, Word# #)
+      -> (# Word#, Word#, Word# #)
+    add_wc# (# a0, a1 #) (# b0, b1 #) =
+      let !(# s0, c0 #) = add_c# a0 b0 0##
+          !(# s1, c1 #) = add_c# a1 b1 c0
+      in  (# s0, s1, c1 #)
+    {-# INLINE add_wc# #-}
+
+    add_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+    add_w# a b =
+      let !(# c0, c1, _ #) = add_wc# a b
+      in  (# c0, c1 #)
+    {-# INLINE add_w# #-}
 
 -- division -------------------------------------------------------------------
 

@@ -177,12 +177,12 @@ shr_of# (# l, h #) s =
         !shift = remWord# (int2Word# s) (int2Word# wide_size)
         loop !j !res
           | isTrue# (j <# shift_bits) =
-              let !bit = C.from_word_lsb#
+              let !bit = C.from_word_lsb# -- XX not inlined
                     (and# (uncheckedShiftRL# shift j) 1##)
-                  !nres = C.ct_select_wide#
+                  !nres = C.ct_select_wide# -- XX
                     res
-                    (C.expect_wide#
-                      (shr_of_vartime#
+                    (C.expect_wide# -- XX
+                      (shr_of_vartime# -- XX
                         res
                         (word2Int# (uncheckedShiftL# 1## j)))
                       "shift within range")
