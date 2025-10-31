@@ -110,12 +110,9 @@ sub_mod_c#
   -> (# Word#, Word#, Word#, Word# #) -- p
   -> (# Word#, Word#, Word#, Word# #)
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
-  let !(# o0, o1, o2, o3, borrow #) = sub_b# a b
-      !mask = and# (not# (C.wrapping_neg# c)) borrow
-      !band = (# plusWord# p0 mask
-              ,  plusWord# p1 mask
-              ,  plusWord# p2 mask
-              ,  plusWord# p3 mask #)
+  let !(# o0, o1, o2, o3, bb #) = sub_b# a b
+      !mask = and# (not# (C.wrapping_neg# c)) (C.wrapping_neg# bb)
+      !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
   in  add_w# (# o0, o1, o2, o3 #) band
 {-# INLINE sub_mod_c# #-}
 
