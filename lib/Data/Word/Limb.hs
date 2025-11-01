@@ -49,7 +49,7 @@ sub_b# m n b =
   in  (# d, c #)
 {-# INLINE sub_b# #-}
 
--- multiplication --------------------------------------------------------=----
+-- multiplication -------------------------------------------------------------
 
 -- (# lo, hi #)
 mul_c# :: Word# -> Word# -> (# Word#, Word# #)
@@ -88,6 +88,7 @@ mul_add_c# lhs rhs addend carry =
       let !(# c0, c1, _ #) = add_wc# a b
       in  (# c0, c1 #)
     {-# INLINE add_w# #-}
+{-# INLINE mul_add_c# #-}
 
 -- division -------------------------------------------------------------------
 

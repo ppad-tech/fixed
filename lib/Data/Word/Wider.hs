@@ -22,6 +22,10 @@ fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
 
+wrapping_neg# :: Word# -> Word#
+wrapping_neg# w = plusWord# (not# w) 1##
+{-# INLINE wrapping_neg# #-}
+
 -- wide words -----------------------------------------------------------------
 
 -- little-endian, i.e. (# w0, w1, w2, w3 #)
@@ -93,7 +97,7 @@ add_w# a b =
 sub_b#
   :: (# Word#, Word#, Word#, Word# #)
   -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word#, Word# #) -- (# difference, borrow bit #)
 sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 0##
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
@@ -105,13 +109,13 @@ sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
 -- reference sub_mod_with_carry
 sub_mod_c#
   :: (# Word#, Word#, Word#, Word# #) -- lhs
-  -> Word#                            -- carry
+  -> Word#                            -- carry bit
   -> (# Word#, Word#, Word#, Word# #) -- rhs
   -> (# Word#, Word#, Word#, Word# #) -- p
   -> (# Word#, Word#, Word#, Word# #)
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   let !(# o0, o1, o2, o3, bb #) = sub_b# a b
-      !mask = and# (not# (C.wrapping_neg# c)) (C.wrapping_neg# bb)
+      !mask = and# (not# (wrapping_neg# c)) (wrapping_neg# bb)
       !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
   in  add_w# (# o0, o1, o2, o3 #) band
 {-# INLINE sub_mod_c# #-}

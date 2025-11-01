@@ -10,10 +10,12 @@ module Data.Choice (
   , true#
   , false#
 
+  -- * MaybeWord#
   , MaybeWord#(..)
   , some_word#
   , none_word#
 
+  -- * MaybeWide#
   , MaybeWide#(..)
   , some_wide#
   , just_wide#
@@ -43,7 +45,6 @@ module Data.Choice (
   -- * Constant-time Selection
   , ct_select_word#
   , ct_select_wide#
-
   ) where
 
 import qualified Data.Bits as B
