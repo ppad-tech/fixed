@@ -1,2 +1,4 @@
 :set -XMagicHash
+:set -XUnboxedTuple
+:set -XBangPatterns
 :set prompt "> "
