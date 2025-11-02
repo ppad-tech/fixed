@@ -13,13 +13,12 @@ import qualified Data.Word.Wider as W
 import GHC.Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
--- reference 'montgomery_reduction_inner'
 redc_inner#
-  :: (# Word#, Word#, Word#, Word# #) -- upper
-  -> (# Word#, Word#, Word#, Word# #) -- lower
-  -> (# Word#, Word#, Word#, Word# #) -- modulus
-  -> Word#                            -- mod neg inv
-  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- upper, meta-carry
+  :: (# Word#, Word#, Word#, Word# #)              -- ^ upper words
+  -> (# Word#, Word#, Word#, Word# #)              -- ^ lower words
+  -> (# Word#, Word#, Word#, Word# #)              -- ^ modulus
+  -> Word#                                         -- ^ mod neg inv
+  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ upper words, meta-carry
 redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) (# m0, m1, m2, m3 #) n =
   let -- outer loop, i == 0 ---------------------------------------------------
       !w_0 = L.mul_w# l0 n
@@ -74,29 +73,28 @@ redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) (# m0, m1, m2, m3 #) n =
   in  (# (# u3_1, u3_2, u3_3, u_3 #), mc_3 #)
 {-# INLINE redc_inner# #-}
 
+-- | Montgomery reduction.
 redc#
-  :: (# Word#, Word#, Word#, Word# #) -- lower
-  -> (# Word#, Word#, Word#, Word# #) -- upper
-  -> (# Word#, Word#, Word#, Word# #) -- modulus
-  -> Word#                            -- mod neg inv
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Word#, Word#, Word#, Word# #) -- ^ lower words
+  -> (# Word#, Word#, Word#, Word# #) -- ^ upper words
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> Word#                            -- ^ mod neg inv
+  -> (# Word#, Word#, Word#, Word# #) -- ^ result
 redc# l u m n =
   let !(# nu, mc #) = redc_inner# u l m n
-  in  W.sub_mod_c# nu mc m m -- XX shouldn't use Data.Word.Wider version
+  in  W.sub_mod_c# nu mc m m
 {-# INLINE redc# #-}
 
--- XX here only for testing; should probably be in Data.Word.Wider itself
 redc :: W.Wider -> W.Wider -> W.Wider -> Word -> W.Wider
 redc (W.Wider l) (W.Wider u) (W.Wider m) (W# n) =
   let !res = redc# l u m n
   in  (W.Wider res)
 
--- reference 'montgomery_retrieve_inner'
 retr_inner#
-  :: (# Word#, Word#, Word#, Word# #) -- montgomery form
-  -> (# Word#, Word#, Word#, Word# #) -- modulus
-  -> Word#                            -- mod neg inv
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Word#, Word#, Word#, Word# #) -- ^ value in montgomery form
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> Word#                            -- ^ mod neg inv
+  -> (# Word#, Word#, Word#, Word# #) -- ^ retrieved value
 retr_inner# (# x0, x1, x2, x3 #) (# m0, m1, m2, m3 #) n =
   let -- outer loop, i == 0 ---------------------------------------------------
       !u_0 = L.mul_w# x0 n                              -- out state
@@ -141,12 +139,11 @@ retr#
 retr# f m n = retr_inner# f m n
 {-# INLINE retr# #-}
 
--- XX ditto
 retr
-  :: W.Wider -- montgomery form
-  -> W.Wider -- modulus
-  -> Word    -- mod neg inv
-  -> W.Wider
+  :: W.Wider -- ^ value in montgomery form
+  -> W.Wider -- ^ modulus
+  -> Word    -- ^ mod neg inv
+  -> W.Wider -- ^ retrieved value
 retr (W.Wider f) (W.Wider m) (W# n) =
   let !res = retr# f m n
   in  (W.Wider res)

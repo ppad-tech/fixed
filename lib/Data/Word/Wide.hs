@@ -27,22 +27,17 @@ module Data.Word.Wide (
   , and
   , xor
   , not
-  , shr
-  , unchecked_shr
 
   -- * Arithmetic
   , add
   , sub
   , mul
-  , quotrem_by1
-  , _quotrem_by1
 
   , add_w#
   , mul_w#
   ) where
 
 import Control.DeepSeq
-import qualified Data.Choice as C
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
 import qualified Data.Bits as B
 import qualified Data.Word.Limb as L
@@ -150,77 +145,6 @@ not :: Wide -> Wide
 not (Wide w) = Wide (not_w# w)
 {-# INLINE not #-}
 
--- overflowing, vartime w/respect to s
-shr_of_vartime# :: (# Word#, Word# #) -> Int# -> C.MaybeWide#
-shr_of_vartime# (# l, h #) s
-    | isTrue# (s ># wide_size) = C.none_wide# (# 0##, 0## #)
-    | otherwise =
-        let !(# shift_num, rem #) = quotRemInt# s size
-            !w_1 = case shift_num of
-              0# ->
-                let !h_0 = uncheckedShiftRL# h rem
-                    !car = uncheckedShiftL# h (size -# rem)
-                    !shf = uncheckedShiftRL# l rem
-                    !l_0 = or# shf car
-                in  (# l_0, h_0 #)
-              1# ->
-                let !l_0 = uncheckedShiftRL# h rem
-                in  (# l_0, 0## #)
-              2# ->
-                (# l, h #)
-              _  -> error "ppad-fixed (shr_of_vartime#): internal error"
-        in  C.some_wide# w_1
-  where
-    !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-    !wide_size = 2# *# size
-{-# INLINE shr_of_vartime# #-}
-
-shr_of# :: (# Word#, Word# #) -> Int# -> C.MaybeWide#
-shr_of# (# l, h #) s =
-    let !shift_bits = size -# (word2Int# (clz# (int2Word# (wide_size -# 1#))))
-        !overflow = C.not_c#
-          (C.from_word_lt# (int2Word# s) (int2Word# wide_size))
-        !shift = remWord# (int2Word# s) (int2Word# wide_size)
-        loop !j !res
-          | isTrue# (j <# shift_bits) =
-              let !bit = C.from_word_lsb# -- XX not inlined
-                    (and# (uncheckedShiftRL# shift j) 1##)
-                  !nres = C.ct_select_wide# -- XX
-                    res
-                    (C.expect_wide# -- XX
-                      (shr_of_vartime# -- XX
-                        res
-                        (word2Int# (uncheckedShiftL# 1## j)))
-                      "shift within range")
-                    bit
-              in  loop (j +# 1#) nres
-          | otherwise = res
-        !result = loop 0# (# l, h #)
-    in  C.just_wide#
-          (C.ct_select_wide# result (# 0##, 0## #) overflow)
-          (C.not_c# overflow)
-  where
-    !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-    !wide_size = 2# *# size
-{-# INLINE shr_of# #-}
-
-shr# :: (# Word#, Word# #) -> Int# -> (# Word#, Word# #)
-shr# w s = C.expect_wide# (shr_of# w s) "invalid shift"
-{-# INLINE shr# #-}
-
--- wrapping
-unchecked_shr# :: (# Word#, Word# #) -> Int# -> (# Word#, Word# #)
-unchecked_shr# w s = C.expect_wide_or# (shr_of# w s) (# 0##, 0## #)
-{-# INLINE unchecked_shr# #-}
-
--- constant-time shr, ErrorCall on invalid shift
-shr :: Wide -> Int -> Wide
-shr (Wide w) (I# s) = Wide (shr# w s)
-
--- constant-time shr, saturating
-unchecked_shr :: Wide -> Int -> Wide
-unchecked_shr (Wide w) (I# s) = Wide (unchecked_shr# w s)
-
 -- addition, subtraction ------------------------------------------------------
 
 -- wide addition (overflowing)
@@ -282,42 +206,4 @@ mul_w# (# a0, a1 #) (# b0, b1 #) =
 
 mul :: Wide -> Wide -> Wide
 mul (Wide a) (Wide b) = Wide (mul_w# a b)
-
--- division -------------------------------------------------------------------
-
--- quotient and remainder of wide word (lo, hi), divided by divisor
-_quotrem_by1# :: (# Word#, Word# #) -> Word# -> (# Word#, Word# #)
-_quotrem_by1# (# l, h #) d = quotRemWord2# h l d
-{-# INLINE _quotrem_by1# #-}
-
--- ~6x slower than quotrem_by1, but useful for testing
-_quotrem_by1 :: Wide -> Word -> (Word, Word)
-_quotrem_by1 (Wide u) (W# d) =
-  let !(# q, r #) = _quotrem_by1# u d
-  in  (W# q, W# r)
-
--- quotient and remainder of wide word (lo, hi) divided using reciprocal
-quotrem_by1# :: (# Word#, Word# #) -> L.Reciprocal -> (# Word#, Word# #)
-quotrem_by1# (# u0, u1 #) (L.Reciprocal (# d, _, r #)) =
-  let !(# q0_0, q1_0 #) = L.mul_c# r u1
-      !(# q0_1, q1_1 #) = add_w# (# q0_0, q1_0 #) (# u0, u1 #)
-      !q1_2 = plusWord# q1_1 1##
-      !r_0  = minusWord# u0 (timesWord# q1_2 d)
-      -- ct block 1
-      !r_gt_q0 = C.from_word_lt# q0_1 r_0
-      !q1_3 = C.ct_select_word# q1_2 (minusWord# q1_2 1##) r_gt_q0
-      !r_1  = C.ct_select_word# r_0 (plusWord# r_0 d) r_gt_q0
-      -- ct block 2
-      !r_ge_d = C.from_word_le# d r_1
-      !q1_4 = C.ct_select_word# q1_3 (plusWord# q1_3 1##) r_ge_d
-      !r_2  = C.ct_select_word# r_1 (minusWord# r_1 d) r_ge_d
-  in  (# q1_4, r_2 #)
-{-# INLINE quotrem_by1# #-}
-
--- quotient and remainder of wide word divided by word
-quotrem_by1 :: Wide -> Word -> (Word, Word)
-quotrem_by1 (Wide (# u0, u1 #)) (W# d) =
-  let !re = L.recip# d
-      !(# q, r #) = quotrem_by1# (# u0, u1 #) re
-  in  (W# q, W# r)
 
