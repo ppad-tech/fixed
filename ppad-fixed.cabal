@@ -25,9 +25,9 @@ library
   exposed-modules:
       Data.Word.Limb
     , Data.Word.Montgomery
+    , Data.Word.Wide
     , Data.Word.Wider
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6
-    , primitive >= 0.8 && < 0.10
 

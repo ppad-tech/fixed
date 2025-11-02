@@ -7,7 +7,7 @@
 {-# LANGUAGE UnliftedNewtypes #-}
 
 module Data.Word.Limb (
-  -- * Unlifted Arithmetic
+  -- * Unboxed Arithmetic
     add_c#
   , sub_b#
   , mul_c#

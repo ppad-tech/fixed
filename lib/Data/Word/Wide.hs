@@ -52,13 +52,14 @@ fi = fromIntegral
 
 -- wide words -----------------------------------------------------------------
 
--- little-endian, i.e. (# lo, hi #)
+-- | Little-endian wide words.
 data Wide = Wide (# Word#, Word# #)
 
 get_lo# :: (# Word#, Word# #) -> Word#
 get_lo# (# l, _ #) = l
 {-# INLINE get_lo# #-}
 
+-- | Get the low 'Word' from a 'Wide' word.
 get_lo :: Wide -> Word
 get_lo (Wide w) = W# (get_lo# w)
 
@@ -66,6 +67,7 @@ get_hi# :: (# Word#, Word# #) -> Word#
 get_hi# (# _, h #) = h
 {-# INLINE get_hi# #-}
 
+-- | Get the high 'Word' from a 'Wide' word.
 get_hi :: Wide -> Word
 get_hi (Wide w) = W# (get_hi# w)
 
@@ -86,6 +88,7 @@ hi# :: Word# -> (# Word#, Word# #)
 hi# w = (# 0##, w #)
 {-# INLINE hi# #-}
 
+-- | Construct a 'Wide' word from a high 'Word'.
 hi :: Word -> Wide
 hi (W# w) = Wide (hi# w)
 
@@ -94,13 +97,15 @@ lo# :: Word# -> (# Word#, Word# #)
 lo# w = (# w, 0## #)
 {-# INLINE lo# #-}
 
+-- | Construct a 'Wide' word from a low 'Word'.
 lo :: Word -> Wide
 lo (W# w) = Wide (lo# w)
 
--- construct from lo, hi
+-- | Construct a 'Wide' word from low and high 'Word's.
 wide :: Word -> Word -> Wide
 wide (W# l) (W# h) = Wide (# l, h #)
 
+-- | Convert an 'Integer' to a 'Wide' word.
 to :: Integer -> Wide
 to n =
   let !size = B.finiteBitSize (0 :: Word)
@@ -109,6 +114,7 @@ to n =
       !(W# w1) = fi ((n .>>. size) .&. mask)
   in  Wide (# w0, w1 #)
 
+-- | Convert a 'Wide' word to an 'Integer'.
 from :: Wide -> Integer
 from (Wide (# a, b #)) =
       fi (W# b) .<<. (B.finiteBitSize (0 :: Word))
@@ -147,54 +153,65 @@ not (Wide w) = Wide (not_w# w)
 
 -- addition, subtraction ------------------------------------------------------
 
--- wide addition (overflowing)
+-- | Overflowing addition, computing 'a + b', returning the sum and a
+--   carry bit.
 add_c#
-  :: (# Word#, Word# #)
-  -> (# Word#, Word# #)
-  -> (# Word#, Word#, Word# #) -- (# sum, carry bit #)
+  :: (# Word#, Word# #)              -- ^ augend
+  -> (# Word#, Word# #)              -- ^ addend
+  -> (# (# Word#, Word# #), Word# #) -- ^ (# sum, carry bit #)
 add_c# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.add_c# a0 b0 0##
       !(# s1, c1 #) = L.add_c# a1 b1 c0
-  in  (# s0, s1, c1 #)
+  in  (# (# s0, s1 #), c1 #)
 {-# INLINE add_c# #-}
 
--- wide addition (wrapping)
-add_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+-- | Wrapping addition, computing 'a + b'.
+add_w#
+  :: (# Word#, Word# #) -- ^ augend
+  -> (# Word#, Word# #) -- ^ addend
+  -> (# Word#, Word# #) -- ^ sum
 add_w# a b =
-  let !(# c0, c1, _ #) = add_c# a b
-  in  (# c0, c1 #)
+  let !(# c, _ #) = add_c# a b
+  in  c
 {-# INLINE add_w# #-}
 
--- wide addition (wrapping)
+-- | Wrapping addition on 'Wide' words, computing 'a + b'.
 add :: Wide -> Wide -> Wide
 add (Wide a) (Wide b) = Wide (add_w# a b)
 
--- wide subtract-with-borrow
-sub_wb#
-  :: (# Word#, Word# #)
-  -> (# Word#, Word# #)
-  -> (# Word#, Word#, Word# #)
-sub_wb# (# a0, a1 #) (# b0, b1 #) =
+-- | Borrowing subtraction, computing 'a - b' and returning the
+--   difference with a borrow bit.
+sub_b#
+  :: (# Word#, Word# #)              -- ^ minuend
+  -> (# Word#, Word# #)              -- ^ subtrahend
+  -> (# (# Word#, Word# #), Word# #) -- ^ (# difference, borrow bit #)
+sub_b# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 0##
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
-  in  (# s0, s1, c1 #)
-{-# INLINE sub_wb# #-}
+  in  (# (# s0, s1 #), c1 #)
+{-# INLINE sub_b# #-}
 
--- wide subtraction (wrapping)
-sub_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+-- | Wrapping subtraction, computing 'a - b'.
+sub_w#
+  :: (# Word#, Word# #) -- ^ minuend
+  -> (# Word#, Word# #) -- ^ subtrahend
+  -> (# Word#, Word# #) -- ^ difference
 sub_w# a b =
-  let !(# c0, c1, _ #) = sub_wb# a b
-  in  (# c0, c1 #)
+  let !(# c, _ #) = sub_b# a b
+  in  c
 {-# INLINE sub_w# #-}
 
--- wide subtraction (wrapping)
+-- | Wrapping subtraction on 'Wide' words, computing 'a - b'.
 sub :: Wide -> Wide -> Wide
 sub (Wide a) (Wide b) = Wide (sub_w# a b)
 
 -- multiplication -------------------------------------------------------------
 
--- wide multiplication (wrapping)
-mul_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+-- | Wrapping multiplication, computing 'a b'.
+mul_w#
+  :: (# Word#, Word# #) -- ^ multiplicand
+  -> (# Word#, Word# #) -- ^ multiplier
+  -> (# Word#, Word# #) -- ^ product
 mul_w# (# a0, a1 #) (# b0, b1 #) =
   let !(# p0_lo, p0_hi #) = L.mul_c# a0 b0
       !(# p1_lo, _ #) = L.mul_c# a0 b1
@@ -204,6 +221,7 @@ mul_w# (# a0, a1 #) (# b0, b1 #) =
   in  (# p0_lo, s1 #)
 {-# INLINE mul_w# #-}
 
+-- | Wrapping multiplication on 'Wide' words.
 mul :: Wide -> Wide -> Wide
 mul (Wide a) (Wide b) = Wide (mul_w# a b)
 
