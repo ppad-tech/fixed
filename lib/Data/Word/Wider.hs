@@ -9,7 +9,6 @@
 module Data.Word.Wider where
 
 import Control.DeepSeq
-import qualified Data.Choice as C
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
 import qualified Data.Bits as B
 import qualified Data.Word.Limb as L
@@ -22,13 +21,14 @@ fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
 
+-- bit to mask (wrapping negation)
 wrapping_neg# :: Word# -> Word#
 wrapping_neg# w = plusWord# (not# w) 1##
 {-# INLINE wrapping_neg# #-}
 
--- wide words -----------------------------------------------------------------
+-- wider words ----------------------------------------------------------------
 
--- little-endian, i.e. (# w0, w1, w2, w3 #)
+-- | Little-endian wider words.
 data Wider = Wider (# Word#, Word#, Word#, Word# #)
 
 instance Show Wider where
@@ -47,10 +47,12 @@ instance NFData Wider where
 
 -- construction / conversion --------------------------------------------------
 
--- construct from lo, hi
+-- | Construct a 'Wider' word from four 'Words', provided in
+--   little-endian order.
 wider :: Word -> Word -> Word -> Word -> Wider
 wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider (# w0, w1, w2, w3 #)
 
+-- | Convert an 'Integer' to a 'Wider' word.
 to :: Integer -> Wider
 to n =
   let !size = B.finiteBitSize (0 :: Word)
@@ -61,6 +63,7 @@ to n =
       !(W# w3) = fi ((n .>>. (3 * size)) .&. mask)
   in  Wider (# w0, w1, w2, w3 #)
 
+-- | Convert a 'Wider' word to an 'Integer'.
 from :: Wider -> Integer
 from (Wider (# w0, w1, w2, w3 #)) =
         fi (W# w3) .<<. (3 * size)
@@ -70,51 +73,55 @@ from (Wider (# w0, w1, w2, w3 #)) =
   where
     !size = B.finiteBitSize (0 :: Word)
 
--- wider-add-with-carry, i.e. (# sum, carry bit #)
-add_wc#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word#, Word# #)
-add_wc# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+-- addition, subtraction ------------------------------------------------------
+
+-- | Overflowing addition, computing 'a + b', returning the sum and a
+--   carry bit.
+add_c#
+  :: (# Word#, Word#, Word#, Word# #)              -- ^ augend
+  -> (# Word#, Word#, Word#, Word# #)              -- ^ addend
+  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ (# sum, carry bit #)
+add_c# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.add_c# a0 b0 0##
       !(# s1, c1 #) = L.add_c# a1 b1 c0
       !(# s2, c2 #) = L.add_c# a2 b2 c1
       !(# s3, c3 #) = L.add_c# a3 b3 c2
-  in  (# s0, s1, s2, s3, c3 #)
-{-# INLINE add_wc# #-}
+  in  (# (# s0, s1, s2, s3 #), c3 #)
+{-# INLINE add_c# #-}
 
--- wider addition (wrapping)
+-- | Wrapping addition, computing 'a + b'.
 add_w#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Word#, Word#, Word#, Word# #) -- ^ augend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ addend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ sum
 add_w# a b =
-  let !(# c0, c1, c2, c3, _ #) = add_wc# a b
-  in  (# c0, c1, c2, c3 #)
+  let !(# c, _ #) = add_c# a b
+  in  c
 {-# INLINE add_w# #-}
 
--- reference: borrowing_sub
+-- | Borrowing subtraction, computing 'a - b' and returning the
+--   difference with a borrow bit.
 sub_b#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word#, Word# #) -- (# difference, borrow bit #)
+  :: (# Word#, Word#, Word#, Word# #)              -- ^ minuend
+  -> (# Word#, Word#, Word#, Word# #)              -- ^ subtrahend
+  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ (# diff, borrow bit #)
 sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 0##
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
       !(# s2, c2 #) = L.sub_b# a2 b2 c1
       !(# s3, c3 #) = L.sub_b# a3 b3 c2
-  in  (# s0, s1, s2, s3, c3 #)
+  in  (# (# s0, s1, s2, s3 #), c3 #)
 {-# INLINE sub_b# #-}
 
--- reference sub_mod_with_carry
+-- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#
-  :: (# Word#, Word#, Word#, Word# #) -- lhs
-  -> Word#                            -- carry bit
-  -> (# Word#, Word#, Word#, Word# #) -- rhs
-  -> (# Word#, Word#, Word#, Word# #) -- p
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
+  -> Word#                            -- ^ carry bit
+  -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ difference
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
-  let !(# o0, o1, o2, o3, bb #) = sub_b# a b
+  let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
       !mask = and# (not# (wrapping_neg# c)) (wrapping_neg# bb)
       !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
   in  add_w# (# o0, o1, o2, o3 #) band

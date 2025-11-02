@@ -151,7 +151,3 @@ retr (W.Wider f) (W.Wider m) (W# n) =
   let !res = retr# f m n
   in  (W.Wider res)
 
-
-
-
-
