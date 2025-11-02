@@ -133,6 +133,7 @@ none_word# :: Word# -> MaybeWord#
 none_word# w = MaybeWord# (# w, false# () #)
 {-# INLINE none_word# #-}
 
+-- constant time 'Maybe (# Word#, Word# #)'
 newtype MaybeWide# = MaybeWide# (# (# Word#, Word# #), Choice #)
 
 just_wide# :: (# Word#, Word# #) -> Choice -> MaybeWide#

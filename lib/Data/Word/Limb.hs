@@ -65,7 +65,13 @@ mul_w# a b =
   in  l
 {-# INLINE mul_w# #-}
 
-mul_add_c# :: Word# -> Word# -> Word# -> Word# -> (# Word#, Word# #)
+-- carrying multiplication with addition
+mul_add_c#
+  :: Word# -- lhs
+  -> Word# -- rhs
+  -> Word# -- addend
+  -> Word# -- carry
+  -> (# Word#, Word# #)  -- lhs * rhs + addend + carry
 mul_add_c# lhs rhs addend carry =
     let !(# l_0, h_0 #) = add_w# (mul_c# lhs rhs) (# addend, 0## #)
         !(# l_1, c #) = add_c# l_0 carry 0##
@@ -73,6 +79,7 @@ mul_add_c# lhs rhs addend carry =
     in  (# l_1, h_1 #)
   where
     -- duplicated w/Data.Word.Wide to avoid awkward module structuring
+    -- wide addition with carry
     add_wc#
       :: (# Word#, Word# #)
       -> (# Word#, Word# #)
@@ -83,6 +90,7 @@ mul_add_c# lhs rhs addend carry =
       in  (# s0, s1, c1 #)
     {-# INLINE add_wc# #-}
 
+    -- wide wrapping addition
     add_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
     add_w# a b =
       let !(# c0, c1, _ #) = add_wc# a b

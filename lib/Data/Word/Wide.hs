@@ -19,6 +19,9 @@ module Data.Word.Wide (
   , to
   , from
 
+  , lo#
+  , hi#
+
   -- * Bit Manipulation
   , or
   , and
@@ -33,6 +36,9 @@ module Data.Word.Wide (
   , mul
   , quotrem_by1
   , _quotrem_by1
+
+  , add_w#
+  , mul_w#
   ) where
 
 import Control.DeepSeq
@@ -217,21 +223,21 @@ unchecked_shr (Wide w) (I# s) = Wide (unchecked_shr# w s)
 
 -- addition, subtraction ------------------------------------------------------
 
--- wide-add-with-carry, i.e. (# sum, carry bit #)
-add_wc#
+-- wide addition (overflowing)
+add_c#
   :: (# Word#, Word# #)
   -> (# Word#, Word# #)
-  -> (# Word#, Word#, Word# #)
-add_wc# (# a0, a1 #) (# b0, b1 #) =
+  -> (# Word#, Word#, Word# #) -- (# sum, carry bit #)
+add_c# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.add_c# a0 b0 0##
       !(# s1, c1 #) = L.add_c# a1 b1 c0
   in  (# s0, s1, c1 #)
-{-# INLINE add_wc# #-}
+{-# INLINE add_c# #-}
 
 -- wide addition (wrapping)
 add_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
 add_w# a b =
-  let !(# c0, c1, _ #) = add_wc# a b
+  let !(# c0, c1, _ #) = add_c# a b
   in  (# c0, c1 #)
 {-# INLINE add_w# #-}
 

@@ -15,7 +15,7 @@ import qualified Data.Choice as C
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
 import qualified Data.Bits as B
 import qualified Data.Word.Limb as L
-import qualified Data.Word.Wider as L
+import qualified Data.Word.Wider as W
 import GHC.Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
@@ -26,11 +26,7 @@ redc_inner#
   -> (# Word#, Word#, Word#, Word# #) -- modulus
   -> Word#                            -- mod neg inv
   -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- upper, meta-carry
-redc_inner#
-    (# u0, u1, u2, u3 #)
-    (# l0, l1, l2, l3 #)
-    (# m0, m1, m2, m3 #)
-    n =
+redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) (# m0, m1, m2, m3 #) n =
   let -- outer loop, i == 0 ---------------------------------------------------
       !w_0 = L.mul_w# l0 n
       !(# _, c_00 #) = L.mul_add_c# w_0 m0 l0 0##     -- m0, l0
@@ -92,13 +88,14 @@ redc#
   -> (# Word#, Word#, Word#, Word# #)
 redc# l u m n =
   let !(# nu, mc #) = redc_inner# u l m n
-  in  L.sub_mod_c# nu mc m m
+  in  W.sub_mod_c# nu mc m m -- XX shouldn't use Data.Word.Wider version
 {-# INLINE redc# #-}
 
-redc :: L.Wider -> L.Wider -> L.Wider -> Word -> L.Wider
-redc (L.Wider l) (L.Wider u) (L.Wider m) (W# n) =
+-- XX here only for testing; should probably be in Data.Word.Wider itself
+redc :: W.Wider -> W.Wider -> W.Wider -> Word -> W.Wider
+redc (W.Wider l) (W.Wider u) (W.Wider m) (W# n) =
   let !res = redc# l u m n
-  in  (L.Wider res)
+  in  (W.Wider res)
 
 -- reference 'montgomery_retrieve_inner'
 retr_inner#
@@ -106,10 +103,7 @@ retr_inner#
   -> (# Word#, Word#, Word#, Word# #) -- modulus
   -> Word#                            -- mod neg inv
   -> (# Word#, Word#, Word#, Word# #)
-retr_inner#
-    (# x0, x1, x2, x3 #)
-    (# m0, m1, m2, m3 #)
-    n =
+retr_inner# (# x0, x1, x2, x3 #) (# m0, m1, m2, m3 #) n =
   let -- outer loop, i == 0 ---------------------------------------------------
       !u_0 = L.mul_w# x0 n                              -- out state
       !(# _, o0 #) = L.mul_add_c# u_0 m0 x0 0##         -- o0, 0, 0, 0
@@ -153,12 +147,17 @@ retr#
 retr# f m n = retr_inner# f m n
 {-# INLINE retr# #-}
 
+-- XX ditto
 retr
-  :: L.Wider -- montgomery form
-  -> L.Wider -- modulus
+  :: W.Wider -- montgomery form
+  -> W.Wider -- modulus
   -> Word    -- mod neg inv
-  -> L.Wider
-retr (L.Wider f) (L.Wider m) (W# n) =
+  -> W.Wider
+retr (W.Wider f) (W.Wider m) (W# n) =
   let !res = retr# f m n
-  in  (L.Wider res)
+  in  (W.Wider res)
+
+
+
+
 
