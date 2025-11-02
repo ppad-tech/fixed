@@ -24,7 +24,7 @@ redc_inner#
   :: (# Word#, Word#, Word#, Word# #) -- upper
   -> (# Word#, Word#, Word#, Word# #) -- lower
   -> (# Word#, Word#, Word#, Word# #) -- modulus
-  -> Word#
+  -> Word#                            -- mod neg inv
   -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- upper, meta-carry
 redc_inner#
     (# u0, u1, u2, u3 #)
@@ -102,23 +102,21 @@ redc (L.Wider l) (L.Wider u) (L.Wider m) (W# n) =
 
 -- reference 'montgomery_retrieve_inner'
 retr_inner#
-  :: (# Word#, Word#, Word#, Word# #) -- x
-  -> (# Word#, Word#, Word#, Word# #) -- out
+  :: (# Word#, Word#, Word#, Word# #) -- montgomery form
   -> (# Word#, Word#, Word#, Word# #) -- modulus
   -> Word#                            -- mod neg inv
   -> (# Word#, Word#, Word#, Word# #)
 retr_inner#
     (# x0, x1, x2, x3 #)
-    (#  o,  p,  q,  r #)
     (# m0, m1, m2, m3 #)
     n =
   let -- outer loop, i == 0 ---------------------------------------------------
-      !u_0 = L.mul_w# (plusWord# o x0) n                -- out state
-      !(# _, o0 #) = L.mul_add_c# u_0 m0 x0 o           -- o0, p, q, r
+      !u_0 = L.mul_w# x0 n                              -- out state
+      !(# _, o0 #) = L.mul_add_c# u_0 m0 x0 0##         -- o0, 0, 0, 0
       -- inner loop
-      !(# o0_1, p0_1 #) = L.mul_add_c# u_0 m1 p o0      -- o0_1, p0_1, q, r
-      !(# p0_2, q0_2 #) = L.mul_add_c# u_0 m2 q p0_1    -- o0_1, p0_2, q0_2, r
-      !(# q0_3, r0_3 #) = L.mul_add_c# u_0 m3 r q0_2    -- o0_1, p0_2, q0_3, r0_3
+      !(# o0_1, p0_1 #) = L.mul_add_c# u_0 m1 0## o0    -- o0_1, p0_1, 0, 0
+      !(# p0_2, q0_2 #) = L.mul_add_c# u_0 m2 0## p0_1  -- o0_1, p0_2, q0_2, 0
+      !(# q0_3, r0_3 #) = L.mul_add_c# u_0 m3 0## q0_2  -- o0_1, p0_2, q0_3, r0_3
       -- end state: (# o0_1, p0_2, q0_3, r0_3 #)
       -- outer loop, i == 1 ---------------------------------------------------
       !u_1 = L.mul_w# (plusWord# o0_1 x1) n
@@ -152,10 +150,14 @@ retr#
   -> (# Word#, Word#, Word#, Word# #) -- modulus
   -> Word#                            -- mod neg inv
   -> (# Word#, Word#, Word#, Word# #)
-retr# f m n = retr_inner# f (# 0##, 0##, 0##, 0## #) m n
+retr# f m n = retr_inner# f m n
 {-# INLINE retr# #-}
 
-retr :: L.Wider -> L.Wider -> Word -> L.Wider
+retr
+  :: L.Wider -- montgomery form
+  -> L.Wider -- modulus
+  -> Word    -- mod neg inv
+  -> L.Wider
 retr (L.Wider f) (L.Wider m) (W# n) =
   let !res = retr# f m n
   in  (L.Wider res)
