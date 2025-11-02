@@ -6,14 +6,8 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedNewtypes #-}
 
--- XX this should probably be its own library
-
 module Data.Word.Montgomery where
 
-import Control.DeepSeq
-import qualified Data.Choice as C
-import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
-import qualified Data.Bits as B
 import qualified Data.Word.Limb as L
 import qualified Data.Word.Wider as W
 import GHC.Exts
