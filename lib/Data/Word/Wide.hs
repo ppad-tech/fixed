@@ -20,7 +20,9 @@ module Data.Word.Wide (
   , from
 
   , lo#
+  , get_lo#
   , hi#
+  , get_hi#
 
   -- * Bit Manipulation
   , or
@@ -32,6 +34,13 @@ module Data.Word.Wide (
   , add
   , sub
   , mul
+
+  -- * Unboxed Arithmetic
+  , add_c#
+  , add_w#
+  , sub_b#
+  , sub_w#
+  , mul_w#
 
   , add_w#
   , mul_w#
