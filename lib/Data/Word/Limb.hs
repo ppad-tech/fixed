@@ -77,27 +77,17 @@ mul_add_c#
   -> Word#              -- ^ carry
   -> (# Word#, Word# #) -- ^ lhs * rhs + addend + carry
 mul_add_c# a b m c =
-    let !(# l_0, h_0 #) = wadd_w# (mul_c# a b) (# m, 0## #)
-        !(# l_1, d #) = add_c# l_0 c 0##
+    let !(# l_0, h_0 #) = wadd_w# (mul_c# a b) m
+        !(# d, l_1 #) = plusWord2# l_0 c
         !h_1 = plusWord# h_0 d
     in  (# l_1, h_1 #)
   where
-    -- wide overflowing addition
-    wadd_c#
-      :: (# Word#, Word# #)
-      -> (# Word#, Word# #)
-      -> (# Word#, Word#, Word# #)
-    wadd_c# (# a0, a1 #) (# b0, b1 #) =
-      let !(# s0, c0 #) = add_c# a0 b0 0##
-          !(# s1, c1 #) = add_c# a1 b1 c0
-      in  (# s0, s1, c1 #)
-    {-# INLINE wadd_c# #-}
-
     -- wide wrapping addition
-    wadd_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
-    wadd_w# x y =
-      let !(# c0, c1, _ #) = wadd_c# x y
-      in  (# c0, c1 #)
+    wadd_w# :: (# Word#, Word# #) -> Word# -> (# Word#, Word# #)
+    wadd_w# (# x_lo, x_hi #) y_lo =
+      let !(# c0, s0 #) = plusWord2# x_lo y_lo
+          !(# _, s1 #) = plusWord2# x_hi c0
+      in  (# s0, s1 #)
     {-# INLINE wadd_w# #-}
 {-# INLINE mul_add_c# #-}
 
