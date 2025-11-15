@@ -12,7 +12,7 @@ module Data.Word.Limb (
   , sub_b#
   , mul_c#
   , mul_w#
-  , mul_add_c#
+  , mac#
   ) where
 
 import GHC.Exts
@@ -69,14 +69,14 @@ mul_w# a b =
   in  l
 {-# INLINE mul_w# #-}
 
--- | Carrying multiply-and-add, computing 'a * b + m + c'.
-mul_add_c#
+-- | Multiply-add-carry, computing 'a * b + m + c'.
+mac#
   :: Word#              -- ^ multiplicand
   -> Word#              -- ^ multiplier
   -> Word#              -- ^ addend
   -> Word#              -- ^ carry
   -> (# Word#, Word# #) -- ^ lhs * rhs + addend + carry
-mul_add_c# a b m c =
+mac# a b m c =
     let !(# l_0, h_0 #) = wadd_w# (mul_c# a b) m
         !(# d, l_1 #) = plusWord2# l_0 c
         !h_1 = plusWord# h_0 d
@@ -89,5 +89,5 @@ mul_add_c# a b m c =
           !(# _, s1 #) = plusWord2# x_hi c0
       in  (# s0, s1 #)
     {-# INLINE wadd_w# #-}
-{-# INLINE mul_add_c# #-}
+{-# INLINE mac# #-}
 
