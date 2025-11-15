@@ -308,6 +308,7 @@ to (Wider x) (Wider r2) (Wider m) (W# n) = Wider (to# x r2 m n)
 from :: Wider -> Wider -> Word -> Wider
 from = retr
 
+-- | Addition in the Montgomery domain.
 add#
   :: (# Word#, Word#, Word#, Word# #) -- ^ augend
   -> (# Word#, Word#, Word#, Word# #) -- ^ addend
@@ -319,6 +320,7 @@ add# a b m = WW.add_mod# a b m
 add :: Wider -> Wider -> Wider -> Wider
 add (Wider a) (Wider b) (Wider m) = Wider (add# a b m)
 
+-- | Subtraction in the Montgomery domain.
 sub#
   :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
   -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
@@ -330,3 +332,13 @@ sub# a b m = WW.sub_mod# a b m
 sub :: Wider -> Wider -> Wider -> Wider
 sub (Wider a) (Wider b) (Wider m) = Wider (sub# a b m)
 
+-- | Modular negation in the Montgomery domain.
+neg#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ argument
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modular negation
+neg# a m = sub# (# 0##, 0##, 0##, 0## #) a m
+{-# INLINE neg# #-}
+
+neg :: Wider -> Wider -> Wider
+neg (Wider a) (Wider m) = Wider (neg# a m)
