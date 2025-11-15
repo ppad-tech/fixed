@@ -178,27 +178,27 @@ mul_inner#
   -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ product, meta-carry
 mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) (# m0, m1, m2, m3 #) n =
   let -- outer loop, i == 0 ---------------------------------------------------
-      !axy0 = L.mul_c# x0 y0                                   -- out state
-      !u0 = L.mul_w# (lo axy0) n                               -- 0, 0, 0, 0
+      !axy0 = L.mul_c# x0 y0                                  -- out state
+      !u0 = L.mul_w# (lo axy0) n                              -- 0, 0, 0, 0
       !(# (# _, a0 #), c0 #) = W.add_c# (L.mul_c# u0 m0) axy0
       !carry0 = (# a0, c0 #)
       -- inner loop, j == 1
       !axy0_1 = L.mul_c# x0 y1
       !umc0_1 = W.add_w# (L.mul_c# u0 m1) carry0
-      !(# (# o0, ab0_1 #), c0_1 #) = W.add_c# axy0_1 umc0_1    -- o0, 0, 0, 0
+      !(# (# o0, ab0_1 #), c0_1 #) = W.add_c# axy0_1 umc0_1   -- o0, 0, 0, 0
       !carry0_1 = (# ab0_1, c0_1 #)
       -- inner loop, j == 2
       !axy0_2 = L.mul_c# x0 y2
       !umc0_2 = W.add_w# (L.mul_c# u0 m2) carry0_1
-      !(# (# p0, ab0_2 #), c0_2 #) = W.add_c# axy0_2 umc0_2    -- o0, p0, 0, 0
+      !(# (# p0, ab0_2 #), c0_2 #) = W.add_c# axy0_2 umc0_2   -- o0, p0, 0, 0
       !carry0_2 = (# ab0_2, c0_2 #)
       -- inner loop, j == 3
       !axy0_3 = L.mul_c# x0 y3
       !umc0_3 = W.add_w# (L.mul_c# u0 m3) carry0_2
-      !(# (# q0, ab0_3 #), c0_3 #) = W.add_c# axy0_3 umc0_3    -- o0, p0, q0, 0
+      !(# (# q0, ab0_3 #), c0_3 #) = W.add_c# axy0_3 umc0_3   -- o0, p0, q0, 0
       !carry0_3 = (# ab0_3, c0_3 #)
       -- final stanza
-      !(# r0, mc0 #) = carry0_3                                -- o0, p0, q0, r0
+      !(# r0, mc0 #) = carry0_3                               -- o0, p0, q0, r0
       -- outer loop, i == 1 ---------------------------------------------------
       !axy1 = wadd_w# (L.mul_c# x1 y0) o0
       !u1 = L.mul_w# (lo axy1) n
@@ -207,20 +207,20 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) (# m0, m1, m2, m3 #) n =
       -- inner loop, j == 1
       !axy1_1 = wadd_w# (L.mul_c# x1 y1) p0
       !umc1_1 = W.add_w# (L.mul_c# u1 m1) carry1
-      !(# (# o1, ab1_1 #), c1_1 #) = W.add_c# axy1_1 umc1_1    -- o1, p0, q0, r0
+      !(# (# o1, ab1_1 #), c1_1 #) = W.add_c# axy1_1 umc1_1   -- o1, p0, q0, r0
       !carry1_1 = (# ab1_1, c1_1 #)
       -- inner loop, j == 2
       !axy1_2 = wadd_w# (L.mul_c# x1 y2) q0
       !umc1_2 = W.add_w# (L.mul_c# u1 m2) carry1_1
-      !(# (# p1, ab1_2 #), c1_2 #) = W.add_c# axy1_2 umc1_2    -- o1, p1, q0, r0
+      !(# (# p1, ab1_2 #), c1_2 #) = W.add_c# axy1_2 umc1_2   -- o1, p1, q0, r0
       !carry1_2 = (# ab1_2, c1_2 #)
       -- inner loop, j == 3
       !axy1_3 = wadd_w# (L.mul_c# x1 y3) r0
       !umc1_3 = W.add_w# (L.mul_c# u1 m3) carry1_2
-      !(# (# q1, ab1_3 #), c1_3 #) = W.add_c# axy1_3 umc1_3    -- o1, p1, q1, r0
+      !(# (# q1, ab1_3 #), c1_3 #) = W.add_c# axy1_3 umc1_3   -- o1, p1, q1, r0
       !carry1_3 = (# ab1_3, c1_3 #)
       -- final stanza
-      !(# r1, mc1 #) = wadd_w# carry1_3 mc0                    -- o1, p1, q1, r1
+      !(# r1, mc1 #) = wadd_w# carry1_3 mc0                   -- o1, p1, q1, r1
       -- outer loop, i == 2 ---------------------------------------------------
       !axy2 = wadd_w# (L.mul_c# x2 y0) o1
       !u2 = L.mul_w# (lo axy2) n
@@ -229,20 +229,20 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) (# m0, m1, m2, m3 #) n =
       -- inner loop, j == 1
       !axy2_1 = wadd_w# (L.mul_c# x2 y1) p1
       !umc2_1 = W.add_w# (L.mul_c# u2 m1) carry2
-      !(# (# o2, ab2_1 #), c2_1 #) = W.add_c# axy2_1 umc2_1    -- o2, p1, q1, r1
+      !(# (# o2, ab2_1 #), c2_1 #) = W.add_c# axy2_1 umc2_1   -- o2, p1, q1, r1
       !carry2_1 = (# ab2_1, c2_1 #)
       -- inner loop, j == 2
       !axy2_2 = wadd_w# (L.mul_c# x2 y2) q1
       !umc2_2 = W.add_w# (L.mul_c# u2 m2) carry2_1
-      !(# (# p2, ab2_2 #), c2_2 #) = W.add_c# axy2_2 umc2_2    -- o2, p2, q1, r1
+      !(# (# p2, ab2_2 #), c2_2 #) = W.add_c# axy2_2 umc2_2   -- o2, p2, q1, r1
       !carry2_2 = (# ab2_2, c2_2 #)
       -- inner loop, j == 3
       !axy2_3 = wadd_w# (L.mul_c# x2 y3) r1
       !umc2_3 = W.add_w# (L.mul_c# u2 m3) carry2_2
-      !(# (# q2, ab2_3 #), c2_3 #) = W.add_c# axy2_3 umc2_3    -- o2, p2, q2, r1
+      !(# (# q2, ab2_3 #), c2_3 #) = W.add_c# axy2_3 umc2_3   -- o2, p2, q2, r1
       !carry2_3 = (# ab2_3, c2_3 #)
       -- final stanza
-      !(# r2, mc2 #) = wadd_w# carry2_3 mc1                    -- o2, p2, q2, r2
+      !(# r2, mc2 #) = wadd_w# carry2_3 mc1                   -- o2, p2, q2, r2
       -- outer loop, i == 3 ---------------------------------------------------
       !axy3 = wadd_w# (L.mul_c# x3 y0) o2
       !u3 = L.mul_w# (lo axy3) n
@@ -251,20 +251,20 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) (# m0, m1, m2, m3 #) n =
       -- inner loop, j == 1
       !axy3_1 = wadd_w# (L.mul_c# x3 y1) p2
       !umc3_1 = W.add_w# (L.mul_c# u3 m1) carry3
-      !(# (# o3, ab3_1 #), c3_1 #) = W.add_c# axy3_1 umc3_1    -- o3, p2, q2, r2
+      !(# (# o3, ab3_1 #), c3_1 #) = W.add_c# axy3_1 umc3_1   -- o3, p2, q2, r2
       !carry3_1 = (# ab3_1, c3_1 #)
       -- inner loop, j == 2
       !axy3_2 = wadd_w# (L.mul_c# x3 y2) q2
       !umc3_2 = W.add_w# (L.mul_c# u3 m2) carry3_1
-      !(# (# p3, ab3_2 #), c3_2 #) = W.add_c# axy3_2 umc3_2    -- o3, p3, q1, r2
+      !(# (# p3, ab3_2 #), c3_2 #) = W.add_c# axy3_2 umc3_2   -- o3, p3, q1, r2
       !carry3_2 = (# ab3_2, c3_2 #)
       -- inner loop, j == 3
       !axy3_3 = wadd_w# (L.mul_c# x3 y3) r2
       !umc3_3 = W.add_w# (L.mul_c# u3 m3) carry3_2
-      !(# (# q3, ab3_3 #), c3_3 #) = W.add_c# axy3_3 umc3_3    -- o3, p3, q3, r2
+      !(# (# q3, ab3_3 #), c3_3 #) = W.add_c# axy3_3 umc3_3   -- o3, p3, q3, r2
       !carry3_3 = (# ab3_3, c3_3 #)
       -- final stanza
-      !(# r3, mc3 #) = wadd_w# carry3_3 mc2                    -- o3, p3, q3, r3
+      !(# r3, mc3 #) = wadd_w# carry3_3 mc2                   -- o3, p3, q3, r3
   in  (# (# o3, p3, q3, r3 #), mc3 #)
 {-# INLINE mul_inner# #-}
 
@@ -304,3 +304,7 @@ to# x r2 m n = mul# x r2 m n
 -- mod neg inv 0xD838091DD2253531
 to :: Wider -> Wider -> Wider -> Word -> Wider
 to (Wider x) (Wider r2) (Wider m) (W# n) = Wider (to# x r2 m n)
+
+from :: Wider -> Wider -> Word -> Wider
+from = retr
+
