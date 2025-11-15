@@ -82,7 +82,7 @@ add_c#
   -> (# Word#, Word#, Word#, Word# #)              -- ^ addend
   -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ (# sum, carry bit #)
 add_c# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
-  let !(# s0, c0 #) = L.add_c# a0 b0 0##
+  let !(# c0, s0 #) = plusWord2# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
       !(# s2, c2 #) = L.add_c# a2 b2 c1
       !(# s3, c3 #) = L.add_c# a3 b3 c2
