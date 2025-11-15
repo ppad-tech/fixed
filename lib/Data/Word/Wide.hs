@@ -41,9 +41,6 @@ module Data.Word.Wide (
   , sub_b#
   , sub_w#
   , mul_w#
-
-  , add_w#
-  , mul_w#
   ) where
 
 import Control.DeepSeq

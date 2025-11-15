@@ -169,7 +169,7 @@ retr (Wider f) (Wider m) (W# n) =
   let !res = retr# f m n
   in  (Wider res)
 
--- | Montgomery multiplication.
+-- | Montgomery multiplication (FIOS), without conditional subtract.
 mul_inner#
   :: (# Word#, Word#, Word#, Word# #)              -- ^ x
   -> (# Word#, Word#, Word#, Word# #)              -- ^ y
@@ -266,6 +266,19 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) (# m0, m1, m2, m3 #) n =
       -- final stanza
       !(# r3, mc3 #) = W.add_w# carry3_3 (w mc2)                  -- o3, p3, q3, r3
   in  (# (# o3, p3, q3, r3 #), mc3 #)
+{-# INLINE mul_inner# #-}
+
+-- | Montgomery multiplication, with conditional subtract.
+mul#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> Word#
+  -> (# Word#, Word#, Word#, Word# #)
+mul# a b m n =
+  let !(# nu, mc #) = mul_inner# a b m n
+  in  WW.sub_mod_c# nu mc m m
+{-# INLINE mul# #-}
 
 mul
   :: Wider -- ^ lhs in montgomery form
@@ -273,7 +286,16 @@ mul
   -> Wider -- ^ modulus
   -> Word  -- ^ mod neg inv
   -> Wider -- ^ montgomery product
-mul (Wider a) (Wider b) (Wider m) (W# n) =
-  let !(# nu, mc #) = mul_inner# a b m n
-  in  Wider (WW.sub_mod_c# nu mc m m)
+mul (Wider a) (Wider b) (Wider m) (W# n) = Wider (mul# a b m n)
 
+to#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ integer
+  -> (# Word#, Word#, Word#, Word# #) -- ^ r^2 mod modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> Word#                            -- ^ mod neg inv
+  -> (# Word#, Word#, Word#, Word# #)
+to# x r2 m n = mul# x r2 m n
+{-# INLINE to# #-}
+
+to :: Wider -> Wider -> Wider -> Word -> Wider
+to (Wider x) (Wider r2) (Wider m) (W# n) = Wider (to# x r2 m n)
