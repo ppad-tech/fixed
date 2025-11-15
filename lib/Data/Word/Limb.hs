@@ -30,8 +30,7 @@ add_c#
 add_c# a b c =
   let !(# c0, s0 #) = plusWord2# a b
       !(# c1,  s #) = plusWord2# s0 c
-      !o = or# c0 c1
-  in  (# s, o #)
+  in  (# s, or# c0 c1 #)
 {-# INLINE add_c# #-}
 
 -- | Borrowing subtraction, computing 'm - (n + b)'.

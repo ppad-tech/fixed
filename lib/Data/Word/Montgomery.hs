@@ -167,6 +167,8 @@ retr (Wider f) (Wider m) (W# n) =
   let !res = retr# f m n
   in  (Wider res)
 
+-- NB massive register pressure
+
 -- | Montgomery multiplication (FIOS), without conditional subtract.
 mul_inner#
   :: (# Word#, Word#, Word#, Word# #)              -- ^ x
