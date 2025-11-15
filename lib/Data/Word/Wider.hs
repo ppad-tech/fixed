@@ -99,6 +99,17 @@ add_w# a b =
   in  c
 {-# INLINE add_w# #-}
 
+-- | Modular addition.
+add_mod#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ augend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ addend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ sum
+add_mod# a b m =
+  let !(# w, c #) = add_c# a b
+  in  sub_mod_c# w c m m
+{-# INLINE add_mod# #-}
+
 -- | Borrowing subtraction, computing 'a - b' and returning the
 --   difference with a borrow bit.
 sub_b#
@@ -112,6 +123,19 @@ sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
       !(# s3, c3 #) = L.sub_b# a3 b3 c2
   in  (# (# s0, s1, s2, s3 #), c3 #)
 {-# INLINE sub_b# #-}
+
+-- | Modular subtraction. Computes a - b mod m.
+sub_mod#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ difference
+sub_mod# a b (# p0, p1, p2, p3 #) =
+  let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
+      !mask = wrapping_neg# bb
+      !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
+  in  add_w# (# o0, o1, o2, o3 #) band
+{-# INLINE sub_mod# #-}
 
 -- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#

@@ -308,3 +308,25 @@ to (Wider x) (Wider r2) (Wider m) (W# n) = Wider (to# x r2 m n)
 from :: Wider -> Wider -> Word -> Wider
 from = retr
 
+add#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ augend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ addend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ sum
+add# a b m = WW.add_mod# a b m
+{-# INLINE add# #-}
+
+add :: Wider -> Wider -> Wider -> Wider
+add (Wider a) (Wider b) (Wider m) = Wider (add# a b m)
+
+sub#
+  :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
+  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
+  -> (# Word#, Word#, Word#, Word# #) -- ^ difference
+sub# a b m = WW.sub_mod# a b m
+{-# INLINE sub# #-}
+
+sub :: Wider -> Wider -> Wider -> Wider
+sub (Wider a) (Wider b) (Wider m) = Wider (sub# a b m)
+
