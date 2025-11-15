@@ -166,7 +166,7 @@ add_c#
   -> (# Word#, Word# #)              -- ^ addend
   -> (# (# Word#, Word# #), Word# #) -- ^ (# sum, carry bit #)
 add_c# (# a0, a1 #) (# b0, b1 #) =
-  let !(# s0, c0 #) = L.add_c# a0 b0 0##
+  let !(# c0, s0 #) = plusWord2# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
   in  (# (# s0, s1 #), c1 #)
 {-# INLINE add_c# #-}
@@ -222,8 +222,8 @@ mul_w# (# a0, a1 #) (# b0, b1 #) =
   let !(# p0_lo, p0_hi #) = L.mul_c# a0 b0
       !(# p1_lo, _ #) = L.mul_c# a0 b1
       !(# p2_lo, _ #) = L.mul_c# a1 b0
-      !(# s0, _ #) = L.add_c# p0_hi p1_lo 0##
-      !(# s1, _ #) = L.add_c# s0 p2_lo 0##
+      !(# _, s0 #) = plusWord2# p0_hi p1_lo
+      !(# _, s1 #) = plusWord2# s0 p2_lo
   in  (# p0_lo, s1 #)
 {-# INLINE mul_w# #-}
 
