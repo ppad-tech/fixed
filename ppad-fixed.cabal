@@ -27,6 +27,8 @@ library
     , Data.Word.Montgomery
     , Data.Word.Wide
     , Data.Word.Wider
+    , Numeric.Montgomery.Secp256k1.Curve
+    , Numeric.Montgomery.Secp256k1.Scalar
   build-depends:
       base >= 4.9 && < 5
     , deepseq >= 1.5 && < 1.6
