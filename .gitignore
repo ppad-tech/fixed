@@ -3,9 +3,9 @@ dist-newstyle/
 *.hp
 core
 .claude/
-etc/
 *.ddump*
 *dump-llvm
 *.s
 *.ll
 *llvm
+sandbox/
