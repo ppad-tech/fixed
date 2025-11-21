@@ -36,12 +36,6 @@ instance Show Wider where
        "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
     <> show (W# c) <> ", " <> show (W# d) <> ")"
 
-instance Eq Wider where
-  Wider (# a0, b0, c0, d0 #) == Wider (# a1, b1, c1, d1 #) =
-    isTrue# (andI#
-      ((andI# (eqWord# a0 a1) (eqWord# b0 b1)))
-      ((andI# (eqWord# c0 c1) (eqWord# d0 d1))))
-
 instance NFData Wider where
   rnf (Wider a) = case a of (# _, _, _, _ #) -> ()
 

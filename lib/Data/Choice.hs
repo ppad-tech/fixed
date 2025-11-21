@@ -9,6 +9,7 @@ module Data.Choice (
     Choice
   , true#
   , false#
+  , decide
 
   -- * MaybeWord#
   , MaybeWord#(..)
@@ -126,6 +127,10 @@ true# :: () -> Choice
 true# _ = case maxBound :: Word of
   W# w -> Choice w
 {-# INLINE true# #-}
+
+decide :: Choice -> Bool
+decide (Choice c) = isTrue# (neWord# c 0##)
+{-# INLINE decide #-}
 
 -- constant time 'Maybe Word#'
 newtype MaybeWord# = MaybeWord# (# Word#, Choice #)
@@ -273,6 +278,8 @@ ct_select_wide# a b (Choice w) =
   let !mask = or_w# (hi# w) (lo# w)
   in  xor_w# a (and_w# mask (xor_w# a b))
 {-# INLINE ct_select_wide# #-}
+
+-- constant-time equality -----------------------------------------------------
 
 ct_eq_word# :: Word# -> Word# -> Choice
 ct_eq_word# a b =
