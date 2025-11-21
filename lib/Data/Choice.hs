@@ -45,6 +45,11 @@ module Data.Choice (
   -- * Constant-time Selection
   , ct_select_word#
   , ct_select_wide#
+
+  -- * Constant-time Equality
+  , ct_eq_word#
+  , ct_eq_wide#
+  , ct_eq_wider#
   ) where
 
 import qualified Data.Bits as B
@@ -268,4 +273,35 @@ ct_select_wide# a b (Choice w) =
   let !mask = or_w# (hi# w) (lo# w)
   in  xor_w# a (and_w# mask (xor_w# a b))
 {-# INLINE ct_select_wide# #-}
+
+ct_eq_word# :: Word# -> Word# -> Choice
+ct_eq_word# a b =
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+      !x = xor# a b
+      !y = uncheckedShiftRL# (or# x (wrapping_neg# x)) s
+  in  Choice (xor# y 1##)
+{-# INLINE ct_eq_word# #-}
+
+ct_eq_wide#
+  :: (# Word#, Word# #)
+  -> (# Word#, Word# #)
+  -> Choice
+ct_eq_wide# (# a0, a1 #) (# b0, b1 #) =
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+      !x = or# (xor# a0 b0) (xor# a1 b1)
+      !y = uncheckedShiftRL# (or# x (wrapping_neg# x)) s
+  in  Choice (xor# y 1##)
+{-# INLINE ct_eq_wide# #-}
+
+ct_eq_wider#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> Choice
+ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+      !x = or# (or# (xor# a0 b0) (xor# a1 b1))
+               (or# (xor# a2 b2) (xor# a3 b3))
+      !y = uncheckedShiftRL# (or# x (wrapping_neg# x)) s
+  in  Choice (xor# y 1##)
+{-# INLINE ct_eq_wider# #-}
 
