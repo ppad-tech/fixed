@@ -23,8 +23,8 @@ library
   ghc-options:
       -Wall
   exposed-modules:
-      Data.Word.Limb
-    , Data.Word.Montgomery
+      Data.Choice
+    , Data.Word.Limb
     , Data.Word.Wide
     , Data.Word.Wider
     , Numeric.Montgomery.Secp256k1.Curve
