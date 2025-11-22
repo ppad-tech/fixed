@@ -123,6 +123,15 @@ Current benchmark figures on my mid-2020 MacBook Air look like (use
   variance introduced by outliers: 68% (severely inflated)
 ```
 
+Note that you can compile with GHC's LLVM backend and filter on specific
+benchmarks via e.g.:
+
+```
+$ cabal bench ppad-fixed:benchmark:fixed-bench \
+    --ghc-options="-fllvm -O2" \
+    --benchmark-options="--match prefix inv"
+```
+
 ## Security
 
 This library aims at the maximum security achievable in a
