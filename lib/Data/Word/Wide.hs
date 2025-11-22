@@ -59,7 +59,7 @@ fi = fromIntegral
 -- wide words -----------------------------------------------------------------
 
 -- | Little-endian wide words.
-data Wide = Wide (# Word#, Word# #)
+data Wide = Wide !(# Word#, Word# #)
 
 get_lo# :: (# Word#, Word# #) -> Word#
 get_lo# (# l, _ #) = l

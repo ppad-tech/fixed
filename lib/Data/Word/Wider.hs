@@ -29,7 +29,7 @@ wrapping_neg# w = plusWord# (not# w) 1##
 -- wider words ----------------------------------------------------------------
 
 -- | Little-endian wider words.
-data Wider = Wider (# Word#, Word#, Word#, Word# #)
+data Wider = Wider !(# Word#, Word#, Word#, Word# #)
 
 instance Show Wider where
   show (Wider (# a, b, c, d #)) =

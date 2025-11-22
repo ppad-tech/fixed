@@ -9,6 +9,7 @@
 module Numeric.Montgomery.Secp256k1.Curve where
 
 import Control.DeepSeq
+import qualified Data.Choice as C
 import qualified Data.Word.Limb as L
 import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
@@ -19,10 +20,13 @@ import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
-data Montgomery = Montgomery (# Word#, Word#, Word#, Word# #)
+data Montgomery = Montgomery !(# Word#, Word#, Word#, Word# #)
 
 instance NFData Montgomery where
   rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
+
+instance Eq Montgomery where
+  Montgomery a == Montgomery b = C.decide (C.ct_eq_wider# a b)
 
 -- XX define constants here, current approach is fragile
 
