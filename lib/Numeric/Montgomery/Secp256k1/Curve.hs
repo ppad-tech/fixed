@@ -33,6 +33,15 @@ instance Eq Montgomery where
 instance NFData Montgomery where
   rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
 
+instance Num Montgomery where
+  a + b = add a b
+  a - b = sub a b
+  a * b = mul a b
+  negate a = neg a
+  abs = id
+  signum = id
+  fromInteger = to . WW.to
+
 -- XX define constants here, current approach is fragile
 
 -- utilities ------------------------------------------------------------------
