@@ -375,7 +375,7 @@ neg (Montgomery a) = Montgomery (neg# a)
 
 sqr# :: (# Word#, Word#, Word#, Word# #) -> (# Word#, Word#, Word#, Word# #)
 sqr# a = mul# a a
-{-# INLINE sqr# #-}
+{-# NOINLINE sqr# #-}
 
 sqr :: Montgomery -> Montgomery
 sqr (Montgomery a) = Montgomery (mul# a a)
