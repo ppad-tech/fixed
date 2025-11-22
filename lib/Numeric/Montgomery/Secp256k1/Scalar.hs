@@ -22,11 +22,16 @@ import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 data Montgomery = Montgomery !(# Word#, Word#, Word#, Word# #)
 
-instance NFData Montgomery where
-  rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
+instance Show Montgomery where
+  show (Montgomery (# a, b, c, d #)) =
+       "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
+    <> show (W# c) <> ", " <> show (W# d) <> ")"
 
 instance Eq Montgomery where
   Montgomery a == Montgomery b = C.decide (C.ct_eq_wider# a b)
+
+instance NFData Montgomery where
+  rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
 
 -- XX define constants here, current approach is fragile
 
