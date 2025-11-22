@@ -10,6 +10,7 @@ module Data.Word.Wider where
 
 import Control.DeepSeq
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
+import qualified Data.Choice as C
 import qualified Data.Bits as B
 import qualified Data.Word.Limb as L
 import GHC.Exts
@@ -145,3 +146,26 @@ sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   in  add_w# (# o0, o1, o2, o3 #) band
 {-# INLINE sub_mod_c# #-}
 
+-- | Constant-time 1-bit shift-right with carry, indicating whether the
+--   lowest bit was set.
+shr1_c#
+  :: (# Word#, Word#, Word#, Word# #)                 -- ^ argument
+  -> (# (# Word#, Word#, Word#, Word# #), C.Choice #) -- ^ result, carry
+shr1_c# (# w0, w1, w2, w3 #) =
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+      !c = 0##
+      !(# s3, c3 #) = (# uncheckedShiftRL# w3 1#, uncheckedShiftL# w3 s #)
+      !r3 = or# s3 c
+      !(# s2, c2 #) = (# uncheckedShiftRL# w2 1#, uncheckedShiftL# w2 s #)
+      !r2 = or# s2 c3
+      !(# s1, c1 #) = (# uncheckedShiftRL# w1 1#, uncheckedShiftL# w1 s #)
+      !r1 = or# s1 c2
+      !(# s0, c0 #) = (# uncheckedShiftRL# w0 1#, uncheckedShiftL# w0 s #)
+      !r0 = or# s0 c1
+  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# (uncheckedShiftRL# c0 s) #)
+{-# INLINE shr1_c# #-}
+
+shr1_c :: Wider -> (Wider, Bool)
+shr1_c (Wider w) =
+  let !(# r, c #) = shr1_c# w
+  in  (Wider r, C.decide c)
