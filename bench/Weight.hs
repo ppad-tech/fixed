@@ -23,15 +23,19 @@ add :: Weigh ()
 add = wgroup "add" $ do
   func "curve:  M(1) + M(2)" (C.add 1) 2
   func "curve:  M(1) + M(2 ^ 255 - 19)" (C.add 1) (2 ^ 255 - 19)
-  func "scalar: M(1) + M(2)" (S.add S.one) 2
-  func "scalar: M(1) + M(2 ^ 255 - 19)" (S.add S.one) (2 ^ 255 - 19)
+  func "scalar: M(1) + M(2)" (S.add 1) 2
+  func "scalar: M(1) + M(2 ^ 255 - 19)" (S.add 1) (2 ^ 255 - 19)
 
 sub :: Weigh ()
 sub = wgroup "sub" $ do
-  func "curve:  M(2 ^ 255 - 1) - M(1)" (C.sub (2 ^ 255 - 1)) 1
-  func "curve:  M(2 ^ 255 - 1) - M(2 ^ 255 - 19)" (C.sub (2 ^ 255 - 1)) (2 ^ 255 - 19)
-  func "scalar: M(2 ^ 255 - 1) - M(1)" (S.sub (2 ^ 255 - 1)) S.one
-  func "scalar: M(2 ^ 255 - 1) - M(2 ^ 255 - 19)" (S.sub (2 ^ 255 - 1)) (2 ^ 255 - 19)
+  func "curve:  M(2 ^ 255 - 1) - M(1)"
+    (C.sub (2 ^ 255 - 1)) 1
+  func "curve:  M(2 ^ 255 - 1) - M(2 ^ 255 - 19)"
+    (C.sub (2 ^ 255 - 1)) (2 ^ 255 - 19)
+  func "scalar: M(2 ^ 255 - 1) - M(1)"
+    (S.sub (2 ^ 255 - 1)) 1
+  func "scalar: M(2 ^ 255 - 1) - M(2 ^ 255 - 19)"
+    (S.sub (2 ^ 255 - 1)) (2 ^ 255 - 19)
 
 mul :: Weigh ()
 mul = wgroup "mul" $ do
