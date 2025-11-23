@@ -40,6 +40,14 @@ instance Show Wider where
 instance NFData Wider where
   rnf (Wider a) = case a of (# _, _, _, _ #) -> ()
 
+instance Num Wider where
+  (+) = add
+  (-) = sub
+  (*) = mul
+  abs = id
+  fromInteger = to
+  negate = to . negate . from
+  signum = to . signum . from
 -- construction / conversion --------------------------------------------------
 
 -- | Construct a 'Wider' word from four 'Words', provided in
@@ -120,6 +128,14 @@ add_w# a b =
   in  c
 {-# INLINE add_w# #-}
 
+-- | Wrapping addition, computing 'a + b'.
+add
+  :: Wider
+  -> Wider
+  -> Wider
+add (Wider a) (Wider b) = Wider (add_w# a b)
+{-# INLINE add #-}
+
 -- | Modular addition.
 add_mod#
   :: (# Word#, Word#, Word#, Word# #) -- ^ augend
@@ -144,6 +160,14 @@ sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
       !(# s3, c3 #) = L.sub_b# a3 b3 c2
   in  (# (# s0, s1, s2, s3 #), c3 #)
 {-# INLINE sub_b# #-}
+
+sub
+  :: Wider
+  -> Wider
+  -> Wider
+sub (Wider a) (Wider b) =
+  let !(# d, _ #) = sub_b# a b
+  in  Wider d
 
 -- | Modular subtraction. Computes a - b mod m.
 sub_mod#
@@ -174,63 +198,47 @@ sub_mod_c# a c b (# p0, p1, p2, p3 #) =
 
 -- multiplication -------------------------------------------------------------
 
--- returning (# hi, lo #)
-umul_hop# :: Word# -> Word# -> Word# -> (# Word#, Word# #)
-umul_hop# z x y =
-  let !(# lo_0, hi_0 #) = L.mul_c# x y
-      !(# lo, c #)      = L.add_c# lo_0 z 0##
-      !(# hi, _ #)      = L.add_c# hi_0 0## c
-  in  (# hi, lo #)
-{-# INLINE umul_hop# #-}
-
--- returning (# hi, lo #)
-umul_step#
-  :: Word#
-  -> Word#
-  -> Word#
-  -> Word#
-  -> (# Word#, Word# #)
-umul_step# z x y c =
-  let !(# lo_0, hi_0 #) = L.mul_c# x y
-      !(# lo_1, c_0 #)  = L.add_c# lo_0 c 0##
-      !(# hi_1, _ #)    = L.add_c# hi_0 0## c_0
-      !(# lo, c_1 #)    = L.add_c# lo_1 z 0##
-      !(# hi, _ #)      = L.add_c# hi_1 0## c_1
-  in  (# hi, lo #)
-{-# INLINE umul_step# #-}
-
 -- widening multiplication
 mul_c#
   :: (# Word#, Word#, Word#, Word# #)
   -> (# Word#, Word#, Word#, Word# #)
   -> (# (# Word#, Word#, Word#, Word# #), (# Word#, Word#, Word#, Word# #) #)
 mul_c# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
-  let !(# r0,   c4_0 #) = L.mul_c#  x0 y0
-      !(# c4_1, r0_1 #) = umul_hop# c4_0 x1 y0
-      !(# c4_2, r0_2 #) = umul_hop# c4_1 x2 y0
-      !(# c4,   r0_3 #) = umul_hop# c4_2 x3 y0
-
-      !(# c5_0,   r1 #) = umul_hop#  r0_1 x0 y1
-      !(# c5_1, r1_2 #) = umul_step# r0_2 x1 y1 c5_0
-      !(# c5_2, r1_3 #) = umul_step# r0_3 x2 y1 c5_1
-      !(# c5,   r1_4 #) = umul_step# c4 x3 y1 c5_2
-
-      !(# c6_0,   r2 #) = umul_hop#  r1_2 x0 y2
-      !(# c6_1, r2_3 #) = umul_step# r1_3 x1 y2 c6_0
-      !(# c6_2, r2_4 #) = umul_step# r1_4 x2 y2 c6_1
-      !(# c6,   r2_5 #) = umul_step# c5 x3 y2 c6_2
-
-      !(# c7_0,   r3 #) = umul_hop#  r2_3 x0 y3
-      !(# c7_1,   r4 #) = umul_step# r2_4 x1 y3 c7_0
-      !(# c7_2,   r5 #) = umul_step# r2_5 x2 y3 c7_1
-      !(# r7,     r6 #) = umul_step# c6 x3 y3 c7_2
-  in  (# (# r0, r1, r2, r3 #), (# r4, r5, r6, r7 #) #)
+  let !(# z0, c0_0 #)   = L.mac# x0 y0 0## 0##
+      !(# s1_0, c1_0 #) = L.mac# x0 y1 0## c0_0
+      !(# z1, c1_1 #)   = L.mac# x1 y0 s1_0 0##
+      !(# s2_0, c2_0 #) = L.mac# x0 y2 0## c1_0
+      !(# s2_1, c2_1 #) = L.mac# x1 y1 s2_0 c1_1
+      !(# z2, c2_2 #)   = L.mac# x2 y0 s2_1 0##
+      !(# s3_0, c3_0 #) = L.mac# x0 y3 0## c2_0
+      !(# s3_1, c3_1 #) = L.mac# x1 y2 s3_0 c2_1
+      !(# s3_2, c3_2 #) = L.mac# x2 y1 s3_1 c2_2
+      !(# z3, c3_3 #)   = L.mac# x3 y0 s3_2 0##
+      !(# s4_0, c4_0 #) = L.mac# x1 y3 0## c3_0
+      !(# s4_1, c4_1 #) = L.mac# x2 y2 s4_0 c3_1
+      !(# s4_2, c4_2 #) = L.mac# x3 y1 s4_1 c3_2
+      !(# w4, c4_3 #)   = L.add_c# s4_2 c3_3 0##
+      !(# s5_0, c5_0 #) = L.mac# x2 y3 0## c4_0
+      !(# s5_1, c5_1 #) = L.mac# x3 y2 s5_0 c4_1
+      !(# w5, c5_2 #)   = L.add_c# s5_1 c4_2 0##
+      !(# w5f, c5_3 #)  = L.add_c# w5 c4_3 0##
+      !(# s6_0, c6_0 #) = L.mac# x3 y3 0## c5_0
+      !(# w6, c6_1 #)   = L.add_c# s6_0 c5_1 0##
+      !(# w6f, c6_2 #)  = L.add_c# w6 c5_2 0##
+      !(# w6ff, c6_3 #) = L.add_c# w6f c5_3 0##
+      !(# w7, _ #)      = L.add_c# c6_0 c6_1 0##
+      !(# w7f, _ #)     = L.add_c# w7 c6_2 0##
+      !(# w7ff, _ #)    = L.add_c# w7f c6_3 0##
+  in  (# (# z0, z1, z2, z3 #), (# w4, w5f, w6ff, w7ff #) #)
 {-# INLINE mul_c# #-}
 
-mul_c :: Wider -> Wider -> (Wider, Wider)
-mul_c (Wider a) (Wider b) =
-  let !(# lo, hi #) = mul_c# a b
-  in  (Wider lo, Wider hi)
+mul
+  :: Wider
+  -> Wider
+  -> Wider
+mul (Wider a) (Wider b) =
+  let !(# l, _ #) = mul_c# a b
+  in  Wider l
 
 sqr#
   :: (# Word#, Word#, Word#, Word# #)
@@ -274,3 +282,4 @@ sqr :: Wider -> (Wider, Wider)
 sqr (Wider w) =
   let !(# l, h #) = sqr# w
   in  (Wider l, Wider h)
+
