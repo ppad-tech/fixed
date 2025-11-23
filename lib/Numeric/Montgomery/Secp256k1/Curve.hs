@@ -376,7 +376,7 @@ sqr# :: (# Word#, Word#, Word#, Word# #) -> (# Word#, Word#, Word#, Word# #)
 sqr# a =
   let !(# l, h #) = WW.sqr# a
   in  redc# l h
-{-# NOINLINE sqr# #-}
+{-# NOINLINE sqr# #-} -- cannot be inlined without exploding comp time
 
 sqr :: Montgomery -> Montgomery
 sqr (Montgomery a) = Montgomery (mul# a a)
