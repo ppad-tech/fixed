@@ -16,6 +16,8 @@ main = defaultMain [
   , mul
   , sqr
   , inv
+  , redc
+  , retr
   ]
 
 add :: Benchmark
@@ -90,31 +92,27 @@ inv = bgroup "inv" [
       (S.to (W.to (2 ^ 255 - 19)))
   ]
 
--- redc :: Weigh ()
--- redc = wgroup "redc" $ do
---   func "curve:  REDC(M(2), M(2))"
---     (C.redc (C.to (W.to 2)))
---     (C.to (W.to 2))
---   func "curve:  REDC(M(2), M(2 ^ 255 - 19))"
---     (C.redc (C.to (W.to 2)))
---     (C.to (W.to (2 ^ 255 - 19)))
---   func "scalar: REDC(M(2), M(2))"
---     (S.redc (S.to (W.to 2)))
---     (S.to (W.to 2))
---   func "scalar: REDC(M(2), M(2 ^ 255 - 19))"
---     (S.redc (S.to (W.to 2)))
---     (S.to (W.to (2 ^ 255 - 19)))
---
--- retr :: Weigh ()
--- retr = wgroup "retr" $ do
---   func "curve:  RETR(M(2))" C.retr
---     (C.to (W.to 2))
---   func "curve:  RETR(M(2 ^ 255 - 19))" C.retr
---     (C.to (W.to (2 ^ 255 - 19)))
---   func "scalar: RETR(M(2))" S.retr
---     (S.to (W.to 2))
---   func "scalar: RETR(M(2 ^ 255 - 19))" S.retr
---     (S.to (W.to (2 ^ 255 - 19)))
+redc :: Benchmark
+redc = bgroup "redc" [
+     bench "curve:  REDC(M(2), M(2))" $ nf (C.redc 2)
+       2
+  ,  bench "curve:  REDC(M(2), M(2 ^ 255 - 19))" $ nf (C.redc 2)
+       (2 ^ 255 - 19)
+  ,  bench "scalar: REDC(M(2), M(2))" $ nf (S.redc 2)
+       2
+  ,  bench "scalar: REDC(M(2), M(2 ^ 255 - 19))" $ nf (S.redc 2)
+       (2 ^ 255 - 19)
+  ]
 
-
+retr :: Benchmark
+retr = bgroup "retr" [
+    bench "curve:  RETR(M(2))" $ nf C.retr
+      2
+  , bench "curve:  RETR(M(2 ^ 255 - 19))" $ nf C.retr
+      (2 ^ 255 - 19)
+  , bench "scalar: RETR(M(2))" $ nf S.retr
+      2
+  , bench "scalar: RETR(M(2 ^ 255 - 19))" $ nf S.retr
+      (2 ^ 255 - 19)
+  ]
 
