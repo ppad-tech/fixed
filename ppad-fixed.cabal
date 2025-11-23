@@ -13,6 +13,11 @@ extra-doc-files:    CHANGELOG
 description:
   Representations for, and operations on, large fixed-width integers.
 
+flag llvm
+  description: Use GHC's LLVM backend.
+  default:     False
+  manual:      True
+
 source-repository head
   type:     git
   location: git.ppad.tech/fixed.git
@@ -22,6 +27,8 @@ library
   hs-source-dirs:   lib
   ghc-options:
       -Wall
+  if flag(llvm)
+    ghc-options: -fllvm -O2
   exposed-modules:
       Data.Choice
     , Data.Word.Limb
