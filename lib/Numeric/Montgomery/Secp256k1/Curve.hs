@@ -373,7 +373,9 @@ neg :: Montgomery -> Montgomery
 neg (Montgomery a) = Montgomery (neg# a)
 
 sqr# :: (# Word#, Word#, Word#, Word# #) -> (# Word#, Word#, Word#, Word# #)
-sqr# a = mul# a a
+sqr# a =
+  let !(# l, h #) = WW.sqr# a
+  in  redc# l h
 {-# NOINLINE sqr# #-}
 
 sqr :: Montgomery -> Montgomery

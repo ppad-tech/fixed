@@ -70,14 +70,10 @@ mul = bgroup "mul" [
 
 sqr :: Benchmark
 sqr = bgroup "sqr" [
-    bench "curve:  M(2) ^ 2" $ nf C.sqr
-      (C.to (W.to 2))
-  , bench "curve:  M(2 ^ 255 - 19) ^ 2" $ nf C.sqr
-      (C.to (W.to (2 ^ 255 - 19)))
-  , bench "scalar: M(2) ^ 2" $ nf S.sqr
-      (S.to (W.to 2))
-  , bench "scalar: M(2 ^ 255 - 19) ^ 2" $ nf S.sqr
-      (S.to (W.to (2 ^ 255 - 19)))
+    bench "curve:  M(2) ^ 2" $ nf C.sqr 2
+  , bench "curve:  M(2 ^ 255 - 19) ^ 2" $ nf C.sqr (2 ^ 255 - 19)
+  , bench "scalar: M(2) ^ 2" $ nf S.sqr 2
+  , bench "scalar: M(2 ^ 255 - 19) ^ 2" $ nf S.sqr (2 ^ 255 - 19)
   ]
 
 inv :: Benchmark
