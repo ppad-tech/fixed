@@ -32,13 +32,17 @@ wrapping_neg# w = plusWord# (not# w) 1##
 -- | Little-endian wider words.
 data Wider = Wider !(# Word#, Word#, Word#, Word# #)
 
+instance Eq Wider where
+  Wider a == Wider b = C.decide (C.ct_eq_wider# a b)
+
 instance Show Wider where
   show (Wider (# a, b, c, d #)) =
        "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
     <> show (W# c) <> ", " <> show (W# d) <> ")"
 
 instance NFData Wider where
-  rnf (Wider a) = case a of (# _, _, _, _ #) -> ()
+  rnf (Wider a) = case a of
+    (# _, _, _, _ #) -> ()
 
 instance Num Wider where
   (+) = add
@@ -47,7 +51,10 @@ instance Num Wider where
   abs = id
   fromInteger = to
   negate = to . negate . from
-  signum = to . signum . from
+  signum a
+    | a == Wider (# 0##, 0##, 0##, 0## #) = 0
+    | otherwise = 1
+
 -- construction / conversion --------------------------------------------------
 
 -- | Construct a 'Wider' word from four 'Words', provided in

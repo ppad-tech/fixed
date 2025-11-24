@@ -39,7 +39,7 @@ instance Num Montgomery where
   a * b = mul a b
   negate a = neg a
   abs = id
-  signum = id
+  signum = id -- XX
   fromInteger = to . WW.to
 
 -- XX define constants here, current approach is fragile
