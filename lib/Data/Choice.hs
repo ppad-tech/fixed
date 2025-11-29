@@ -10,6 +10,7 @@ module Data.Choice (
   , true#
   , false#
   , decide
+  , to_word#
 
   -- * MaybeWord#
   , MaybeWord#(..)
@@ -128,9 +129,14 @@ true# _ = case maxBound :: Word of
   W# w -> Choice w
 {-# INLINE true# #-}
 
+-- XX this is probably stupid. check
 decide :: Choice -> Bool
 decide (Choice c) = isTrue# (neWord# c 0##)
 {-# INLINE decide #-}
+
+to_word# :: Choice -> Word#
+to_word# (Choice c) = and# c 1##
+{-# INLINE to_word# #-}
 
 -- constant time 'Maybe Word#'
 newtype MaybeWord# = MaybeWord# (# Word#, Choice #)

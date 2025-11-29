@@ -35,6 +35,12 @@ data Wider = Wider !(# Word#, Word#, Word#, Word# #)
 instance Eq Wider where
   Wider a == Wider b = C.decide (C.ct_eq_wider# a b)
 
+instance Ord Wider where
+  compare (Wider a) (Wider b) = case cmp# a b of
+    1#  -> GT
+    0#  -> EQ
+    _   -> LT
+
 instance Show Wider where
   show (Wider (# a, b, c, d #)) =
        "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
@@ -54,6 +60,41 @@ instance Num Wider where
   signum a
     | a == Wider (# 0##, 0##, 0##, 0## #) = 0
     | otherwise = 1
+
+-- ordering -------------------------------------------------------------------
+
+lt#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> C.Choice
+lt# a b =
+  let !(# _, bit #) = sub_b# a b
+  in  C.from_word_lsb# bit
+
+gt#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> C.Choice
+gt# a b =
+  let !(# _, bit #) = sub_b# b a
+  in  C.from_word_lsb# bit
+
+cmp#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> Int#
+cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
+  let !(# w0, b0 #) = L.sub_b# r0 l0 0##
+      !d0 = or# 0## w0
+      !(# w1, b1 #) = L.sub_b# r1 l1 b0
+      !d1 = or# d0 w1
+      !(# w2, b2 #) = L.sub_b# r2 l2 b1
+      !d2 = or# d1 w2
+      !(# w3, b3 #) = L.sub_b# r3 l3 b2
+      !d3 = or# d2 w3
+      !s = (word2Int# (uncheckedShiftL# b3 1#)) -# 1#
+  in  (word2Int# (C.to_word# (C.from_word_nonzero# d3))) *# s
+{-# INLINE cmp# #-}
 
 -- construction / conversion --------------------------------------------------
 
