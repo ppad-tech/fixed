@@ -39,7 +39,9 @@ instance Num Montgomery where
   a * b = mul a b
   negate a = neg a
   abs = id
-  signum = id
+  signum a = case a of
+    Montgomery (# 0##, 0##, 0##, 0## #) -> 0
+    _ -> 1
   fromInteger = to . WW.to
 
 -- XX define constants here, current approach is fragile
