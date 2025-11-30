@@ -300,8 +300,10 @@ sub_b#
   -> Limb              -- ^ subtrahend
   -> Limb              -- ^ borrow
   -> (# Limb, Limb #)  -- ^ (# difference, new borrow #)
-sub_b# (Limb m) (Limb n) (Limb b) =
-  let !(# d0, b0 #) = Exts.subWordC# m n
+sub_b# (Limb m) (Limb n) (Limb a) =
+  let !s = case B.finiteBitSize (0 :: Word) of Exts.I# bs -> bs Exts.-# 1#
+      !b = Exts.uncheckedShiftRL# a s
+      !(# d0, b0 #) = Exts.subWordC# m n
       !(#  d, b1 #) = Exts.subWordC# d0 b
       !c = Exts.int2Word# (Exts.negateInt# (Exts.orI# b0 b1))
   in  (# Limb d, Limb c #)
