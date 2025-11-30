@@ -6,9 +6,7 @@ module Wide (
     tests
   ) where
 
-import qualified Data.Choice as C
 import qualified Data.Word.Wide as W
-import GHC.Exts
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 
