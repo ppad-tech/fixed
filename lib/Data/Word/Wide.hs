@@ -54,8 +54,7 @@ fi = fromIntegral
 data Wide = Wide !(# Limb, Limb #)
 
 instance Show Wide where
-  show (Wide (# Limb a, Limb b #)) =
-    "(" <> show (W# a) <> ", " <> show (W# b) <> ")"
+  show = show . from
 
 instance Num Wide where
   (+) = add
