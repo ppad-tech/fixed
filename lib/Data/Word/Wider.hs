@@ -10,10 +10,11 @@ module Data.Word.Wider where
 
 import Control.DeepSeq
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
-import qualified Data.Choice as C
 import qualified Data.Bits as B
+import qualified Data.Choice as C
+import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
-import GHC.Exts
+import GHC.Exts (Word(..), Int(..), Int#, word2Int#, (-#), (*#))
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- utilities ------------------------------------------------------------------
@@ -22,33 +23,25 @@ fi :: (Integral a, Num b) => a -> b
 fi = fromIntegral
 {-# INLINE fi #-}
 
--- bit to mask (wrapping negation)
-wrapping_neg# :: Word# -> Word#
-wrapping_neg# w = plusWord# (not# w) 1##
-{-# INLINE wrapping_neg# #-}
-
 -- wider words ----------------------------------------------------------------
 
 -- | Little-endian wider words.
-data Wider = Wider !(# Word#, Word#, Word#, Word# #)
+data Wider = Wider !(# Limb, Limb, Limb, Limb #)
+
+instance Show Wider where
+  show = show . from
 
 instance Eq Wider where
-  Wider a == Wider b = C.decide (C.ct_eq_wider# a b)
+  Wider a == Wider b =
+    let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
+        !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
+    in  C.decide (C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)) -- XX sane?
 
 instance Ord Wider where
-  compare (Wider a) (Wider b) = case cmp# a b of
+  compare (Wider a) (Wider b) = case cmp# a b of -- XX sane?
     1#  -> GT
     0#  -> EQ
     _   -> LT
-
-instance Show Wider where
-  show (Wider (# a, b, c, d #)) =
-       "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
-    <> show (W# c) <> ", " <> show (W# d) <> ")"
-
-instance NFData Wider where
-  rnf (Wider a) = case a of
-    (# _, _, _, _ #) -> ()
 
 instance Num Wider where
   (+) = add
@@ -56,44 +49,49 @@ instance Num Wider where
   (*) = mul
   abs = id
   fromInteger = to
-  negate = to . negate . from
+  negate w = add (not w) (Wider (# Limb 1##, Limb 0##, Limb 0##, Limb 0## #))
   signum a
-    | a == Wider (# 0##, 0##, 0##, 0## #) = 0
+    | a == Wider (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) = 0
     | otherwise = 1
+
+instance NFData Wider where
+  rnf (Wider a) = case a of
+    (# _, _, _, _ #) -> ()
 
 -- ordering -------------------------------------------------------------------
 
 lt#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
   -> C.Choice
 lt# a b =
-  let !(# _, bit #) = sub_b# a b
+  let !(# _, Limb bit #) = sub_b# a b
   in  C.from_word_lsb# bit
 
 gt#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
   -> C.Choice
 gt# a b =
-  let !(# _, bit #) = sub_b# b a
+  let !(# _, Limb bit #) = sub_b# b a
   in  C.from_word_lsb# bit
 
 cmp#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
   -> Int#
 cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
-  let !(# w0, b0 #) = L.sub_b# r0 l0 0##
-      !d0 = or# 0## w0
+  let !(# w0, b0 #) = L.sub_b# r0 l0 (Limb 0##)
+      !d0 = L.or# (Limb 0##) w0
       !(# w1, b1 #) = L.sub_b# r1 l1 b0
-      !d1 = or# d0 w1
+      !d1 = L.or# d0 w1
       !(# w2, b2 #) = L.sub_b# r2 l2 b1
-      !d2 = or# d1 w2
+      !d2 = L.or# d1 w2
       !(# w3, b3 #) = L.sub_b# r3 l3 b2
-      !d3 = or# d2 w3
-      !s = (word2Int# (uncheckedShiftL# b3 1#)) -# 1#
-  in  (word2Int# (C.to_word# (C.from_word_nonzero# d3))) *# s
+      !d3 = L.or# d2 w3
+      !(Limb w) = L.shl# b3 1#
+      !s = word2Int# w -# 1#
+  in  (word2Int# (C.to_word# (L.nonzero# d3))) *# s
 {-# INLINE cmp# #-}
 
 -- construction / conversion --------------------------------------------------
@@ -101,7 +99,8 @@ cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
 -- | Construct a 'Wider' word from four 'Words', provided in
 --   little-endian order.
 wider :: Word -> Word -> Word -> Word -> Wider
-wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider (# w0, w1, w2, w3 #)
+wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider
+  (# Limb w0, Limb w1, Limb w2, Limb w3 #)
 
 -- | Convert an 'Integer' to a 'Wider' word.
 to :: Integer -> Wider
@@ -112,11 +111,11 @@ to n =
       !(W# w1) = fi ((n .>>. size) .&. mask)
       !(W# w2) = fi ((n .>>. (2 * size)) .&. mask)
       !(W# w3) = fi ((n .>>. (3 * size)) .&. mask)
-  in  Wider (# w0, w1, w2, w3 #)
+  in  Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)
 
 -- | Convert a 'Wider' word to an 'Integer'.
 from :: Wider -> Integer
-from (Wider (# w0, w1, w2, w3 #)) =
+from (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
         fi (W# w3) .<<. (3 * size)
     .|. fi (W# w2) .<<. (2 * size)
     .|. fi (W# w1) .<<. size
@@ -129,20 +128,20 @@ from (Wider (# w0, w1, w2, w3 #)) =
 -- | Constant-time 1-bit shift-right with carry, indicating whether the
 --   lowest bit was set.
 shr1_c#
-  :: (# Word#, Word#, Word#, Word# #)                 -- ^ argument
-  -> (# (# Word#, Word#, Word#, Word# #), C.Choice #) -- ^ result, carry
+  :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
+  -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
 shr1_c# (# w0, w1, w2, w3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
-      !c = 0##
-      !(# s3, c3 #) = (# uncheckedShiftRL# w3 1#, uncheckedShiftL# w3 s #)
-      !r3 = or# s3 c
-      !(# s2, c2 #) = (# uncheckedShiftRL# w2 1#, uncheckedShiftL# w2 s #)
-      !r2 = or# s2 c3
-      !(# s1, c1 #) = (# uncheckedShiftRL# w1 1#, uncheckedShiftL# w1 s #)
-      !r1 = or# s1 c2
-      !(# s0, c0 #) = (# uncheckedShiftRL# w0 1#, uncheckedShiftL# w0 s #)
-      !r0 = or# s0 c1
-  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# (uncheckedShiftRL# c0 s) #)
+      !(# s3, c3 #) = (# L.shr# w3 1#, L.shl# w3 s #)
+      !r3 = L.or# s3 (Limb 0##)
+      !(# s2, c2 #) = (# L.shr# w2 1#, L.shl# w2 s #)
+      !r2 = L.or# s2 c3
+      !(# s1, c1 #) = (# L.shr# w1 1#, L.shl# w1 s #)
+      !r1 = L.or# s1 c2
+      !(# s0, c0 #) = (# L.shr# w0 1#, L.shl# w0 s #)
+      !r0 = L.or# s0 c1
+      !(Limb w) = L.shr# c0 s
+  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
 {-# INLINE shr1_c# #-}
 
 shr1_c :: Wider -> (Wider, Bool)
@@ -151,26 +150,37 @@ shr1_c (Wider w) =
   in  (Wider r, C.decide c)
 
 and_w#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
 and_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
-  (# and# a0 b0, and# a1 b1, and# a2 b2, and# a3 b3 #)
+  (# L.and# a0 b0, L.and# a1 b1, L.and# a2 b2, L.and# a3 b3 #)
 {-# INLINE and_w# #-}
 
 and :: Wider -> Wider -> Wider
 and (Wider a) (Wider b) = Wider (and_w# a b)
 
 or_w#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
 or_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
-  (# or# a0 b0, or# a1 b1, or# a2 b2, or# a3 b3 #)
+  (# L.or# a0 b0, L.or# a1 b1, L.or# a2 b2, L.or# a3 b3 #)
 {-# INLINE or_w# #-}
 
 or :: Wider -> Wider -> Wider
 or (Wider a) (Wider b) = Wider (or_w# a b)
+
+not#
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+not# (# l0, l1, l2, l3 #) = (# L.not# l0, L.not# l1, L.not# l2, L.not# l3 #)
+{-# INLINE not# #-}
+
+not
+  :: Wider
+  -> Wider
+not (Wider w) = Wider (not# w)
 
 -- conditional_shr#
 --   :: (# Word#, Word#, Word#, Word# #)
@@ -189,11 +199,11 @@ or (Wider a) (Wider b) = Wider (or_w# a b)
 -- | Overflowing addition, computing 'a + b', returning the sum and a
 --   carry bit.
 add_c#
-  :: (# Word#, Word#, Word#, Word# #)              -- ^ augend
-  -> (# Word#, Word#, Word#, Word# #)              -- ^ addend
-  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ (# sum, carry bit #)
+  :: (# Limb, Limb, Limb, Limb #)             -- ^ augend
+  -> (# Limb, Limb, Limb, Limb #)             -- ^ addend
+  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# sum, carry bit #)
 add_c# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
-  let !(# c0, s0 #) = plusWord2# a0 b0
+  let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
       !(# s2, c2 #) = L.add_c# a2 b2 c1
       !(# s3, c3 #) = L.add_c# a3 b3 c2
@@ -202,9 +212,9 @@ add_c# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
 
 -- | Wrapping addition, computing 'a + b'.
 add_w#
-  :: (# Word#, Word#, Word#, Word# #) -- ^ augend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ addend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ sum
+  :: (# Limb, Limb, Limb, Limb #) -- ^ augend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ addend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ sum
 add_w# a b =
   let !(# c, _ #) = add_c# a b
   in  c
@@ -220,10 +230,10 @@ add (Wider a) (Wider b) = Wider (add_w# a b)
 
 -- | Modular addition.
 add_mod#
-  :: (# Word#, Word#, Word#, Word# #) -- ^ augend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ addend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
-  -> (# Word#, Word#, Word#, Word# #) -- ^ sum
+  :: (# Limb, Limb, Limb, Limb #) -- ^ augend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ addend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
+  -> (# Limb, Limb, Limb, Limb #) -- ^ sum
 add_mod# a b m =
   let !(# w, c #) = add_c# a b
   in  sub_mod_c# w c m m
@@ -232,11 +242,11 @@ add_mod# a b m =
 -- | Borrowing subtraction, computing 'a - b' and returning the
 --   difference with a borrow bit.
 sub_b#
-  :: (# Word#, Word#, Word#, Word# #)              -- ^ minuend
-  -> (# Word#, Word#, Word#, Word# #)              -- ^ subtrahend
-  -> (# (# Word#, Word#, Word#, Word# #), Word# #) -- ^ (# diff, borrow bit #)
+  :: (# Limb, Limb, Limb, Limb #)              -- ^ minuend
+  -> (# Limb, Limb, Limb, Limb #)              -- ^ subtrahend
+  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# diff, borrow bit #)
 sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
-  let !(# s0, c0 #) = L.sub_b# a0 b0 0##
+  let !(# s0, c0 #) = L.sub_b# a0 b0 (Limb 0##)
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
       !(# s2, c2 #) = L.sub_b# a2 b2 c1
       !(# s3, c3 #) = L.sub_b# a3 b3 c2
@@ -253,64 +263,64 @@ sub (Wider a) (Wider b) =
 
 -- | Modular subtraction. Computes a - b mod m.
 sub_mod#
-  :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
-  -> (# Word#, Word#, Word#, Word# #) -- ^ difference
+  :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
+  -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod# a b (# p0, p1, p2, p3 #) =
   let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
-      !mask = wrapping_neg# bb
-      !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
-  in  add_w# (# o0, o1, o2, o3 #) band
+      !m  = L.neg# bb
+      !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
+  in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod# #-}
 
 -- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#
-  :: (# Word#, Word#, Word#, Word# #) -- ^ minuend
-  -> Word#                            -- ^ carry bit
-  -> (# Word#, Word#, Word#, Word# #) -- ^ subtrahend
-  -> (# Word#, Word#, Word#, Word# #) -- ^ modulus
-  -> (# Word#, Word#, Word#, Word# #) -- ^ difference
+  :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
+  -> Limb                            -- ^ carry bit
+  -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
+  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
+  -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
-      !mask = and# (not# (wrapping_neg# c)) (wrapping_neg# bb)
-      !band = (# and# p0 mask, and# p1 mask, and# p2 mask, and# p3 mask #)
-  in  add_w# (# o0, o1, o2, o3 #) band
+      !m = L.and# (L.not# (L.neg# c)) (L.neg# bb)
+      !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
+  in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod_c# #-}
 
 -- multiplication -------------------------------------------------------------
 
 -- widening multiplication
 mul_c#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
-  -> (# (# Word#, Word#, Word#, Word# #), (# Word#, Word#, Word#, Word# #) #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+  -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
 mul_c# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
-  let !(# z0, c0_0 #)   = L.mac# x0 y0 0## 0##
-      !(# s1_0, c1_0 #) = L.mac# x0 y1 0## c0_0
-      !(# z1, c1_1 #)   = L.mac# x1 y0 s1_0 0##
-      !(# s2_0, c2_0 #) = L.mac# x0 y2 0## c1_0
+  let !(# z0, c0_0 #)   = L.mac# x0 y0 (Limb 0##) (Limb 0##)
+      !(# s1_0, c1_0 #) = L.mac# x0 y1 (Limb 0##) c0_0
+      !(# z1, c1_1 #)   = L.mac# x1 y0 s1_0 (Limb 0##)
+      !(# s2_0, c2_0 #) = L.mac# x0 y2 (Limb 0##) c1_0
       !(# s2_1, c2_1 #) = L.mac# x1 y1 s2_0 c1_1
-      !(# z2, c2_2 #)   = L.mac# x2 y0 s2_1 0##
-      !(# s3_0, c3_0 #) = L.mac# x0 y3 0## c2_0
+      !(# z2, c2_2 #)   = L.mac# x2 y0 s2_1 (Limb 0##)
+      !(# s3_0, c3_0 #) = L.mac# x0 y3 (Limb 0##) c2_0
       !(# s3_1, c3_1 #) = L.mac# x1 y2 s3_0 c2_1
       !(# s3_2, c3_2 #) = L.mac# x2 y1 s3_1 c2_2
-      !(# z3, c3_3 #)   = L.mac# x3 y0 s3_2 0##
-      !(# s4_0, c4_0 #) = L.mac# x1 y3 0## c3_0
+      !(# z3, c3_3 #)   = L.mac# x3 y0 s3_2 (Limb 0##)
+      !(# s4_0, c4_0 #) = L.mac# x1 y3 (Limb 0##) c3_0
       !(# s4_1, c4_1 #) = L.mac# x2 y2 s4_0 c3_1
       !(# s4_2, c4_2 #) = L.mac# x3 y1 s4_1 c3_2
-      !(# w4, c4_3 #)   = L.add_c# s4_2 c3_3 0##
-      !(# s5_0, c5_0 #) = L.mac# x2 y3 0## c4_0
+      !(# w4, c4_3 #)   = L.add_c# s4_2 c3_3 (Limb 0##)
+      !(# s5_0, c5_0 #) = L.mac# x2 y3 (Limb 0##) c4_0
       !(# s5_1, c5_1 #) = L.mac# x3 y2 s5_0 c4_1
-      !(# w5, c5_2 #)   = L.add_c# s5_1 c4_2 0##
-      !(# w5f, c5_3 #)  = L.add_c# w5 c4_3 0##
-      !(# s6_0, c6_0 #) = L.mac# x3 y3 0## c5_0
-      !(# w6, c6_1 #)   = L.add_c# s6_0 c5_1 0##
-      !(# w6f, c6_2 #)  = L.add_c# w6 c5_2 0##
-      !(# w6ff, c6_3 #) = L.add_c# w6f c5_3 0##
-      !(# w7, _ #)      = L.add_c# c6_0 c6_1 0##
-      !(# w7f, _ #)     = L.add_c# w7 c6_2 0##
-      !(# w7ff, _ #)    = L.add_c# w7f c6_3 0##
+      !(# w5, c5_2 #)   = L.add_c# s5_1 c4_2 (Limb 0##)
+      !(# w5f, c5_3 #)  = L.add_c# w5 c4_3 (Limb 0##)
+      !(# s6_0, c6_0 #) = L.mac# x3 y3 (Limb 0##) c5_0
+      !(# w6, c6_1 #)   = L.add_c# s6_0 c5_1 (Limb 0##)
+      !(# w6f, c6_2 #)  = L.add_c# w6 c5_2 (Limb 0##)
+      !(# w6ff, c6_3 #) = L.add_c# w6f c5_3 (Limb 0##)
+      !(# w7, _ #)      = L.add_c# c6_0 c6_1 (Limb 0##)
+      !(# w7f, _ #)     = L.add_c# w7 c6_2 (Limb 0##)
+      !(# w7ff, _ #)    = L.add_c# w7f c6_3 (Limb 0##)
   in  (# (# z0, z1, z2, z3 #), (# w4, w5f, w6ff, w7ff #) #)
 {-# INLINE mul_c# #-}
 
@@ -323,40 +333,34 @@ mul (Wider a) (Wider b) =
   in  Wider l
 
 sqr#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# (# Word#, Word#, Word#, Word# #), (# Word#, Word#, Word#, Word# #) #)
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
 sqr# (# x0, x1, x2, x3 #) =
   let !sh = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
-      !(# q1_0, c1_0 #) = L.mac# x1 x0 0## 0##
+      !(# q1_0, c1_0 #) = L.mac# x1 x0 (Limb 0##) (Limb 0##)
       !r1 = c1_0
-      !(# r2_0, c2_0 #) = L.mac# x2 x0 r1 0##
-      !(# s2_1, c2_1 #) = L.mac# x2 x1 0## c2_0
+      !(# r2_0, c2_0 #) = L.mac# x2 x0 r1 (Limb 0##)
+      !(# s2_1, c2_1 #) = L.mac# x2 x1 (Limb 0##) c2_0
       !t2 = c2_1
-      !(# s3_0, c3_0 #) = L.mac# x3 x0 s2_1 0##
+      !(# s3_0, c3_0 #) = L.mac# x3 x0 s2_1 (Limb 0##)
       !(# t3, c3_1 #) = L.mac# x3 x1 t2 c3_0
-      !(# u3, c3_2 #) = L.mac# x3 x2 0## c3_1
+      !(# u3, c3_2 #) = L.mac# x3 x2 (Limb 0##) c3_1
       !v3 = c3_2
-      !(# lo1, car0_1 #) =
-        (# uncheckedShiftL# q1_0 1#, uncheckedShiftRL# q1_0 sh #)
-      !(# lo2, car0_2 #) =
-        (# or# (uncheckedShiftL# r2_0 1#) car0_1, uncheckedShiftRL# r2_0 sh #)
-      !(# lo3, car0_3 #) =
-        (# or# (uncheckedShiftL# s3_0 1#) car0_2, uncheckedShiftRL# s3_0 sh #)
-      !(# hi0, car1_0 #) =
-        (# or# (uncheckedShiftL# t3 1#) car0_3, uncheckedShiftRL# t3 sh #)
-      !(# hi1, car1_1 #) =
-        (# or# (uncheckedShiftL# u3 1#) car1_0, uncheckedShiftRL# u3 sh #)
-      !(# hi2, car1_2 #) =
-        (# or# (uncheckedShiftL# v3 1#) car1_1, uncheckedShiftRL# v3 sh #)
+      !(# lo1, car0_1 #) = (# L.shl# q1_0 1#, L.shr# q1_0 sh #)
+      !(# lo2, car0_2 #) = (# L.or# (L.shl# r2_0 1#) car0_1, L.shr# r2_0 sh #)
+      !(# lo3, car0_3 #) = (# L.or# (L.shl# s3_0 1#) car0_2, L.shr# s3_0 sh #)
+      !(# hi0, car1_0 #) = (# L.or# (L.shl# t3 1#) car0_3, L.shr# t3 sh #)
+      !(# hi1, car1_1 #) = (# L.or# (L.shl# u3 1#) car1_0, L.shr# u3 sh #)
+      !(# hi2, car1_2 #) = (# L.or# (L.shl# v3 1#) car1_1, L.shr# v3 sh #)
       !hi3 = car1_2
-      !(# pf, car2_0 #) = L.mac# x0 x0 0## 0##
-      !(# qf, car2_1 #) = L.add_c# lo1 car2_0 0##
+      !(# pf, car2_0 #) = L.mac# x0 x0 (Limb 0##) (Limb 0##)
+      !(# qf, car2_1 #) = L.add_c# lo1 car2_0 (Limb 0##)
       !(# rf, car2_2 #) = L.mac# x1 x1 lo2 car2_1
-      !(# sf, car2_3 #) = L.add_c# lo3 car2_2 0##
+      !(# sf, car2_3 #) = L.add_c# lo3 car2_2 (Limb 0##)
       !(# tf, car2_4 #) = L.mac# x2 x2 hi0 car2_3
-      !(# uf, car2_5 #) = L.add_c# hi1 car2_4 0##
+      !(# uf, car2_5 #) = L.add_c# hi1 car2_4 (Limb 0##)
       !(# vf, car2_6 #) = L.mac# x3 x3 hi2 car2_5
-      !(# wf, _      #) = L.add_c# hi3 car2_6 0##
+      !(# wf, _      #) = L.add_c# hi3 car2_6 (Limb 0##)
   in  (# (# pf, qf, rf, sf #), (# tf, uf, vf, wf #) #)
 {-# INLINE sqr# #-}
 

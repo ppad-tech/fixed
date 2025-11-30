@@ -6,6 +6,14 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedNewtypes #-}
 
+-- |
+-- Module: Data.Word.Wide
+-- Copyright: (c) 2025 Jared Tobin
+-- License: MIT
+-- Maintainer: Jared Tobin <jared@ppad.tech>
+--
+-- Wide words, consisting of two 'Limb's.
+
 module Data.Word.Wide (
   -- * Wide Words
     Wide(..)
@@ -60,6 +68,8 @@ data Wide = Wide !(# Limb, Limb #)
 instance Show Wide where
   show = show . from
 
+-- XX add neg
+
 instance Num Wide where
   (+) = add
   (-) = sub
@@ -97,6 +107,7 @@ from (Wide (# Limb a, Limb b #)) =
 
 -- comparison -----------------------------------------------------------------
 
+-- | Compare 'Wide' words for equality in variable time.
 eq_vartime :: Wide -> Wide -> Bool
 eq_vartime (Wide (# Limb a0, Limb b0 #)) (Wide (# Limb a1, Limb b1 #)) =
   isTrue# (andI# (eqWord# a0 a1) (eqWord# b0 b1))
