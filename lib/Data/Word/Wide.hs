@@ -57,6 +57,17 @@ instance Show Wide where
   show (Wide (# Limb a, Limb b #)) =
     "(" <> show (W# a) <> ", " <> show (W# b) <> ")"
 
+instance Num Wide where
+  (+) = add
+  (-) = sub
+  (*) = mul
+  abs = id
+  fromInteger = to
+  negate w = add (not w) (Wide (# Limb 1##, Limb 0## #))
+  signum a = case a of
+    Wide (# Limb 0##, Limb 0## #) -> 0
+    _ -> 1
+
 instance NFData Wide where
   rnf (Wide a) = case a of (# _, _ #) -> ()
 
