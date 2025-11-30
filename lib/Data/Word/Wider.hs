@@ -291,6 +291,14 @@ sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   in  (# (# s0, s1, s2, s3 #), c3 #)
 {-# INLINE sub_b# #-}
 
+sub_b
+  :: Wider
+  -> Wider
+  -> (Wider, Word)
+sub_b (Wider l) (Wider r) =
+  let !(# d, Limb b #) = sub_b# l r
+  in  (Wider d, W# b)
+
 sub
   :: Wider
   -> Wider

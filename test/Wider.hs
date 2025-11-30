@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Wider (
@@ -32,6 +33,28 @@ wrapping_add_with_carry :: H.Assertion
 wrapping_add_with_carry = do
   let !r = W.add (2 ^ (256 :: Word) - 1) 1
   H.assertBool mempty (W.eq_vartime r 0)
+
+borrowing_sub_no_borrow :: H.Assertion
+borrowing_sub_no_borrow = do
+  let !(d, b) = W.sub_b 1 1
+  H.assertBool mempty (W.eq_vartime d 0)
+  H.assertBool mempty (b == 0)
+
+borrowing_sub_with_borrow :: H.Assertion
+borrowing_sub_with_borrow = do
+  let !(d, b) = W.sub_b 0 1
+  H.assertBool mempty (W.eq_vartime d (2 ^ (256 :: Word) - 1))
+  H.assertBool mempty (b == (2 ^ (64 :: Word) - 1))
+
+wrapping_sub_no_borrow :: H.Assertion
+wrapping_sub_no_borrow = do
+  let !r = W.sub 1 1
+  H.assertBool mempty (W.eq_vartime r 0)
+
+wrapping_sub_with_borrow :: H.Assertion
+wrapping_sub_with_borrow = do
+  let !r = W.sub 0 1
+  H.assertBool mempty (W.eq_vartime r (2 ^ (256 :: Word) - 1))
 
 eq :: H.Assertion
 eq = do
@@ -93,16 +116,36 @@ cmp = do
   H.assertEqual mempty (W.cmp c a) GT
   H.assertEqual mempty (W.cmp c b) GT
 
+sqr :: H.Assertion
+sqr = do
+  let !n = 2 ^ (256 :: Word) - 1
+      !(l, h ) = W.sqr n
+  H.assertBool mempty (W.eq_vartime l 1)
+  H.assertBool mempty (W.eq_vartime h (n - 1))
+
+mul :: H.Assertion
+mul = do
+  let !n = 2 ^ (256 :: Word) - 1
+  H.assertBool mempty (W.eq_vartime (W.mul 0 n) 0)
+  H.assertBool mempty (W.eq_vartime (W.mul n 0) 0)
+  H.assertBool mempty (W.eq_vartime (W.mul n n) 1)
+  H.assertBool mempty (W.eq_vartime (W.mul 1 n) n)
+
 tests :: TestTree
 tests = testGroup "wider tests" [
     H.testCase "overflowing add, no carry" overflowing_add_no_carry
   , H.testCase "overflowing add, carry" overflowing_add_with_carry
   , H.testCase "wrapping add, no carry" wrapping_add_no_carry
   , H.testCase "wrapping add, carry" wrapping_add_with_carry
+  , H.testCase "borrowing sub, no borrow" borrowing_sub_no_borrow
+  , H.testCase "borrowing sub, borrow" borrowing_sub_with_borrow
+  , H.testCase "wrapping sub, no borrow" wrapping_sub_no_borrow
+  , H.testCase "wrapping sub, borrow" wrapping_sub_with_borrow
   , H.testCase "eq" eq
   , H.testCase "gt" gt
   , H.testCase "lt" lt
   , H.testCase "cmp" cmp
+  , H.testCase "sqr" sqr
+  , H.testCase "mul" mul
   ]
-
 
