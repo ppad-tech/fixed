@@ -5,8 +5,12 @@
 module Main where
 
 import Limb as L
+import Wide as W
 import Test.Tasty
 
 main :: IO ()
-main = defaultMain $ L.tests
+main = defaultMain $ testGroup "ppad-fixed" [
+    L.tests
+  , W.tests
+  ]
 
