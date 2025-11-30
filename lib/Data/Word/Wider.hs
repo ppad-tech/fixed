@@ -42,18 +42,6 @@ data Wider = Wider !(# Limb, Limb, Limb, Limb #)
 instance Show Wider where
   show = show . from
 
-instance Eq Wider where
-  Wider a == Wider b =
-    let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
-        !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
-    in  C.decide (C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)) -- XX sane?
-
-instance Ord Wider where
-  compare (Wider a) (Wider b) = case cmp# a b of -- XX sane?
-    1#  -> GT
-    0#  -> EQ
-    _   -> LT
-
 instance Num Wider where
   (+) = add
   (-) = sub
@@ -61,15 +49,25 @@ instance Num Wider where
   abs = id
   fromInteger = to
   negate w = add (not w) (Wider (# Limb 1##, Limb 0##, Limb 0##, Limb 0## #))
-  signum a
-    | a == Wider (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) = 0
-    | otherwise = 1
+  signum a = case a of
+    Wider (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) -> 0
+    _ -> 1
 
 instance NFData Wider where
   rnf (Wider a) = case a of
     (# _, _, _, _ #) -> ()
 
 -- comparison -----------------------------------------------------------------
+
+eq#
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+  -> C.Choice
+eq# a b =
+  let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
+      !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
+  in  C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
+{-# INLINE eq# #-}
 
 -- | Compare 'Wider' words for equality in variable time.
 eq_vartime :: Wider -> Wider -> Bool
@@ -86,16 +84,18 @@ lt#
   -> (# Limb, Limb, Limb, Limb #)
   -> C.Choice
 lt# a b =
-  let !(# _, Limb bit #) = sub_b# a b
-  in  C.from_word_lsb# bit
+  let !(# _, Limb bor #) = sub_b# a b
+  in  C.from_word_mask# bor
+{-# INLINE lt# #-}
 
 gt#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# Limb, Limb, Limb, Limb #)
   -> C.Choice
 gt# a b =
-  let !(# _, Limb bit #) = sub_b# b a
-  in  C.from_word_lsb# bit
+  let !(# _, Limb bor #) = sub_b# b a
+  in  C.from_word_mask# bor
+{-# INLINE gt# #-}
 
 cmp#
   :: (# Limb, Limb, Limb, Limb #)
@@ -110,10 +110,17 @@ cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
       !d2 = L.or# d1 w2
       !(# w3, b3 #) = L.sub_b# r3 l3 b2
       !d3 = L.or# d2 w3
-      !(Limb w) = L.shl# b3 1#
+      !(Limb w) = L.and# b3 (Limb 2##)
       !s = word2Int# w -# 1#
   in  (word2Int# (C.to_word# (L.nonzero# d3))) *# s
 {-# INLINE cmp# #-}
+
+-- | Constant-time comparison between 'Wider' words.
+cmp :: Wider -> Wider -> Ordering
+cmp (Wider a) (Wider b) = case cmp# a b of
+  1#  -> GT
+  0#  -> EQ
+  _   -> LT
 
 -- construction / conversion --------------------------------------------------
 
@@ -271,11 +278,11 @@ add_mod# a b m =
 {-# INLINE add_mod# #-}
 
 -- | Borrowing subtraction, computing 'a - b' and returning the
---   difference with a borrow bit.
+--   difference with a borrow mask.
 sub_b#
   :: (# Limb, Limb, Limb, Limb #)              -- ^ minuend
   -> (# Limb, Limb, Limb, Limb #)              -- ^ subtrahend
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# diff, borrow bit #)
+  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# diff, borrow mask #)
 sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 (Limb 0##)
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
@@ -299,8 +306,7 @@ sub_mod#
   -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
   -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod# a b (# p0, p1, p2, p3 #) =
-  let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
-      !m  = L.neg# bb
+  let !(# (# o0, o1, o2, o3 #), m #) = sub_b# a b
       !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
   in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod# #-}
@@ -314,7 +320,7 @@ sub_mod_c#
   -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
-      !m = L.and# (L.not# (L.neg# c)) (L.neg# bb)
+      !m = L.and# (L.not# (L.neg# c)) bb
       !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
   in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod_c# #-}

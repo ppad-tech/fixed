@@ -26,6 +26,7 @@ module Data.Choice (
   , expect_wide_or#
 
   -- * Construction
+  , from_word_mask#
   , from_word_lsb#
   , from_word_nonzero#
   , from_word_eq#
@@ -129,7 +130,6 @@ true# _ = case maxBound :: Word of
   W# w -> Choice w
 {-# INLINE true# #-}
 
--- XX this is probably stupid. check
 decide :: Choice -> Bool
 decide (Choice c) = isTrue# (neWord# c 0##)
 {-# INLINE decide #-}
@@ -181,6 +181,10 @@ expect_wide_or# (MaybeWide# (# w, Choice c #)) alt
 {-# INLINE expect_wide_or# #-}
 
 -- construction ---------------------------------------------------------------
+
+from_word_mask# :: Word# -> Choice
+from_word_mask# w = Choice w
+{-# INLINE from_word_mask# #-}
 
 from_word_lsb# :: Word# -> Choice
 from_word_lsb# w = Choice (wrapping_neg# w)
