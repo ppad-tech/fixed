@@ -4,13 +4,15 @@
 
 module Main where
 
-import Limb as L
-import Wide as W
+import qualified Limb
+import qualified Wide
+import qualified Wider
 import Test.Tasty
 
 main :: IO ()
 main = defaultMain $ testGroup "ppad-fixed" [
-    L.tests
-  , W.tests
+    Limb.tests
+  , Wide.tests
+  , Wider.tests
   ]
 

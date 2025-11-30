@@ -22,7 +22,10 @@ import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
-import GHC.Exts (Word(..), Int(..), Int#, word2Int#, (-#), (*#))
+import GHC.Exts ( Word(..), Int(..), Int#
+                , (-#), (*#)
+                , word2Int#, eqWord#, andI#, isTrue#
+                )
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- utilities ------------------------------------------------------------------
@@ -66,7 +69,17 @@ instance NFData Wider where
   rnf (Wider a) = case a of
     (# _, _, _, _ #) -> ()
 
--- ordering -------------------------------------------------------------------
+-- comparison -----------------------------------------------------------------
+
+-- | Compare 'Wider' words for equality in variable time.
+eq_vartime :: Wider -> Wider -> Bool
+eq_vartime a b =
+  let !(Wider (# Limb a0, Limb a1, Limb a2, Limb a3 #)) = a
+      !(Wider (# Limb b0, Limb b1, Limb b2, Limb b3 #)) = b
+  in  isTrue# $
+        andI#
+          (andI# (eqWord# a0 b0) (eqWord# a1 b1))
+          (andI# (eqWord# a2 b2) (eqWord# a3 b3))
 
 lt#
   :: (# Limb, Limb, Limb, Limb #)
