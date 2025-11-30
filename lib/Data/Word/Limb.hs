@@ -33,7 +33,11 @@ module Data.Word.Limb (
   -- * Comparison
   , eq#
   , ne#
+  , eq_vartime#
+  , ne_vartime#
   , nonzero#
+  , lt#
+  , gt#
 
   -- * Selection
   , select#
@@ -82,6 +86,13 @@ eq#
 eq# (Limb a) (Limb b) = C.ct_eq_word# a b
 {-# INLINE eq# #-}
 
+eq_vartime#
+  :: Limb
+  -> Limb
+  -> Bool
+eq_vartime# (Limb a) (Limb b) = Exts.isTrue# (Exts.eqWord# a b)
+{-# INLINE eq_vartime# #-}
+
 -- | Inequality comparison.
 ne#
   :: Limb
@@ -90,12 +101,35 @@ ne#
 ne# a b = C.not_c# (eq# a b)
 {-# INLINE ne# #-}
 
+ne_vartime#
+  :: Limb
+  -> Limb
+  -> Bool
+ne_vartime# a b = not (eq_vartime# a b)
+{-# INLINE ne_vartime# #-}
+
 -- | Comparison to zero.
 nonzero#
   :: Limb
   -> C.Choice
 nonzero# (Limb a) = C.from_word_nonzero# a
 {-# INLINE nonzero# #-}
+
+-- | Less than.
+lt#
+  :: Limb
+  -> Limb
+  -> C.Choice
+lt# (Limb a) (Limb b) = C.from_word_lt# a b
+{-# INLINE lt# #-}
+
+-- | Greater than.
+gt#
+  :: Limb
+  -> Limb
+  -> C.Choice
+gt# (Limb a) (Limb b) = C.from_word_gt# a b
+{-# INLINE gt# #-}
 
 -- selection ------------------------------------------------------------------
 
