@@ -21,8 +21,12 @@ module Data.Word.Wide (
   , xor
   , not
 
+  -- * Comparison
+  , eq_vartime
+
   -- * Arithmetic
   , add
+  , add_c
   , sub
   , mul
 
@@ -91,6 +95,12 @@ from (Wide (# Limb a, Limb b #)) =
       fi (W# b) .<<. (B.finiteBitSize (0 :: Word))
   .|. fi (W# a)
 
+-- comparison -----------------------------------------------------------------
+
+eq_vartime :: Wide -> Wide -> Bool
+eq_vartime (Wide (# Limb a0, Limb b0 #)) (Wide (# Limb a1, Limb b1 #)) =
+  isTrue# (andI# (eqWord# a0 a1) (eqWord# b0 b1))
+
 -- bits -----------------------------------------------------------------------
 
 or_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
@@ -129,12 +139,22 @@ not (Wide w) = Wide (not_w# w)
 add_c#
   :: (# Limb, Limb #)              -- ^ augend
   -> (# Limb, Limb #)              -- ^ addend
-  -> (# (# Limb, Limb #), Limb #) -- ^ (# sum, carry bit #)
+  -> (# (# Limb, Limb #), Limb #)  -- ^ (# sum, carry bit #)
 add_c# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
   in  (# (# s0, s1 #), c1 #)
 {-# INLINE add_c# #-}
+
+-- | Overflowing addition on 'Wide' words, computing 'a + b', returning
+--   the sum and carry.
+add_c
+  :: Wide         -- ^ augend
+  -> Wide         -- ^ addend
+  -> (Wide, Word) -- ^ (sum, carry)
+add_c (Wide a) (Wide b) =
+  let !(# s, Limb c #) = add_c# a b
+  in  (Wide s, W# c)
 
 -- | Wrapping addition, computing 'a + b'.
 add_w#
