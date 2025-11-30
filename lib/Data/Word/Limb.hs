@@ -7,15 +7,40 @@
 {-# LANGUAGE UnliftedNewtypes #-}
 
 module Data.Word.Limb (
-  -- * Unboxed Arithmetic
-    add_c#
+  -- * Limb
+    Limb(..)
+  , render
+
+  -- * Bit manipulation and representation
+  , and#
+  , or#
+  , not#
+  , xor#
+  , bits#
+
+  -- * Comparison
+
+  , ct_eq#
+
+  -- * Arithmetic
+  , add_o#
+  , add_c#
+  , add_w#
+  , add_s#
+
   , sub_b#
+  , sub_w#
+  , sub_s#
+
   , mul_c#
   , mul_w#
+  , mul_s#
+
   , mac#
   ) where
 
 import qualified Data.Bits as B
+import qualified Data.Choice as C
 import GHC.Exts (Word#)
 import qualified GHC.Exts as Exts
 
@@ -24,30 +49,58 @@ newtype Limb = Limb Word#
 render :: Limb -> String
 render (Limb a) = show (Exts.W# a)
 
+-- comparison -----------------------------------------------------------------
+
+-- | Constant-time equality comparison.
+ct_eq#
+  :: Limb
+  -> Limb
+  -> C.Choice
+ct_eq# (Limb a) (Limb b) = C.ct_eq_word# a b
+{-# INLINE ct_eq# #-}
+
 -- bit manipulation -----------------------------------------------------------
 
-and# :: Limb -> Limb -> Limb
+-- | Bitwise and.
+and#
+  :: Limb -- ^ a
+  -> Limb -- ^ b
+  -> Limb -- ^ a & b
 and# (Limb a) (Limb b) = Limb (Exts.and# a b)
 {-# INLINE and# #-}
 
-or# :: Limb -> Limb -> Limb
+-- | Bitwise or.
+or#
+  :: Limb -- ^ a
+  -> Limb -- ^ b
+  -> Limb -- ^ a | b
 or# (Limb a) (Limb b) = Limb (Exts.or# a b)
 {-# INLINE or# #-}
 
-not# :: Limb -> Limb
+-- | Bitwise not.
+not#
+  :: Limb -- ^ a
+  -> Limb -- ^ not a
 not# (Limb a) = Limb (Exts.not# a)
 {-# INLINE not# #-}
 
-xor# :: Limb -> Limb -> Limb
+-- | Bitwise exclusive or.
+xor#
+  :: Limb -- ^ a
+  -> Limb -- ^ b
+  -> Limb -- ^ a ^ b
 xor# (Limb a) (Limb b) = Limb (Exts.xor# a b)
 {-# INLINE xor# #-}
 
-bits :: Limb -> Int
-bits (Limb a) =
+-- | Number of bits required to represent this limb.
+bits#
+  :: Limb -- ^ limb
+  -> Int  -- ^ bits required to represent limb
+bits# (Limb a) =
   let !_BITS = B.finiteBitSize (0 :: Word)
       !zs = B.countLeadingZeros (Exts.W# a)
-  in  _BITS - zs
-{-# INLINE bits #-}
+  in  _BITS - zs -- XX unbox?
+{-# INLINE bits# #-}
 
 -- addition -------------------------------------------------------------------
 
