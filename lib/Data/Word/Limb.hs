@@ -6,6 +6,14 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnliftedNewtypes #-}
 
+-- |
+-- Module: Data.Word.Limb
+-- Copyright: (c) 2025 Jared Tobin
+-- License: MIT
+-- Maintainer: Jared Tobin <jared@ppad.tech>
+--
+-- The primitive 'Limb' type, as well as operations on it.
+
 module Data.Word.Limb (
   -- * Limb
     Limb(..)
