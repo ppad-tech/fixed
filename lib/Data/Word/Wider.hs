@@ -6,6 +6,14 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedNewtypes #-}
 
+-- |
+-- Module: Data.Word.Wider
+-- Copyright: (c) 2025 Jared Tobin
+-- License: MIT
+-- Maintainer: Jared Tobin <jared@ppad.tech>
+--
+-- Wider words, consisting of four 'Limb's.
+
 module Data.Word.Wider where
 
 import Control.DeepSeq

@@ -6,6 +6,15 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedNewtypes #-}
 
+-- |
+-- Module: Numeric.Montgomery.Secp256k1.Curve
+-- Copyright: (c) 2025 Jared Tobin
+-- License: MIT
+-- Maintainer: Jared Tobin <jared@ppad.tech>
+--
+-- Montgomery form 'Wider' words, as well as arithmetic operations, with
+-- domain derived from the secp256k1 elliptic curve field prime.
+
 module Numeric.Montgomery.Secp256k1.Curve where
 
 import Control.DeepSeq
