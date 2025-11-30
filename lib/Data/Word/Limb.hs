@@ -17,10 +17,23 @@ module Data.Word.Limb (
   , not#
   , xor#
   , bits#
+  , shl#
+  , shl1#
+  , shr#
+  , shr1#
 
   -- * Comparison
+  , eq#
+  , ne#
+  , nonzero#
 
-  , ct_eq#
+  -- * Selection
+  , select#
+  , cswap#
+
+  -- * Negation
+
+  , neg#
 
   -- * Arithmetic
   , add_o#
@@ -44,20 +57,60 @@ import qualified Data.Choice as C
 import GHC.Exts (Word#)
 import qualified GHC.Exts as Exts
 
+-- | A 'Limb' is the smallest component of a wider word.
 newtype Limb = Limb Word#
 
+-- | Return a 'Limb' value as a 'String'.
 render :: Limb -> String
 render (Limb a) = show (Exts.W# a)
 
 -- comparison -----------------------------------------------------------------
 
--- | Constant-time equality comparison.
-ct_eq#
+-- | Equality comparison.
+eq#
   :: Limb
   -> Limb
   -> C.Choice
-ct_eq# (Limb a) (Limb b) = C.ct_eq_word# a b
-{-# INLINE ct_eq# #-}
+eq# (Limb a) (Limb b) = C.ct_eq_word# a b
+{-# INLINE eq# #-}
+
+-- | Inequality comparison.
+ne#
+  :: Limb
+  -> Limb
+  -> C.Choice
+ne# a b = C.not_c# (eq# a b)
+{-# INLINE ne# #-}
+
+-- | Comparison to zero.
+nonzero#
+  :: Limb
+  -> C.Choice
+nonzero# (Limb a) = C.from_word_nonzero# a
+{-# INLINE nonzero# #-}
+
+-- selection ------------------------------------------------------------------
+
+-- | Return a if c is truthy, otherwise return b.
+select#
+  :: Limb     -- ^ a
+  -> Limb     -- ^ b
+  -> C.Choice -- ^ c
+  -> Limb     -- ^ result
+select# (Limb a) (Limb b) c = Limb (C.ct_select_word# a b c)
+{-# INLINE select# #-}
+
+-- | Return (# b, a #) if c is truthy, otherwise return (# a, b #).
+cswap#
+  :: Limb             -- ^ a
+  -> Limb             -- ^ b
+  -> C.Choice         -- ^ c
+  -> (# Limb, Limb #) -- ^ result
+cswap# (Limb a) (Limb b) c =
+  let !l = C.ct_select_word# a b c
+      !r = C.ct_select_word# b a c
+  in  (# Limb l, Limb r #)
+{-# INLINE cswap# #-}
 
 -- bit manipulation -----------------------------------------------------------
 
@@ -101,6 +154,53 @@ bits# (Limb a) =
       !zs = B.countLeadingZeros (Exts.W# a)
   in  _BITS - zs -- XX unbox?
 {-# INLINE bits# #-}
+
+-- | Bit-shift left.
+shl#
+  :: Limb       -- ^ limb
+  -> Exts.Int#  -- ^ shift amount
+  -> Limb       -- ^ result
+shl# (Limb w) s = Limb (Exts.uncheckedShiftL# w s)
+{-# INLINE shl# #-}
+
+-- | Bit-shift left by 1, returning the result and carry.
+shl1#
+  :: Limb
+  -> (# Limb, Limb #)
+shl1# (Limb w) =
+  let !s = case B.finiteBitSize (0 :: Word) of Exts.I# m -> m Exts.-# 1#
+      !r = Exts.uncheckedShiftL# w 1#
+      !c = Exts.uncheckedShiftRL# w s
+  in  (# Limb r, Limb c #)
+{-# INLINE shl1# #-}
+
+-- | Bit-shift right.
+shr#
+  :: Limb       -- ^ limb
+  -> Exts.Int#  -- ^ shift amount
+  -> Limb       -- ^ result
+shr# (Limb w) s = Limb (Exts.uncheckedShiftRL# w s)
+{-# INLINE shr# #-}
+
+-- | Bit-shift right by 1, returning the result and carry.
+shr1#
+  :: Limb
+  -> (# Limb, Limb #)
+shr1# (Limb w) =
+  let !s = case B.finiteBitSize (0 :: Word) of Exts.I# m -> m Exts.-# 1#
+      !r = Exts.uncheckedShiftRL# w 1#
+      !c = Exts.uncheckedShiftL# w s
+  in  (# Limb r, Limb c #)
+{-# INLINE shr1# #-}
+
+-- negation -------------------------------------------------------------------
+
+-- | Wrapping (two's complement) negation.
+neg#
+  :: Limb
+  -> Limb
+neg# (Limb x) = Limb (Exts.plusWord# (Exts.not# x) 1##)
+{-# INLINE neg# #-}
 
 -- addition -------------------------------------------------------------------
 
