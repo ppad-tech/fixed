@@ -124,7 +124,7 @@ from (Wider (# w0, w1, w2, w3 #)) =
   where
     !size = B.finiteBitSize (0 :: Word)
 
--- bit shifts -----------------------------------------------------------------
+-- bit manipulation -----------------------------------------------------------
 
 -- | Constant-time 1-bit shift-right with carry, indicating whether the
 --   lowest bit was set.
@@ -149,6 +149,40 @@ shr1_c :: Wider -> (Wider, Bool)
 shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
   in  (Wider r, C.decide c)
+
+and_w#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+and_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+  (# and# a0 b0, and# a1 b1, and# a2 b2, and# a3 b3 #)
+{-# INLINE and_w# #-}
+
+and :: Wider -> Wider -> Wider
+and (Wider a) (Wider b) = Wider (and_w# a b)
+
+or_w#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+or_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+  (# or# a0 b0, or# a1 b1, or# a2 b2, or# a3 b3 #)
+{-# INLINE or_w# #-}
+
+or :: Wider -> Wider -> Wider
+or (Wider a) (Wider b) = Wider (or_w# a b)
+
+-- conditional_shr#
+--   :: (# Word#, Word#, Word#, Word# #)
+--   -> Int#
+--   -> C.Choice
+--   -> (# (# Word#, Word#, Word#, Word# #), Word# #)
+-- conditional_shr# (# a0, a1, a2, a3 #) s c =
+--   let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
+--       !rs = s
+--       !ls = size -# s
+--       !(# l3, c3 #) =
+--         (# C.ct_select_word# a3 (uncheckedShiftRL# a3 rs)
 
 -- addition, subtraction ------------------------------------------------------
 
