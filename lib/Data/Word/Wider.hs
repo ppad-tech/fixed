@@ -206,17 +206,27 @@ not (Wider w) = Wider (not# w)
 
 -- | Overflowing addition, computing 'a + b', returning the sum and a
 --   carry bit.
-add_c#
+add_o#
   :: (# Limb, Limb, Limb, Limb #)             -- ^ augend
   -> (# Limb, Limb, Limb, Limb #)             -- ^ addend
   -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# sum, carry bit #)
-add_c# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+add_o# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
       !(# s2, c2 #) = L.add_c# a2 b2 c1
       !(# s3, c3 #) = L.add_c# a3 b3 c2
   in  (# (# s0, s1, s2, s3 #), c3 #)
-{-# INLINE add_c# #-}
+{-# INLINE add_o# #-}
+
+-- | Overflowing addition, computing 'a + b', returning the sum and a
+--   carry bit.
+add_o
+  :: Wider
+  -> Wider
+  -> (Wider, Word)
+add_o (Wider a) (Wider b) =
+  let !(# s, Limb c #) = add_o# a b
+  in  (Wider s, W# c)
 
 -- | Wrapping addition, computing 'a + b'.
 add_w#
@@ -224,7 +234,7 @@ add_w#
   -> (# Limb, Limb, Limb, Limb #) -- ^ addend
   -> (# Limb, Limb, Limb, Limb #) -- ^ sum
 add_w# a b =
-  let !(# c, _ #) = add_c# a b
+  let !(# c, _ #) = add_o# a b
   in  c
 {-# INLINE add_w# #-}
 
@@ -243,7 +253,7 @@ add_mod#
   -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
   -> (# Limb, Limb, Limb, Limb #) -- ^ sum
 add_mod# a b m =
-  let !(# w, c #) = add_c# a b
+  let !(# w, c #) = add_o# a b
   in  sub_mod_c# w c m m
 {-# INLINE add_mod# #-}
 

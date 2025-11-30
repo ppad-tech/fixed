@@ -34,12 +34,12 @@ module Data.Word.Wide (
 
   -- * Arithmetic
   , add
-  , add_c
+  , add_o
   , sub
   , mul
 
   -- * Unboxed Arithmetic
-  , add_c#
+  , add_o#
   , add_w#
   , sub_b#
   , sub_w#
@@ -147,24 +147,24 @@ not (Wide w) = Wide (not_w# w)
 
 -- | Overflowing addition, computing 'a + b', returning the sum and a
 --   carry bit.
-add_c#
+add_o#
   :: (# Limb, Limb #)              -- ^ augend
   -> (# Limb, Limb #)              -- ^ addend
   -> (# (# Limb, Limb #), Limb #)  -- ^ (# sum, carry bit #)
-add_c# (# a0, a1 #) (# b0, b1 #) =
+add_o# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
   in  (# (# s0, s1 #), c1 #)
-{-# INLINE add_c# #-}
+{-# INLINE add_o# #-}
 
 -- | Overflowing addition on 'Wide' words, computing 'a + b', returning
 --   the sum and carry.
-add_c
+add_o
   :: Wide         -- ^ augend
   -> Wide         -- ^ addend
   -> (Wide, Word) -- ^ (sum, carry)
-add_c (Wide a) (Wide b) =
-  let !(# s, Limb c #) = add_c# a b
+add_o (Wide a) (Wide b) =
+  let !(# s, Limb c #) = add_o# a b
   in  (Wide s, W# c)
 
 -- | Wrapping addition, computing 'a + b'.
@@ -173,7 +173,7 @@ add_w#
   -> (# Limb, Limb #) -- ^ addend
   -> (# Limb, Limb #) -- ^ sum
 add_w# a b =
-  let !(# c, _ #) = add_c# a b
+  let !(# c, _ #) = add_o# a b
   in  c
 {-# INLINE add_w# #-}
 
