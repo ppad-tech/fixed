@@ -319,16 +319,23 @@ sub_mod# a b (# p0, p1, p2, p3 #) =
   in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod# #-}
 
+sub_mod
+  :: Wider
+  -> Wider
+  -> Wider
+  -> Wider
+sub_mod (Wider a) (Wider b) (Wider p) = Wider (sub_mod# a b p)
+
 -- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#
   :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
-  -> Limb                            -- ^ carry bit
+  -> Limb                         -- ^ carry bit
   -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
   -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
   -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
-      !m = L.and# (L.not# (L.neg# c)) bb
+      !(# _, m #) = L.sub_b# c (Limb 0##) bb
       !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
   in  add_w# (# o0, o1, o2, o3 #) ba
 {-# INLINE sub_mod_c# #-}

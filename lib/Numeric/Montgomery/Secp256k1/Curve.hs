@@ -34,11 +34,12 @@ data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 instance Show Montgomery where
   show = show . from
 
+-- XX replace with 'eq', remove instance
 instance Eq Montgomery where
   Montgomery a == Montgomery b =
     let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
         !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
-    in  C.decide (C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)) -- XX sane?
+    in  C.decide (C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #))
 
 instance Num Montgomery where
   a + b = add a b

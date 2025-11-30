@@ -49,6 +49,8 @@ test-suite fixed-tests
       Limb
       Wide
       Wider
+      Montgomery.Curve
+      Montgomery.Scalar
 
   ghc-options:
     -rtsopts -Wall -O2

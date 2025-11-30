@@ -4,6 +4,8 @@
 
 module Main where
 
+import qualified Montgomery.Curve as Curve
+import qualified Montgomery.Scalar as Scalar
 import qualified Limb
 import qualified Wide
 import qualified Wider
@@ -14,5 +16,7 @@ main = defaultMain $ testGroup "ppad-fixed" [
     Limb.tests
   , Wide.tests
   , Wider.tests
+  , Curve.tests
+  , Scalar.tests
   ]
 

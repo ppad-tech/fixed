@@ -131,6 +131,15 @@ mul = do
   H.assertBool mempty (W.eq_vartime (W.mul n n) 1)
   H.assertBool mempty (W.eq_vartime (W.mul 1 n) n)
 
+sub_mod :: H.Assertion
+sub_mod = do
+  let !a = 0x1a2472fde50286541d97ca6a3592dd75beb9c9646e40c511b82496cfc3926956
+      !b = 0xd5777c45019673125ad240f83094d4252d829516fac8601ed01979ec1ec1a251
+      !n = 0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551
+      !o = W.sub_mod a b n
+      !e = 0x44acf6b7e36c1342c2c5897204fe09504e1e2efb1a900377dbc4e7a6a133ec56
+  H.assertBool mempty (W.eq_vartime o e)
+
 tests :: TestTree
 tests = testGroup "wider tests" [
     H.testCase "overflowing add, no carry" overflowing_add_no_carry
@@ -147,5 +156,6 @@ tests = testGroup "wider tests" [
   , H.testCase "cmp" cmp
   , H.testCase "sqr" sqr
   , H.testCase "mul" mul
+  , H.testCase "sub_mod" sub_mod
   ]
 

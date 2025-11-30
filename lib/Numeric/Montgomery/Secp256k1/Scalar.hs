@@ -24,6 +24,7 @@ import qualified Data.Word.Limb as L
 import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
+import GHC.Exts (Word(..))
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- montgomery arithmetic, specialized to the secp256k1 scalar group order
@@ -34,6 +35,12 @@ data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 instance Show Montgomery where
   show = show . from
 
+render :: Montgomery -> String
+render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
+     "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
+  <> show (W# c) <> ", " <> show (W# d) <> ")"
+
+-- XX replace with 'eq', remove instance
 instance Eq Montgomery where
   Montgomery a == Montgomery b =
     let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
