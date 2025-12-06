@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
@@ -12,6 +13,7 @@ import qualified Data.Word.Wider as W
 import qualified Numeric.Montgomery.Secp256k1.Scalar as S
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
+import qualified Test.Tasty.QuickCheck as Q
 
 -- modulus
 m :: W.Wider
@@ -90,11 +92,37 @@ mul = do
     0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBF
     0x9D671CD581C69BC5E697F5E45BCD07C6741496C20E7CF878896CF21467D7D140
 
+instance Q.Arbitrary W.Wider where
+  arbitrary = fmap W.to Q.arbitrary
+
+instance Q.Arbitrary S.Montgomery where
+  arbitrary = fmap S.to Q.arbitrary
+
+add_matches :: W.Wider -> W.Wider -> Bool
+add_matches a b =
+  let ma = S.to a
+      mb = S.to b
+      ia = W.from a
+      ib = W.from b
+      im = W.from m
+  in  W.eq_vartime (W.to ((ia + ib) `mod` im)) (S.from (ma + mb))
+
+mul_matches :: W.Wider -> W.Wider -> Bool
+mul_matches a b =
+  let ma = S.to a
+      mb = S.to b
+      ia = W.from a
+      ib = W.from b
+      im = W.from m
+  in  W.eq_vartime (W.to ((ia * ib) `mod` im)) (S.from (ma * mb))
+
 tests :: TestTree
 tests = testGroup "montgomery tests (scalar)" [
     H.testCase "representation" repr
   , H.testCase "add" add
   , H.testCase "sub" sub
   , H.testCase "mul" mul
+  , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 1000 add_matches
+  , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 1000 mul_matches
   ]
 
