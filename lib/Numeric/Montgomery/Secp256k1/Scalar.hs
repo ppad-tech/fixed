@@ -55,8 +55,6 @@ import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
--- XX fix examples for scalar
-
 -- montgomery arithmetic, specialized to the secp256k1 scalar group order
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
