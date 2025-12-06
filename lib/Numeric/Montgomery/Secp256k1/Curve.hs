@@ -15,7 +15,27 @@
 -- Montgomery form 'Wider' words, as well as arithmetic operations, with
 -- domain derived from the secp256k1 elliptic curve field prime.
 
-module Numeric.Montgomery.Secp256k1.Curve where
+module Numeric.Montgomery.Secp256k1.Curve (
+  -- * Montgomery form, secp256k1 field prime modulus
+    Montgomery(..)
+  , render
+  , to
+  , from
+  , zero
+  , one
+
+  -- * Reduction and retrieval
+  , redc
+  , retr
+
+  -- * Montgomery arithmetic
+  , add
+  , sub
+  , mul
+  , sqr
+  , neg
+  , inv
+  ) where
 
 import Control.DeepSeq
 import qualified Data.Choice as C

@@ -15,7 +15,27 @@
 -- Montgomery form 'Wider' words, as well as arithmetic operations, with
 -- domain derived from the secp256k1 elliptic curve scalar group order.
 
-module Numeric.Montgomery.Secp256k1.Scalar where
+module Numeric.Montgomery.Secp256k1.Scalar (
+  -- * Montgomery form, secp256k1 scalar group order modulus
+    Montgomery(..)
+  , render
+  , to
+  , from
+  , zero
+  , one
+
+  -- * Reduction and retrieval
+  , redc
+  , retr
+
+  -- * Montgomery arithmetic
+  , add
+  , sub
+  , mul
+  , sqr
+  , neg
+  , inv
+  ) where
 
 import Control.DeepSeq
 import qualified Data.Choice as C
