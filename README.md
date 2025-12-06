@@ -12,36 +12,32 @@ A sample GHCi session:
 
 ```
   > -- import qualified
-  > import Data.Word.Extended as W
+  > import qualified Numeric.Montgomery.Secp256k1.Curve as C
   >
-  > -- use 'to_word256' to convert variable-length integers to Word256
-  > let u = W.to_word256 0xFFFFFFFFFF
-  > :t u
-  u :: W.Word256
+  > let one = 1 :: C.Montgomery
+  > one
+  1
+  > putStrLn (C.render one)
+  (4294968273, 0, 0, 0)
   >
-  > -- compare values
-  > let v = W.to_word256 0xFFFFFF
-  > u `W.lt` v
-  False
+  > let two = one + one
+  > putStrLn (C.render two)
+  (8589936546, 0, 0, 0)
   >
-  > -- bitwise operations
-  > u `W.or` v      -- == u
-  1099511627775
-  > u `W.and` v     -- == v
-  16777215
+  > let big = 2 ^ (128 :: Int) :: C.Montgomery
+  > big
+  340282366920938463463374607431768211456
+  > putStrLn (C.render big)
+  (0, 0, 4294968273, 0)
   >
-  > -- arithmetic operations
-  > (u `add` v) `sub` (u `add` v)
-  0
-  > u `mul` u `mul` u `mul` u `mul` u `mul` u `mul` u
-  115779721307862780478962831313825936498328052285500565196053117862789708251135
+  > let inv = C.inv big
+  > inv
+  85349562743316995932995116683053049354367560536510302240860302699983992117553
+  > putStrLn (C.render inv)
+  (0, 0, 1, 0)
   >
-  > u `div` v
-  65536
-  >
-  > -- modular reduction
-  > u `mod` v
-  65535
+  > inv * big
+  1
 ```
 
 ## Performance
