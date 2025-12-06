@@ -27,14 +27,22 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   -- * Reduction and retrieval
   , redc
   , retr
+  , redc#
+  , retr#
 
   -- * Montgomery arithmetic
   , add
+  , add#
   , sub
+  , sub#
   , mul
+  , mul#
   , sqr
+  , sqr#
   , neg
+  , neg#
   , inv
+  , inv#
   ) where
 
 import Control.DeepSeq
