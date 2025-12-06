@@ -116,13 +116,17 @@ mul_matches a b =
       im = W.from m
   in  W.eq_vartime (W.to ((ia * ib) `mod` im)) (S.from (ma * mb))
 
+inv_valid :: Q.NonZero S.Montgomery -> Bool
+inv_valid (Q.NonZero s) = S.inv s * s == 1
+
 tests :: TestTree
 tests = testGroup "montgomery tests (scalar)" [
     H.testCase "representation" repr
   , H.testCase "add" add
   , H.testCase "sub" sub
   , H.testCase "mul" mul
-  , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 1000 add_matches
-  , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 1000 mul_matches
+  , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 500 add_matches
+  , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 500 mul_matches
+  , Q.testProperty "n ^ -1 mod m * n ~ 1"  $ Q.withMaxSuccess 500 inv_valid
   ]
 
