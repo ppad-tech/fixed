@@ -314,9 +314,9 @@ sub_mod#
   -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
   -> (# Limb, Limb, Limb, Limb #) -- ^ difference
 sub_mod# a b (# p0, p1, p2, p3 #) =
-  let !(# (# o0, o1, o2, o3 #), m #) = sub_b# a b
+  let !(# o, m #) = sub_b# a b
       !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
-  in  add_w# (# o0, o1, o2, o3 #) ba
+  in  add_w# o ba
 {-# INLINE sub_mod# #-}
 
 sub_mod
