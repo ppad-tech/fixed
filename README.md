@@ -1,7 +1,10 @@
 # ppad-fixed
 
-A pure (**pre-release**, under construction, not-yet-constant-time)
-implementation of large fixed-width integers and supporting operations.
+A pure (**pre-release**, under construction,
+not-yet-guaranteed-constant-time) high-performance implementation
+of large fixed-width integers and supporting operations, including
+Montgomery-form arithmetic on domains related to the the elliptic curve
+secp256k1.
 
 ## Usage
 
@@ -43,84 +46,96 @@ A sample GHCi session:
 
 ## Performance
 
-The aim is best-in-class performance for pure, highly-auditable Haskell
-code. Most operations beat out their variable-length Integer variants,
-*but*, we have yet to reach parity with the all-important division and
-modulo operations.
+The aim is best-in-class performance for pure Haskell code.
 
-Current benchmark figures on my mid-2020 MacBook Air look like (use
-`cabal bench` to run the benchmark suite):
+Current benchmark figures on my M4 Silicon MacBook Air look like:
 
 ```
-  benchmarking addition & subtraction/add
-  time                 11.20 ns   (11.11 ns .. 11.30 ns)
-                       0.999 R²   (0.999 R² .. 1.000 R²)
-  mean                 11.47 ns   (11.32 ns .. 11.75 ns)
-  std dev              679.6 ps   (380.7 ps .. 1.038 ns)
-  variance introduced by outliers: 80% (severely inflated)
+benchmarking add/curve:  M(1) + M(2 ^ 255 - 19)
+time                 6.890 ns   (6.882 ns .. 6.906 ns)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 6.889 ns   (6.885 ns .. 6.897 ns)
+std dev              16.73 ps   (8.753 ps .. 30.75 ps)
 
-  benchmarking addition & subtraction/add (baseline)
-  time                 25.09 ns   (24.36 ns .. 26.00 ns)
-                       0.991 R²   (0.981 R² .. 0.998 R²)
-  mean                 24.81 ns   (24.27 ns .. 25.85 ns)
-  std dev              2.408 ns   (1.289 ns .. 4.439 ns)
-  variance introduced by outliers: 91% (severely inflated)
+benchmarking sub/curve:  M(2 ^ 255 - 1) - M(2 ^ 255 - 19)
+time                 6.876 ns   (6.872 ns .. 6.883 ns)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 6.877 ns   (6.874 ns .. 6.881 ns)
+std dev              11.60 ps   (7.865 ps .. 18.34 ps)
 
-  benchmarking addition & subtraction/sub
-  time                 11.51 ns   (11.42 ns .. 11.63 ns)
-                       0.999 R²   (0.999 R² .. 1.000 R²)
-  mean                 11.66 ns   (11.54 ns .. 11.81 ns)
-  std dev              475.9 ps   (350.7 ps .. 642.7 ps)
-  variance introduced by outliers: 65% (severely inflated)
+benchmarking mul/curve:  M(2) * M(2 ^ 255 - 19)
+time                 14.78 ns   (14.75 ns .. 14.81 ns)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 14.82 ns   (14.79 ns .. 14.85 ns)
+std dev              99.51 ps   (84.22 ps .. 118.2 ps)
 
-  benchmarking addition & subtraction/sub (baseline)
-  time                 31.93 ns   (31.71 ns .. 32.13 ns)
-                       1.000 R²   (0.999 R² .. 1.000 R²)
-  mean                 31.65 ns   (31.39 ns .. 31.89 ns)
-  std dev              841.0 ps   (710.8 ps .. 1.002 ns)
-  variance introduced by outliers: 42% (moderately inflated)
+benchmarking sqr/curve:  M(2 ^ 255 - 19) ^ 2
+time                 14.23 ns   (14.20 ns .. 14.27 ns)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 14.26 ns   (14.23 ns .. 14.29 ns)
+std dev              114.3 ps   (84.98 ps .. 181.1 ps)
 
-  benchmarking multiplication/mul
-  time                 29.41 ns   (29.06 ns .. 29.84 ns)
-                       0.995 R²   (0.988 R² .. 0.999 R²)
-  mean                 30.50 ns   (29.58 ns .. 33.10 ns)
-  std dev              4.628 ns   (1.452 ns .. 9.437 ns)
-  variance introduced by outliers: 96% (severely inflated)
+benchmarking inv/curve:  M(2 ^ 255 - 19) ^ -1
+time                 7.004 μs   (6.988 μs .. 7.030 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 7.027 μs   (7.013 μs .. 7.047 μs)
+std dev              57.73 ns   (50.57 ns .. 74.05 ns)
+```
 
-  benchmarking multiplication/mul (baseline)
-  time                 46.08 ns   (45.71 ns .. 46.43 ns)
-                       0.999 R²   (0.999 R² .. 1.000 R²)
-  mean                 46.12 ns   (45.65 ns .. 46.56 ns)
-  std dev              1.564 ns   (1.218 ns .. 2.063 ns)
-  variance introduced by outliers: 54% (severely inflated)
+The library can be used either via a boxed or unboxed API. Unboxed
+functions, suffixed by magic hashes, do not allocate. Boxed functions
+allocate only for top-level data constructors used when boxing results
+-- any internal arithmetic is entirely unboxed.
 
-  benchmarking division/div
-  time                 81.94 ns   (81.11 ns .. 82.84 ns)
-                       0.999 R²   (0.999 R² .. 1.000 R²)
-  mean                 81.97 ns   (81.43 ns .. 82.89 ns)
-  std dev              2.422 ns   (1.696 ns .. 3.578 ns)
-  variance introduced by outliers: 46% (moderately inflated)
+For example, a boxed 'Wide' word, defined as:
 
-  benchmarking division/div (baseline)
-  time                 72.08 ns   (71.26 ns .. 72.89 ns)
-                       0.999 R²   (0.999 R² .. 0.999 R²)
-  mean                 72.35 ns   (71.52 ns .. 73.15 ns)
-  std dev              2.566 ns   (2.203 ns .. 3.044 ns)
-  variance introduced by outliers: 55% (severely inflated)
+``` haskell
+  data Wide = Wide !(# Limb, Limb #)
+```
 
-  benchmarking division/mod
-  time                 106.6 ns   (105.7 ns .. 107.5 ns)
-                       0.999 R²   (0.999 R² .. 0.999 R²)
-  mean                 107.9 ns   (106.5 ns .. 109.2 ns)
-  std dev              4.520 ns   (3.705 ns .. 6.013 ns)
-  variance introduced by outliers: 63% (severely inflated)
+will allocate precisely three machine words -- one for the constructor,
+and one for each 'Limb' (so, 24 bytes on a 64-bit machine). A 'Wider'
+word, defined as:
 
-  benchmarking division/mod (baseline)
-  time                 77.94 ns   (76.87 ns .. 79.02 ns)
-                       0.998 R²   (0.998 R² .. 0.999 R²)
-  mean                 78.50 ns   (77.49 ns .. 79.74 ns)
-  std dev              3.694 ns   (2.729 ns .. 5.235 ns)
-  variance introduced by outliers: 68% (severely inflated)
+``` haskell
+  data Wider = Wider !(# Limb, Limb, Limb, Limb #)
+```
+
+will allocate five machine words (40 bytes) in turn.
+
+Thus, the allocation benchmark story for 256-bit Montgomery arithmetic
+using the boxed API looks like:
+
+```
+add
+
+  Case                            Allocated  GCs
+  curve:  M(1) + M(2)                    40    0
+  curve:  M(1) + M(2 ^ 255 - 19)         40    0
+
+sub
+
+  Case                                      Allocated  GCs
+  curve:  M(2 ^ 255 - 1) - M(1)                    40    0
+  curve:  M(2 ^ 255 - 1) - M(2 ^ 255 - 19)         40    0
+
+mul
+
+  Case                            Allocated  GCs
+  curve:  M(2) * M(2)                    40    0
+  curve:  M(2) * M(2 ^ 255 - 19)         40    0
+
+sqr
+
+  Case                         Allocated  GCs
+  curve:  M(2) ^ 2                    40    0
+  curve:  M(2 ^ 255 - 19) ^ 2         40    0
+
+inv
+
+  Case                          Allocated  GCs
+  curve:  M(2) ^ -1                    40    0
+  curve:  M(2 ^ 255 - 19) ^ -1         40    0
 ```
 
 Note that you can compile with GHC's LLVM backend and filter on specific
