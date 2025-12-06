@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -12,22 +13,88 @@ import qualified Numeric.Montgomery.Secp256k1.Scalar as S
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 
--- modulus :: S.Montgomery
--- modulus = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+-- modulus
+m :: W.Wider
+m = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+-- modulus
+mm :: S.Montgomery
+mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+
+repr :: H.Assertion
+repr = H.assertBool mempty (W.eq_vartime 0 (S.from mm))
+
+add_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+add_case t a b s = do
+  H.assertEqual "sanity" ((W.from a + W.from b) `mod` W.from m) (W.from s)
+  H.assertBool t (W.eq_vartime s (S.from (S.to a + S.to b)))
 
 add :: H.Assertion
 add = do
-  H.assertBool mempty (W.eq_vartime (1 + 1) (S.from (1 + 1)))
-  H.assertBool mempty (W.eq_vartime (0 + 1) (S.from (0 + 1)))
-  let !m  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-      !x  = 2 ^ (256 :: Word) - 1
-      !mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
-      !mx = 2 ^ (256 :: Word) - 1
-  H.assertBool mempty (W.eq_vartime 0 (S.from mm))
-  H.assertBool mempty (W.eq_vartime (x - m) (S.from (mx - mm)))
+  add_case "small" 1 2 3
+  add_case "wrap to 0 mod m"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140 1 0
+  add_case "wrap to 1"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD036413F 3 1
+  add_case "random"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0x0FEEEEEEEEEEEEEEFEEEEEEEEEEEEEEEFEEEEEEEEEEEEEEEFEEEEEEEEEEEEEEE
+  add_case "near R"
+    0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    0x5555555555555555555555555555555555555555555555555555555555555555
+    0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBE
+
+sub_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+sub_case t b a d = do
+  H.assertEqual "sanity" ((W.from b - W.from a) `mod` W.from m) (W.from d)
+  H.assertBool t (W.eq_vartime d (S.from (S.to b - S.to a)))
+
+sub :: H.Assertion
+sub = do
+  sub_case "small" 3 2 1
+  sub_case "wrap from 0 mod m" 0 1
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+  sub_case "wrap to 0" 1 1 0
+  sub_case "random"
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FECA8641FDB975320ECA8641FDB975320ECA8641FDB975320ECA8641FDB9754
+  sub_case "near R"
+    0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBE
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+    0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBF
+
+mul_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+mul_case t a b p = do
+  H.assertEqual "sanity" ((W.from a * W.from b) `mod` W.from m) (W.from p)
+  H.assertBool t (W.eq_vartime p (S.from (S.to a * S.to b)))
+
+mul :: H.Assertion
+mul = do
+  mul_case "small" 2 3 6
+  mul_case "wrap to 1 mod m"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364140
+    0x1
+  mul_case "zero"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0
+    0x0
+  mul_case "random"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0x1A9B526FE2B5CE72CE59A8E81612BC5785CED8C6B231B643B36DA80BE2A60636
+  mul_case "near R"
+    0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBF
+    0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBF
+    0x9D671CD581C69BC5E697F5E45BCD07C6741496C20E7CF878896CF21467D7D140
 
 tests :: TestTree
 tests = testGroup "montgomery tests (scalar)" [
-    H.testCase "add" add
+    H.testCase "representation" repr
+  , H.testCase "add" add
+  , H.testCase "sub" sub
+  , H.testCase "mul" mul
   ]
 

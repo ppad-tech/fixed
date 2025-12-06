@@ -1,3 +1,4 @@
+{-# LANGUAGE ApplicativeDo #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -12,19 +13,88 @@ import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 
+-- modulus
+m :: W.Wider
+m = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+
+-- modulus
+mm :: C.Montgomery
+mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+
+repr :: H.Assertion
+repr = H.assertBool mempty (W.eq_vartime 0 (C.from mm))
+
+add_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+add_case t a b s = do
+  H.assertEqual "sanity" ((W.from a + W.from b) `mod` W.from m) (W.from s)
+  H.assertBool t (W.eq_vartime s (C.from (C.to a + C.to b)))
+
 add :: H.Assertion
 add = do
-  H.assertBool mempty (W.eq_vartime (1 + 1) (C.from (1 + 1)))
-  H.assertBool mempty (W.eq_vartime (0 + 1) (C.from (0 + 1)))
-  let !m  = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-      !x  = 2 ^ (256 :: Word) - 1
-      !mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-      !mx = 2 ^ (256 :: Word) - 1
-  H.assertBool mempty (W.eq_vartime 0 (C.from mm))
-  H.assertBool mempty (W.eq_vartime (x - m) (C.from (mx - mm)))
+  add_case "small" 1 2 3
+  add_case "wrap to 0 mod m"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E 1 0
+  add_case "wrap to 1"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2D 3 1
+  add_case "random"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0x0FEEEEEEEEEEEEEEFEEEEEEEEEEEEEEEFEEEEEEEEEEEEEEEFEEEEEEEEEEEEEEE
+  add_case "near R"
+    0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+    0x5555555555555555555555555555555555555555555555555555555555555555
+    0x00000000000000000000000000000000000000000000000000000001000003D0
+
+sub_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+sub_case t b a d = do
+  H.assertEqual "sanity" ((W.from b - W.from a) `mod` W.from m) (W.from d)
+  H.assertBool t (W.eq_vartime d (C.from (C.to b - C.to a)))
+
+sub :: H.Assertion
+sub = do
+  sub_case "small" 3 2 1
+  sub_case "wrap from 0 mod m" 0 1
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E
+  sub_case "wrap to 0" 1 1 0
+  sub_case "random"
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FECA8641FDB975320ECA8641FDB975320ECA8641FDB975320ECA8641FDB9754
+  sub_case "near R"
+    0x00000000000000000000000000000000000000000000000000000001000003D0
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E
+    0x00000000000000000000000000000000000000000000000000000001000003D1
+
+mul_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
+mul_case t a b p = do
+  H.assertEqual "sanity" ((W.from a * W.from b) `mod` W.from m) (W.from p)
+  H.assertBool t (W.eq_vartime p (C.from (C.to a * C.to b)))
+
+mul :: H.Assertion
+mul = do
+  mul_case "small" 2 3 6
+  mul_case "wrap to 1 mod m"
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E
+    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E
+    0x1
+  mul_case "zero"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0
+    0x0
+  mul_case "random"
+    0x000123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCD
+    0x0FEDCBA9876543210FEDCBA9876543210FEDCBA9876543210FEDCBA987654321
+    0xCEF9C520FC3502A4BA6F1CE3B2550511D5E474A66875077EF159DE87E15148FC
+  mul_case "near R"
+    0x00000000000000000000000000000000000000000000000000000001000003D1
+    0x00000000000000000000000000000000000000000000000000000001000003D1
+    0x000000000000000000000000000000000000000000000001000007A2000E90A1
 
 tests :: TestTree
 tests = testGroup "montgomery tests (curve)" [
-    H.testCase "add" add
+    H.testCase "representation" repr
+  , H.testCase "add" add
+  , H.testCase "sub" sub
+  , H.testCase "mul" mul
   ]
 
