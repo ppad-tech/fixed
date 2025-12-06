@@ -58,8 +58,21 @@ import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
+-- | Montgomery-form 'Wider' words, on the Montgomery domain defined by
+--   the secp256k1 scalar group order.
+--
+--   >>> let one = 1 :: Montgomery
+--   >>> one
+--   1
+--   >>> putStrLn (render one)
+--   (4294968273, 0, 0, 0)
 data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 
+-- | Render a 'Montgomery' value as a 'String', showing its individual
+--   'Limb's.
+--
+--   >>> putStrLn (render 1)
+--   (4294968273, 0, 0, 0)
 render :: Montgomery -> String
 render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
      "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
@@ -155,7 +168,14 @@ redc# l u =
   in  WW.sub_mod_c# nu mc m m
 {-# INLINE redc# #-}
 
-redc :: Montgomery -> Montgomery -> Montgomery
+-- | Montgomery reduction.
+--
+--   The first argument represents the low words, and the second the
+--   high words, of an extra-large eight-limb word in Montgomery form.
+redc
+  :: Montgomery -- ^ low wider-word, Montgomery form
+  -> Montgomery -- ^ high wider-word, Montgomery form
+  -> Montgomery -- ^ reduced value
 redc (Montgomery l) (Montgomery u) =
   let !res = redc# l u
   in  (Montgomery res)
@@ -197,6 +217,8 @@ retr#
 retr# f = retr_inner# f
 {-# INLINE retr# #-}
 
+-- | Retrieve a 'Montgomery' value from the Montgomery domain, producing
+--   a 'Wider' word.
 retr
   :: Montgomery -- ^ value in montgomery form
   -> Wider      -- ^ retrieved value
@@ -285,7 +307,6 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
   in  (# (# o3, p3, q3, r3 #), mc3 #)
 {-# INLINE mul_inner# #-}
 
--- | Montgomery multiplication, with conditional subtract.
 mul#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# Limb, Limb, Limb, Limb #)
@@ -298,9 +319,16 @@ mul# a b =
   in  WW.sub_mod_c# nu mc m m
 {-# NOINLINE mul# #-} -- cannot be inlined without exploding comp time
 
+-- | Multiplication in the Montgomery domain.
+--
+--   Note that 'Montgomery' is an instance of 'Num', so you can use '*'
+--   to apply this function.
+--
+--   >>> 1 * 1 :: Montgomery
+--   1
 mul
-  :: Montgomery -- ^ lhs in montgomery form
-  -> Montgomery -- ^ rhs in montgomery form
+  :: Montgomery -- ^ multiplicand in montgomery form
+  -> Montgomery -- ^ multiplier in montgomery form
   -> Montgomery -- ^ montgomery product
 mul (Montgomery a) (Montgomery b) = Montgomery (mul# a b)
 
@@ -313,13 +341,16 @@ to# x =
   in  mul# x r2
 {-# INLINE to# #-}
 
+-- | Convert a 'Wider' word to the Montgomery domain.
 to :: Wider -> Montgomery
 to (Wider x) = Montgomery (to# x)
 
+-- | Retrieve a 'Montgomery' word from the Montgomery domain.
+--
+--   This function is a synonym for 'retr'.
 from :: Montgomery -> Wider
 from = retr
 
--- | Addition in the Montgomery domain.
 add#
   :: (# Limb, Limb, Limb, Limb #) -- ^ augend
   -> (# Limb, Limb, Limb, Limb #) -- ^ addend
@@ -331,10 +362,16 @@ add# a b =
   in  WW.add_mod# a b m
 {-# INLINE add# #-}
 
+-- | Addition in the Montgomery domain.
+--
+--   Note that 'Montgomery' is an instance of 'Num', so you can use '+'
+--   to apply this function.
+--
+--   >>> 1 + 1 :: Montgomery
+--   2
 add :: Montgomery -> Montgomery -> Montgomery
 add (Montgomery a) (Montgomery b) = Montgomery (add# a b)
 
--- | Subtraction in the Montgomery domain.
 sub#
   :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
   -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
@@ -346,16 +383,31 @@ sub# a b =
   in  WW.sub_mod# a b m
 {-# INLINE sub# #-}
 
+-- | Subtraction in the Montgomery domain.
+--
+--   Note that 'Montgomery' is an instance of 'Num', so you can use '-'
+--   to apply this function.
+--
+--   >>> 1 - 1 :: Montgomery
+--   0
 sub :: Montgomery -> Montgomery -> Montgomery
 sub (Montgomery a) (Montgomery b) = Montgomery (sub# a b)
 
--- | Modular negation in the Montgomery domain.
 neg#
   :: (# Limb, Limb, Limb, Limb #) -- ^ argument
   -> (# Limb, Limb, Limb, Limb #) -- ^ modular negation
 neg# a = sub# (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) a
 {-# INLINE neg# #-}
 
+-- | Additive inverse in the Montgomery domain.
+--
+--   Note that 'Montgomery' is an instance of 'Num', so you can use 'negate'
+--   to apply this function.
+--
+--   >>> negate 1 :: Montgomery
+--   115792089237316195423570985008687907853269984665640564039457584007908834671662
+--   >>> (negate 1 :: Montgomery) + 1
+--   0
 neg :: Montgomery -> Montgomery
 neg (Montgomery a) = Montgomery (neg# a)
 
@@ -365,14 +417,24 @@ sqr# a =
   in  redc# l h
 {-# NOINLINE sqr# #-} -- cannot be inlined without exploding comp time
 
+-- | Squaring in the Montgomery domain.
+--
+--   >>> sqr 1
+--   1
+--   >>> sqr 2
+--   4
+--   >>> sqr (negate 2)
+--   4
 sqr :: Montgomery -> Montgomery
 sqr (Montgomery a) = Montgomery (mul# a a)
 
-one :: Montgomery
-one = Montgomery (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
-
+-- | Zero (the additive unit) in the Montgomery domain.
 zero :: Montgomery
 zero = Montgomery (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #)
+
+-- | One (the multiplicative unit) in the Montgomery domain.
+one :: Montgomery
+one = Montgomery (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
 
 -- generated by etc/generate_inv.sh
 inv#
@@ -890,5 +952,11 @@ inv# a =
   in  r
 {-# INLINE inv# #-}
 
+-- | Multiplicative inverse in the Montgomery domain.
+--
+--   >> inv 2
+--   57896044618658097711785492504343953926634992332820282019728792003954417335832
+--   >> inv 2 * 2
+--   1
 inv :: Montgomery -> Montgomery
 inv (Montgomery w) = Montgomery (inv# w)
