@@ -171,7 +171,9 @@ to get a REPL for the main library.
 
 ## Attribution
 
-This library is more or less a Haskell translation of the golang
+This library is more or less a Haskell translation of (parts of) the
+Rust [crypto-bigint](https://github.com/RustCrypto/crypto-bigint)
+library, having initially started as a port of the golang
 [uint256](https://github.com/holiman/uint256) library.
 
 [nixos]: https://nixos.org/
