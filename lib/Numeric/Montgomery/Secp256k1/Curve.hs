@@ -24,12 +24,18 @@ import qualified Data.Word.Limb as L
 import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
+import GHC.Exts (Word(..))
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
 data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
+
+render :: Montgomery -> String
+render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
+     "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
+  <> show (W# c) <> ", " <> show (W# d) <> ")"
 
 instance Show Montgomery where
   show = show . from
