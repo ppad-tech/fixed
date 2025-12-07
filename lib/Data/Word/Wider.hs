@@ -103,15 +103,15 @@ cmp#
   -> Int#
 cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
   let !(# w0, b0 #) = L.sub_b# r0 l0 (Limb 0##)
-      !d0 = L.or# (Limb 0##) w0
+      !d0           = L.or# (Limb 0##) w0
       !(# w1, b1 #) = L.sub_b# r1 l1 b0
-      !d1 = L.or# d0 w1
+      !d1           = L.or# d0 w1
       !(# w2, b2 #) = L.sub_b# r2 l2 b1
-      !d2 = L.or# d1 w2
+      !d2           = L.or# d1 w2
       !(# w3, b3 #) = L.sub_b# r3 l3 b2
-      !d3 = L.or# d2 w3
-      !(Limb w) = L.and# b3 (Limb 2##)
-      !s = word2Int# w -# 1#
+      !d3           = L.or# d2 w3
+      !(Limb w)     = L.and# b3 (Limb 2##)
+      !s            = word2Int# w -# 1#
   in  (word2Int# (C.to_word# (L.nonzero# d3))) *# s
 {-# INLINE cmp# #-}
 
@@ -388,31 +388,31 @@ sqr#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
 sqr# (# x0, x1, x2, x3 #) =
-  let !sh = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
-      !(# q1_0, c1_0 #) = L.mac# x1 x0 (Limb 0##) (Limb 0##)
-      !r1 = c1_0
-      !(# r2_0, c2_0 #) = L.mac# x2 x0 r1 (Limb 0##)
-      !(# s2_1, c2_1 #) = L.mac# x2 x1 (Limb 0##) c2_0
-      !t2 = c2_1
-      !(# s3_0, c3_0 #) = L.mac# x3 x0 s2_1 (Limb 0##)
-      !(# t3, c3_1 #) = L.mac# x3 x1 t2 c3_0
-      !(# u3, c3_2 #) = L.mac# x3 x2 (Limb 0##) c3_1
-      !v3 = c3_2
+  let !sh                = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+      !(# q1_0, c1_0 #)  = L.mac# x1 x0 (Limb 0##) (Limb 0##)
+      !r1                = c1_0
+      !(# r2_0, c2_0 #)  = L.mac# x2 x0 r1 (Limb 0##)
+      !(# s2_1, c2_1 #)  = L.mac# x2 x1 (Limb 0##) c2_0
+      !t2                = c2_1
+      !(# s3_0, c3_0 #)  = L.mac# x3 x0 s2_1 (Limb 0##)
+      !(# t3, c3_1 #)    = L.mac# x3 x1 t2 c3_0
+      !(# u3, c3_2 #)    = L.mac# x3 x2 (Limb 0##) c3_1
+      !v3                = c3_2
       !(# lo1, car0_1 #) = (# L.shl# q1_0 1#, L.shr# q1_0 sh #)
       !(# lo2, car0_2 #) = (# L.or# (L.shl# r2_0 1#) car0_1, L.shr# r2_0 sh #)
       !(# lo3, car0_3 #) = (# L.or# (L.shl# s3_0 1#) car0_2, L.shr# s3_0 sh #)
       !(# hi0, car1_0 #) = (# L.or# (L.shl# t3 1#) car0_3, L.shr# t3 sh #)
       !(# hi1, car1_1 #) = (# L.or# (L.shl# u3 1#) car1_0, L.shr# u3 sh #)
       !(# hi2, car1_2 #) = (# L.or# (L.shl# v3 1#) car1_1, L.shr# v3 sh #)
-      !hi3 = car1_2
-      !(# pf, car2_0 #) = L.mac# x0 x0 (Limb 0##) (Limb 0##)
-      !(# qf, car2_1 #) = L.add_c# lo1 car2_0 (Limb 0##)
-      !(# rf, car2_2 #) = L.mac# x1 x1 lo2 car2_1
-      !(# sf, car2_3 #) = L.add_c# lo3 car2_2 (Limb 0##)
-      !(# tf, car2_4 #) = L.mac# x2 x2 hi0 car2_3
-      !(# uf, car2_5 #) = L.add_c# hi1 car2_4 (Limb 0##)
-      !(# vf, car2_6 #) = L.mac# x3 x3 hi2 car2_5
-      !(# wf, _      #) = L.add_c# hi3 car2_6 (Limb 0##)
+      !hi3               = car1_2
+      !(# pf, car2_0 #)  = L.mac# x0 x0 (Limb 0##) (Limb 0##)
+      !(# qf, car2_1 #)  = L.add_c# lo1 car2_0 (Limb 0##)
+      !(# rf, car2_2 #)  = L.mac# x1 x1 lo2 car2_1
+      !(# sf, car2_3 #)  = L.add_c# lo3 car2_2 (Limb 0##)
+      !(# tf, car2_4 #)  = L.mac# x2 x2 hi0 car2_3
+      !(# uf, car2_5 #)  = L.add_c# hi1 car2_4 (Limb 0##)
+      !(# vf, car2_6 #)  = L.mac# x3 x3 hi2 car2_5
+      !(# wf, _      #)  = L.add_c# hi3 car2_6 (Limb 0##)
   in  (# (# pf, qf, rf, sf #), (# tf, uf, vf, wf #) #)
 {-# INLINE sqr# #-}
 
