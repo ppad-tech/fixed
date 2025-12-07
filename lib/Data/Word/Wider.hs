@@ -22,10 +22,8 @@ import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
-import GHC.Exts ( Word(..), Int(..), Int#
-                , (-#), (*#)
-                , word2Int#, eqWord#, andI#, isTrue#
-                )
+import GHC.Exts (Word(..), Int(..), Int#)
+import qualified GHC.Exts as Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- utilities ------------------------------------------------------------------
@@ -72,12 +70,12 @@ eq# a b =
 -- | Compare 'Wider' words for equality in variable time.
 eq_vartime :: Wider -> Wider -> Bool
 eq_vartime a b =
-  let !(Wider (# Limb a0, Limb a1, Limb a2, Limb a3 #)) = a
-      !(Wider (# Limb b0, Limb b1, Limb b2, Limb b3 #)) = b
-  in  isTrue# $
-        andI#
-          (andI# (eqWord# a0 b0) (eqWord# a1 b1))
-          (andI# (eqWord# a2 b2) (eqWord# a3 b3))
+  let !(Wider (# a0, a1, a2, a3 #)) = a
+      !(Wider (# b0, b1, b2, b3 #)) = b
+  in     (L.eq_vartime# a0 b0)
+      && (L.eq_vartime# a1 b1)
+      && (L.eq_vartime# a2 b2)
+      && (L.eq_vartime# a3 b3)
 
 lt#
   :: (# Limb, Limb, Limb, Limb #)
@@ -111,8 +109,8 @@ cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
       !(# w3, b3 #) = L.sub_b# r3 l3 b2
       !d3           = L.or# d2 w3
       !(Limb w)     = L.and# b3 (Limb 2##)
-      !s            = word2Int# w -# 1#
-  in  (word2Int# (C.to_word# (L.nonzero# d3))) *# s
+      !s            = Exts.word2Int# w Exts.-# 1#
+  in  (Exts.word2Int# (C.to_word# (L.nonzero# d3))) Exts.*# s
 {-# INLINE cmp# #-}
 
 -- | Constant-time comparison between 'Wider' words.
@@ -151,6 +149,30 @@ from (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
   where
     !size = B.finiteBitSize (0 :: Word)
 
+-- constant-time selection-----------------------------------------------------
+
+-- | Return a if c is truthy, otherwise return b.
+select#
+  :: (# Limb, Limb, Limb, Limb #) -- ^ a
+  -> (# Limb, Limb, Limb, Limb #) -- ^ b
+  -> C.Choice                     -- ^ c
+  -> (# Limb, Limb, Limb, Limb #) -- ^ result
+select# a b c =
+  let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
+      !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
+      !(# w0, w1, w2, w3 #) =
+        C.ct_select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) c
+  in  (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+{-# INLINE select# #-}
+
+-- | Return a if c is truthy, otherwise return b.
+select
+  :: Wider    -- ^ a
+  -> Wider    -- ^ b
+  -> C.Choice -- ^ c
+  -> Wider    -- ^ result
+select (Wider a) (Wider b) c = Wider (select# a b c)
+
 -- bit manipulation -----------------------------------------------------------
 
 -- | Constant-time 1-bit shift-right with carry, indicating whether the
@@ -159,7 +181,7 @@ shr1_c#
   :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
   -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
 shr1_c# (# w0, w1, w2, w3 #) =
-  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# s3, c3 #) = (# L.shr# w3 1#, L.shl# w3 s #)
       !r3 = L.or# s3 (Limb 0##)
       !(# s2, c2 #) = (# L.shr# w2 1#, L.shl# w2 s #)
@@ -388,7 +410,7 @@ sqr#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
 sqr# (# x0, x1, x2, x3 #) =
-  let !sh                = case B.finiteBitSize (0 :: Word) of I# m -> m -# 1#
+  let !sh = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# q1_0, c1_0 #)  = L.mac# x1 x0 (Limb 0##) (Limb 0##)
       !r1                = c1_0
       !(# r2_0, c2_0 #)  = L.mac# x2 x0 r1 (Limb 0##)
