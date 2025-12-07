@@ -48,6 +48,7 @@ module Data.Choice (
   -- * Constant-time Selection
   , ct_select_word#
   , ct_select_wide#
+  , ct_select_wider#
 
   -- * Constant-time Equality
   , ct_eq_word#
@@ -288,6 +289,19 @@ ct_select_wide# a b (Choice w) =
   let !mask = or_w# (hi# w) (lo# w)
   in  xor_w# a (and_w# mask (xor_w# a b))
 {-# INLINE ct_select_wide# #-}
+
+ct_select_wider#
+  :: (# Word#, Word#, Word#, Word# #)
+  -> (# Word#, Word#, Word#, Word# #)
+  -> Choice
+  -> (# Word#, Word#, Word#, Word# #)
+ct_select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) (Choice w) =
+  let !w0 = xor# a0 (and# w (xor# a0 b0))
+      !w1 = xor# a1 (and# w (xor# a1 b1))
+      !w2 = xor# a2 (and# w (xor# a2 b2))
+      !w3 = xor# a3 (and# w (xor# a3 b3))
+  in  (# w0, w1, w2, w3 #)
+{-# INLINE ct_select_wider# #-}
 
 -- constant-time equality -----------------------------------------------------
 
