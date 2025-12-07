@@ -25,9 +25,13 @@ module Data.Word.Wide (
 
   -- * Bit Manipulation
   , or
+  , or#
   , and
+  , and#
   , xor
+  , xor#
   , not
+  , not#
 
   -- * Comparison
   , eq_vartime
@@ -37,6 +41,7 @@ module Data.Word.Wide (
   , add_o
   , sub
   , mul
+  , neg
 
   -- * Unboxed Arithmetic
   , add_o#
@@ -44,6 +49,7 @@ module Data.Word.Wide (
   , sub_b#
   , sub_w#
   , mul_w#
+  , neg#
   ) where
 
 import Control.DeepSeq
@@ -68,15 +74,13 @@ data Wide = Wide !(# Limb, Limb #)
 instance Show Wide where
   show = show . from
 
--- XX add neg
-
 instance Num Wide where
   (+) = add
   (-) = sub
   (*) = mul
   abs = id
   fromInteger = to
-  negate w = add (not w) (Wide (# Limb 1##, Limb 0## #))
+  negate = neg
   signum a = case a of
     Wide (# Limb 0##, Limb 0## #) -> 0
     _ -> 1
@@ -142,6 +146,19 @@ not_w# (# a0, a1 #) = (# L.not# a0, L.not# a1 #)
 not :: Wide -> Wide
 not (Wide w) = Wide (not_w# w)
 {-# INLINE not #-}
+
+-- negation -------------------------------------------------------------------
+
+neg#
+  :: (# Limb, Limb #) -- ^ argument
+  -> (# Limb, Limb #) -- ^ (wrapping) additive inverse
+neg# w = add_w# (not_w# w) (# Limb 1##, Limb 0## #)
+{-# INLINE neg# #-}
+
+neg
+  :: Wide -- ^ argument
+  -> Wide -- ^ (wrapping) additive inverse
+neg (Wide w) = Wide (neg# w)
 
 -- addition, subtraction ------------------------------------------------------
 
