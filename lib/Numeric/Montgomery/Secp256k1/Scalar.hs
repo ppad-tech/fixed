@@ -128,7 +128,6 @@ redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) =
         (# Limb 0xBFD25E8CD0364141##, Limb 0xBAAEDCE6AF48A03B##
         ,  Limb 0xFFFFFFFFFFFFFFFE##, Limb 0xFFFFFFFFFFFFFFFF## #)
       !n = Limb 0x4B0DFF665588B13F##
-      -- outer loop, i == 0 ---------------------------------------------------
       !w_0 = L.mul_w# l0 n
       !(# _, c_00 #) = L.mac# w_0 m0 l0 (Limb 0##)
       !(# l0_1, c_01 #) = L.mac# w_0 m1 l1 c_00

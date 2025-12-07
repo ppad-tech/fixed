@@ -182,11 +182,11 @@ add :: Wide -> Wide -> Wide
 add (Wide a) (Wide b) = Wide (add_w# a b)
 
 -- | Borrowing subtraction, computing 'a - b' and returning the
---   difference with a borrow bit.
+--   difference with a borrow mask.
 sub_b#
   :: (# Limb, Limb #)              -- ^ minuend
   -> (# Limb, Limb #)              -- ^ subtrahend
-  -> (# (# Limb, Limb #), Limb #) -- ^ (# difference, borrow bit #)
+  -> (# (# Limb, Limb #), Limb #) -- ^ (# difference, borrow mask #)
 sub_b# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 (Limb 0##)
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
