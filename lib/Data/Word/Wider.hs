@@ -14,7 +14,60 @@
 --
 -- Wider words, consisting of four 'Limb's.
 
-module Data.Word.Wider where
+module Data.Word.Wider (
+  -- * Four-limb words
+    Wider(..)
+  , wider
+  , to
+  , from
+
+  -- * Comparison
+  , eq_vartime
+  , cmp
+  , eq#
+  , lt#
+  , gt#
+  , cmp#
+
+  -- * Constant-time selection
+  , select
+  , select#
+
+  -- * Bit manipulation
+  , shl1_c
+  , shr1_c
+  , shr_limb
+  , shl_limb
+  , shl1_c#
+  , shr1_c#
+  , shr_limb#
+  , shl_limb#
+  , and
+  , and_w#
+  , or
+  , or_w#
+  , not
+  , not#
+
+  -- * Arithmetic
+  , add_o
+  , add_o#
+  , add
+  , add_w#
+  , add_mod
+  , add_mod#
+  , sub
+  , sub_b
+  , sub_b#
+  , sub_mod
+  , sub_mod#
+  , sub_mod_c#
+  , mul
+  , mul_c
+  , mul_c#
+  , sqr
+  , sqr#
+  ) where
 
 import Control.DeepSeq
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
@@ -34,7 +87,10 @@ fi = fromIntegral
 
 -- wider words ----------------------------------------------------------------
 
--- | Little-endian wider words.
+-- | Little-endian wider words, consisting of four 'Limbs'.
+--
+--   >>> 1 :: Wider
+--   1
 data Wider = Wider !(# Limb, Limb, Limb, Limb #)
 
 instance Show Wider where
@@ -68,6 +124,11 @@ eq# a b =
 {-# INLINE eq# #-}
 
 -- | Compare 'Wider' words for equality in variable time.
+--
+--   >>> eq_vartime 1 0
+--   False
+--   >>> eq_vartime 1 1
+--   True
 eq_vartime :: Wider -> Wider -> Bool
 eq_vartime a b =
   let !(Wider (# a0, a1, a2, a3 #)) = a
@@ -114,6 +175,13 @@ cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
 {-# INLINE cmp# #-}
 
 -- | Constant-time comparison between 'Wider' words.
+--
+--   >>> cmp 1 2
+--   LT
+--   >>> cmp 2 1
+--   GT
+--   >>> cmp 2 2
+--   EQ
 cmp :: Wider -> Wider -> Ordering
 cmp (Wider a) (Wider b) = case cmp# a b of
   1#  -> GT
@@ -124,11 +192,17 @@ cmp (Wider a) (Wider b) = case cmp# a b of
 
 -- | Construct a 'Wider' word from four 'Words', provided in
 --   little-endian order.
+--
+--   >>> wider 1 0 0 0
+--   1
 wider :: Word -> Word -> Word -> Word -> Wider
 wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider
   (# Limb w0, Limb w1, Limb w2, Limb w3 #)
 
 -- | Convert an 'Integer' to a 'Wider' word.
+--
+--   >>> to 1
+--   1
 to :: Integer -> Wider
 to n =
   let !size = B.finiteBitSize (0 :: Word)
@@ -140,6 +214,9 @@ to n =
   in  Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)
 
 -- | Convert a 'Wider' word to an 'Integer'.
+--
+--   >>> from 1
+--   1
 from :: Wider -> Integer
 from (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
         fi (W# w3) .<<. (3 * size)
@@ -151,7 +228,6 @@ from (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
 
 -- constant-time selection-----------------------------------------------------
 
--- | Return a if c is truthy, otherwise return b.
 select#
   :: (# Limb, Limb, Limb, Limb #) -- ^ a
   -> (# Limb, Limb, Limb, Limb #) -- ^ b
@@ -166,6 +242,10 @@ select# a b c =
 {-# INLINE select# #-}
 
 -- | Return a if c is truthy, otherwise return b.
+--
+--   >>> import qualified Data.Choice as C
+--   >>> select 0 1 (C.true# ())
+--   1
 select
   :: Wider    -- ^ a
   -> Wider    -- ^ b
@@ -175,8 +255,6 @@ select (Wider a) (Wider b) c = Wider (select# a b c)
 
 -- bit manipulation -----------------------------------------------------------
 
--- | Constant-time 1-bit shift-right with carry, indicating whether the
---   lowest bit was set.
 shr1_c#
   :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
   -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
@@ -194,13 +272,18 @@ shr1_c# (# w0, w1, w2, w3 #) =
   in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
 {-# INLINE shr1_c# #-}
 
+-- | Constant-time 1-bit shift-right with carry, indicating whether the
+--   lowest bit was set.
+--
+--   >>> shr1_c 2
+--   (1,False)
+--   >>> shr1_c 1
+--   (0,True)
 shr1_c :: Wider -> (Wider, Bool)
 shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
   in  (Wider r, C.decide c)
 
--- | Constant-time 1-bit shift-left with carry, indicating whether the
---   highest bit was set.
 shl1_c#
   :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
   -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
@@ -214,16 +297,22 @@ shl1_c# (# w0, w1, w2, w3 #) =
       !r2           = L.or# s2 c1
       !(# s3, c3 #) = (# L.shl# w3 1#, L.shr# w3 s #)
       !r3           = L.or# s3 c2
-      !(Limb w)     = L.shr# c3 s
+      !(Limb w)     = L.shl# c3 s
   in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
 {-# INLINE shl1_c# #-}
 
+-- | Constant-time 1-bit shift-left with carry, indicating whether the
+--   highest bit was set.
+--
+--   >>> shl1_c 1
+--   (2,False)
+--   >>> shl1_c (2 ^ (255 :: Word))
+--   (0,True)
 shl1_c :: Wider -> (Wider, Bool)
 shl1_c (Wider w) =
   let !(# r, c #) = shl1_c# w
   in  (Wider r, C.decide c)
 
--- shift-right by 0 < s < WORD_SIZE (unchecked)
 shr_limb#
   :: (# Limb, Limb, Limb, Limb #)
   -> Int#
@@ -238,6 +327,12 @@ shr_limb# (# a0, a1, a2, a3 #) rs =
   in  (# (# l0, l1, l2, l3 #), c0 #)
 {-# INLINE shr_limb# #-}
 
+-- | Shift right by less than the number of bits in a 'Limb' (e.g., by
+--   a maximum of 63 bits on 64-bit architectures). The shift amount is
+--   unchecked.
+--
+--   >>> shr_limb 2 1
+--   1
 shr_limb
   :: Wider -- ^ value
   -> Int   -- ^ right-shift amount (0 < s < WORD_SIZE)
@@ -246,7 +341,6 @@ shr_limb (Wider w) (I# s) =
   let !(# r, _ #) = shr_limb# w s
   in  Wider r
 
--- shift-left by 0 < s < WORD_SIZE (unchecked)
 shl_limb#
   :: (# Limb, Limb, Limb, Limb #)
   -> Int#
@@ -261,6 +355,14 @@ shl_limb# (# a0, a1, a2, a3 #) ls =
   in  (# (# l0, l1, l2, l3 #), c3 #)
 {-# INLINE shl_limb# #-}
 
+-- | Shift left by less than the number of bits in a 'Limb' (e.g., by
+--   a maximum of 63 bits on 64-bit architectures). The shift amount is
+--   unchecked.
+--
+--   >>> shl_limb 2 1
+--   1
+--   >>> shl_limb 1 63
+--   9223372036854775808
 shl_limb
   :: Wider -- ^ value
   -> Int   -- ^ left-shift amount (0 < s < WORD_SIZE)
@@ -277,7 +379,16 @@ and_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.and# a0 b0, L.and# a1 b1, L.and# a2 b2, L.and# a3 b3 #)
 {-# INLINE and_w# #-}
 
-and :: Wider -> Wider -> Wider
+-- | Binary /and/.
+--
+--   >>> and 1 1
+--   1
+--   >>> and 1 0
+--   0
+and
+  :: Wider -- ^ a
+  -> Wider -- ^ b
+  -> Wider -- ^ a & b
 and (Wider a) (Wider b) = Wider (and_w# a b)
 
 or_w#
@@ -288,7 +399,16 @@ or_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.or# a0 b0, L.or# a1 b1, L.or# a2 b2, L.or# a3 b3 #)
 {-# INLINE or_w# #-}
 
-or :: Wider -> Wider -> Wider
+-- | Binary /or/.
+--
+--   >>> or 1 1
+--   1
+--   >>> or 1 0
+--   1
+or
+  :: Wider -- ^ a
+  -> Wider -- ^ b
+  -> Wider -- ^ a | b
 or (Wider a) (Wider b) = Wider (or_w# a b)
 
 not#
@@ -297,15 +417,19 @@ not#
 not# (# l0, l1, l2, l3 #) = (# L.not# l0, L.not# l1, L.not# l2, L.not# l3 #)
 {-# INLINE not# #-}
 
+-- | Binary /not/.
+--
+--   >>> not 0
+--   115792089237316195423570985008687907853269984665640564039457584007913129639935
+--   >>> not (not 0)
+--   0
 not
-  :: Wider
-  -> Wider
+  :: Wider -- ^ value
+  -> Wider -- ^ not value
 not (Wider w) = Wider (not# w)
 
 -- addition, subtraction ------------------------------------------------------
 
--- | Overflowing addition, computing 'a + b', returning the sum and a
---   carry bit.
 add_o#
   :: (# Limb, Limb, Limb, Limb #)             -- ^ augend
   -> (# Limb, Limb, Limb, Limb #)             -- ^ addend
@@ -320,6 +444,11 @@ add_o# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
 
 -- | Overflowing addition, computing 'a + b', returning the sum and a
 --   carry bit.
+--
+--   >>> add_o 1 1
+--   (2,0)
+--   >>> add_o 1 (2 ^ (256 :: Word) - 1)
+--   (0,1)
 add_o
   :: Wider
   -> Wider
@@ -328,7 +457,6 @@ add_o (Wider a) (Wider b) =
   let !(# s, Limb c #) = add_o# a b
   in  (Wider s, W# c)
 
--- | Wrapping addition, computing 'a + b'.
 add_w#
   :: (# Limb, Limb, Limb, Limb #) -- ^ augend
   -> (# Limb, Limb, Limb, Limb #) -- ^ addend
@@ -339,6 +467,12 @@ add_w# a b =
 {-# INLINE add_w# #-}
 
 -- | Wrapping addition, computing 'a + b'.
+--
+--   Note that as 'Wider' is an instance of 'Num', you can use '+' to apply
+--   this function.
+--
+--   >>> add 1 (2 ^ (256 :: Word) - 1)
+--   0
 add
   :: Wider
   -> Wider
@@ -346,7 +480,6 @@ add
 add (Wider a) (Wider b) = Wider (add_w# a b)
 {-# INLINE add #-}
 
--- | Modular addition.
 add_mod#
   :: (# Limb, Limb, Limb, Limb #) -- ^ augend
   -> (# Limb, Limb, Limb, Limb #) -- ^ addend
@@ -357,8 +490,22 @@ add_mod# a b m =
   in  sub_mod_c# w c m m
 {-# INLINE add_mod# #-}
 
--- | Borrowing subtraction, computing 'a - b' and returning the
---   difference with a borrow mask.
+-- | Modular addition.
+--
+--   Assumes that the sum is less than twice the modulus; this is not
+--   checked.
+--
+--   >>> add_mod 1 1 3
+--   2
+--   >>> add_mod 1 2 3
+--   0
+add_mod
+  :: Wider -- ^ augend
+  -> Wider -- ^ addend
+  -> Wider -- ^ modulus
+  -> Wider -- ^ sum
+add_mod (Wider a) (Wider b) (Wider m) = Wider (add_mod# a b m)
+
 sub_b#
   :: (# Limb, Limb, Limb, Limb #)              -- ^ minuend
   -> (# Limb, Limb, Limb, Limb #)              -- ^ subtrahend
@@ -371,23 +518,39 @@ sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   in  (# (# s0, s1, s2, s3 #), c3 #)
 {-# INLINE sub_b# #-}
 
+-- | Borrowing subtraction, computing 'a - b' and returning the
+--   difference with a borrow mask.
+--
+--   >>> sub_b 1 1
+--   (0,0)
+--   >>> sub_b 0 (2 ^ (256 :: Word) - 1)
+--   (1,18446744073709551615)
 sub_b
-  :: Wider
-  -> Wider
-  -> (Wider, Word)
+  :: Wider         -- ^ minuend
+  -> Wider         -- ^ subtrahend
+  -> (Wider, Word) -- ^ (difference, borrow mask)
 sub_b (Wider l) (Wider r) =
   let !(# d, Limb b #) = sub_b# l r
   in  (Wider d, W# b)
 
+-- | Wrapping subtraction, computing 'a - b' and returning the
+--   difference.
+--
+--   Note that as 'Wider' is an instance of 'Num', you can use '-' to apply
+--   this function.
+--
+--   >>> sub 1 1
+--   0
+--   >>> sub 0 (2 ^ (256 :: Word) - 1)
+--   1
 sub
-  :: Wider
-  -> Wider
-  -> Wider
+  :: Wider -- ^ minuend
+  -> Wider -- ^ subtrahend
+  -> Wider -- ^ difference
 sub (Wider a) (Wider b) =
   let !(# d, _ #) = sub_b# a b
   in  Wider d
 
--- | Modular subtraction. Computes a - b mod m.
 sub_mod#
   :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
   -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
@@ -399,6 +562,15 @@ sub_mod# a b (# p0, p1, p2, p3 #) =
   in  add_w# o ba
 {-# INLINE sub_mod# #-}
 
+-- | Modular subtraction. Computes a - b mod m.
+--
+--   Assumes that the magnitude of the difference is less than the
+--   modulus (this is unchecked).
+--
+--   >>> sub_mod 1 1 4
+--   0
+--   >>> sub_mod 2 3 4
+--   3
 sub_mod
   :: Wider
   -> Wider
@@ -422,7 +594,6 @@ sub_mod_c# a c b (# p0, p1, p2, p3 #) =
 
 -- multiplication -------------------------------------------------------------
 
--- widening multiplication
 mul_c#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# Limb, Limb, Limb, Limb #)
@@ -456,6 +627,32 @@ mul_c# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
   in  (# (# z0, z1, z2, z3 #), (# w4, w5f, w6ff, w7ff #) #)
 {-# INLINE mul_c# #-}
 
+-- | Widening multiplication.
+--
+--   Returns the low and high 'Wider' words of the product, in that
+--   order.
+--
+--   >>> mul_c 2 3
+--   (6,0)
+--   >>> mul_c (2 ^ (256 :: Word) - 1)  2
+--   (115792089237316195423570985008687907853269984665640564039457584007913129639934,1)
+mul_c
+  :: Wider
+  -> Wider
+  -> (Wider, Wider)
+mul_c (Wider a) (Wider b) =
+  let !(# l, h #) = mul_c# a b
+  in  (Wider l, Wider h)
+
+-- | Wrapping multiplication.
+--
+--   Note that as 'Wider' is an instance of 'Num', you can use '*' to apply
+--   this function.
+--
+--   >>> mul 1 1
+--   1
+--   >>> mul 1 2
+--   2
 mul
   :: Wider
   -> Wider
@@ -496,6 +693,12 @@ sqr# (# x0, x1, x2, x3 #) =
   in  (# (# pf, qf, rf, sf #), (# tf, uf, vf, wf #) #)
 {-# INLINE sqr# #-}
 
+-- | Widening square.
+--
+--   >>> sqr 2
+--   (4,0)
+--   >>> sqr (2 ^ (256 :: Word) - 1)
+--   (1,115792089237316195423570985008687907853269984665640564039457584007913129639934)
 sqr :: Wider -> (Wider, Wider)
 sqr (Wider w) =
   let !(# l, h #) = sqr# w
