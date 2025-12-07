@@ -199,6 +199,76 @@ shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
   in  (Wider r, C.decide c)
 
+-- | Constant-time 1-bit shift-left with carry, indicating whether the
+--   highest bit was set.
+shl1_c#
+  :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
+  -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
+shl1_c# (# w0, w1, w2, w3 #) =
+  let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
+      !(# s0, c0 #) = (# L.shl# w0 1#, L.shr# w0 s #)
+      !r0           = L.or# s0 (Limb 0##)
+      !(# s1, c1 #) = (# L.shl# w1 1#, L.shr# w1 s #)
+      !r1           = L.or# s1 c0
+      !(# s2, c2 #) = (# L.shl# w2 1#, L.shr# w2 s #)
+      !r2           = L.or# s2 c1
+      !(# s3, c3 #) = (# L.shl# w3 1#, L.shr# w3 s #)
+      !r3           = L.or# s3 c2
+      !(Limb w)     = L.shr# c3 s
+  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
+{-# INLINE shl1_c# #-}
+
+shl1_c :: Wider -> (Wider, Bool)
+shl1_c (Wider w) =
+  let !(# r, c #) = shl1_c# w
+  in  (Wider r, C.decide c)
+
+-- shift-right by 0 < s < WORD_SIZE (unchecked)
+shr_limb#
+  :: (# Limb, Limb, Limb, Limb #)
+  -> Int#
+  -> (# (# Limb, Limb, Limb, Limb #), Limb #)
+shr_limb# (# a0, a1, a2, a3 #) rs =
+  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
+      !ls = size Exts.-# rs
+      !(# l3, c3 #) = (# L.shr# a3 rs, L.shl# a3 ls #)
+      !(# l2, c2 #) = (# L.or# (L.shr# a2 rs) c3, L.shl# a2 ls #)
+      !(# l1, c1 #) = (# L.or# (L.shr# a1 rs) c2, L.shl# a1 ls #)
+      !(# l0, c0 #) = (# L.or# (L.shr# a0 rs) c1, L.shl# a0 ls #)
+  in  (# (# l0, l1, l2, l3 #), c0 #)
+{-# INLINE shr_limb# #-}
+
+shr_limb
+  :: Wider -- ^ value
+  -> Int   -- ^ right-shift amount (0 < s < WORD_SIZE)
+  -> Wider -- ^ right-shifted value
+shr_limb (Wider w) (I# s) =
+  let !(# r, _ #) = shr_limb# w s
+  in  Wider r
+
+-- shift-left by 0 < s < WORD_SIZE (unchecked)
+shl_limb#
+  :: (# Limb, Limb, Limb, Limb #)
+  -> Int#
+  -> (# (# Limb, Limb, Limb, Limb #), Limb #)
+shl_limb# (# a0, a1, a2, a3 #) ls =
+  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
+      !rs = size Exts.-# ls
+      !(# l0, c0 #) = (# L.shl# a0 ls, L.shr# a0 rs #)
+      !(# l1, c1 #) = (# L.or# (L.shl# a1 ls) c0, L.shr# a1 rs #)
+      !(# l2, c2 #) = (# L.or# (L.shl# a2 ls) c1, L.shr# a2 rs #)
+      !(# l3, c3 #) = (# L.or# (L.shl# a3 ls) c2, L.shr# a3 rs #)
+  in  (# (# l0, l1, l2, l3 #), c3 #)
+{-# INLINE shl_limb# #-}
+
+shl_limb
+  :: Wider -- ^ value
+  -> Int   -- ^ left-shift amount (0 < s < WORD_SIZE)
+  -> Wider -- ^ left-shifted value
+shl_limb (Wider w) (I# s) =
+  let !(# r, _ #) = shl_limb# w s
+  in  Wider r
+
 and_w#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# Limb, Limb, Limb, Limb #)
