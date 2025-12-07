@@ -183,14 +183,14 @@ shr1_c#
 shr1_c# (# w0, w1, w2, w3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# s3, c3 #) = (# L.shr# w3 1#, L.shl# w3 s #)
-      !r3 = L.or# s3 (Limb 0##)
+      !r3           = L.or# s3 (Limb 0##)
       !(# s2, c2 #) = (# L.shr# w2 1#, L.shl# w2 s #)
-      !r2 = L.or# s2 c3
+      !r2           = L.or# s2 c3
       !(# s1, c1 #) = (# L.shr# w1 1#, L.shl# w1 s #)
-      !r1 = L.or# s1 c2
+      !r1           = L.or# s1 c2
       !(# s0, c0 #) = (# L.shr# w0 1#, L.shl# w0 s #)
-      !r0 = L.or# s0 c1
-      !(Limb w) = L.shr# c0 s
+      !r0           = L.or# s0 c1
+      !(Limb w)     = L.shr# c0 s
   in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
 {-# INLINE shr1_c# #-}
 
@@ -231,79 +231,6 @@ not
   :: Wider
   -> Wider
 not (Wider w) = Wider (not# w)
-
-bounded_wrapping_shr#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> Exts.Word#
-  -> Exts.Word#
-  -> (# Limb, Limb, Limb, Limb #)
-bounded_wrapping_shr# a s b =
-  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-      !ws   = Exts.int2Word# size
-      !sb   = size Exts.-# (Exts.word2Int# (Exts.clz# (Exts.minusWord# b 1##)))
-      !l2b  = size Exts.-# (Exts.word2Int# (Exts.clz# (Exts.minusWord# ws 1##)))
-      !lb   | Exts.isTrue# (sb Exts.<# l2b) = sb
-            | otherwise = l2b
-
-      loop_limb_bits acc j
-        | Exts.isTrue# (j Exts.>=# lb) = (# acc, j #)
-        | otherwise =
-            let !bit = C.from_word_lsb#
-                  (Exts.and# (Exts.uncheckedShiftRL# s j) 1##)
-                !(# nacc, _ #) = conditional_shr#
-                    acc
-                    (Exts.word2Int# (Exts.uncheckedShiftL# 1## j))
-                    bit
-            in  loop_limb_bits nacc (j Exts.+# 1#)
-
-      loop_shift_bits acc j
-        | Exts.isTrue# (j Exts.>=# sb) = acc
-        | otherwise =
-            let !bit = C.from_word_lsb#
-                  (Exts.and# (Exts.uncheckedShiftRL# s j) 1##)
-                !sh  = Exts.word2Int#
-                  (Exts.uncheckedShiftL# 1## (j Exts.-# l2b))
-                !nacc = select# acc (wrapping_shr_by_limbs_vartime# acc sh) bit
-            in  loop_shift_bits nacc (j Exts.+# 1#)
-
-      !(# a0, i #) = loop_limb_bits a 0#
-      !res = loop_shift_bits a0 i
-  in  res
-{-# INLINE bounded_wrapping_shr# #-}
-
--- conditionally shift-right by 0 < s < size (unchecked)
-conditional_shr#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> Int#
-  -> C.Choice
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #)
-conditional_shr# (# a0, a1, a2, a3 #) s c =
-  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-      !rs = s
-      !ls = size Exts.-# s
-      !(# l3, c3 #) = (# L.select# a3 (L.shr# a3 rs) c, L.shl# a3 ls #)
-      !sa2          = L.or# (L.shr# a2 rs) c3
-      !(# l2, c2 #) = (# L.select# a2 sa2 c, L.shl# a2 ls #)
-      !sa1          = L.or# (L.shr# a1 rs) c2
-      !(# l1, c1 #) = (# L.select# a1 sa1 c, L.shl# a1 ls #)
-      !sa0          = L.or# (L.shr# a0 rs) c1
-      !(# l0, c0 #) = (# L.select# a0 sa0 c, L.shl# a0 ls #)
-  in  (# (# l0, l1, l2, l3 #), L.select# (Limb 0##) c0 c #)
-{-# INLINE conditional_shr# #-}
-
--- variable time only with respect to 's'; when used with fixed shift, constant
--- time w/respect to 'a'
-wrapping_shr_by_limbs_vartime#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> Int#
-  -> (# Limb, Limb, Limb, Limb #)
-wrapping_shr_by_limbs_vartime# a@(# a0, a1, a2, _ #) s = case s of
-  0# -> a
-  1# -> (# Limb 0##, a0, a1, a2 #)
-  2# -> (# Limb 0##, Limb 0##, a0, a1 #)
-  3# -> (# Limb 0##, Limb 0##, Limb 0##, a0 #)
-  _  -> (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #)
-{-# INLINE wrapping_shr_by_limbs_vartime# #-}
 
 -- addition, subtraction ------------------------------------------------------
 
