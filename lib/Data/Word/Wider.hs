@@ -34,6 +34,8 @@ module Data.Word.Wider (
   , select#
 
   -- * Bit manipulation
+  , shl1
+  , shr1
   , shl1_c
   , shr1_c
   , shr_limb
@@ -284,6 +286,17 @@ shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
   in  (Wider r, C.decide c)
 
+-- | Constant-time 1-bit shift-right.
+--
+--   >>> shr1 2
+--   1
+--   >>> shr1 1
+--   0
+shr1 :: Wider -> Wider
+shr1 (Wider w) =
+  let !(# r, _ #) = shr1_c# w
+  in  Wider r
+
 shl1_c#
   :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
   -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
@@ -312,6 +325,17 @@ shl1_c :: Wider -> (Wider, Bool)
 shl1_c (Wider w) =
   let !(# r, c #) = shl1_c# w
   in  (Wider r, C.decide c)
+
+-- | Constant-time 1-bit shift-left.
+--
+--   >>> shl1 1
+--   2
+--   >>> shl1 (2 ^ (255 :: Word))
+--   0
+shl1 :: Wider -> Wider
+shl1 (Wider w) =
+  let !(# r, _ #) = shl1_c# w
+  in  Wider r
 
 shr_limb#
   :: (# Limb, Limb, Limb, Limb #)
