@@ -24,6 +24,10 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   , zero
   , one
 
+  -- * Comparison
+  , eq
+  , eq_vartime
+
   -- * Reduction and retrieval
   , redc
   , retr
@@ -81,13 +85,6 @@ render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
      "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
   <> show (W# c) <> ", " <> show (W# d) <> ")"
 
--- XX replace with 'eq', remove instance
-instance Eq Montgomery where
-  Montgomery a == Montgomery b =
-    let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
-        !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
-    in  C.decide (C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)) -- XX sane?
-
 instance Num Montgomery where
   a + b = add a b
   a - b = sub a b
@@ -98,6 +95,9 @@ instance Num Montgomery where
   signum a = case a of
     Montgomery (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) -> 0
     _ -> 1
+
+instance Eq Montgomery where
+  a == b = C.decide (eq a b)
 
 instance NFData Montgomery where
   rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
@@ -116,6 +116,21 @@ wadd_w# (# x_lo, x_hi #) y_lo =
 lo :: (# Limb, Limb #) -> Limb
 lo (# l, _ #) = l
 {-# INLINE lo #-}
+
+-- comparison -----------------------------------------------------------------
+
+-- | Constant-time equality comparison.
+eq :: Montgomery -> Montgomery -> C.Choice
+eq
+  (Montgomery (# Limb a0, Limb a1, Limb a2, Limb a3 #))
+  (Montgomery (# Limb b0, Limb b1, Limb b2, Limb b3 #))
+  = C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
+{-# INLINE eq #-}
+
+-- | Variable-time equality comparison.
+eq_vartime :: Montgomery -> Montgomery -> Bool
+eq_vartime (Montgomery (Wider -> a)) (Montgomery (Wider -> b)) =
+  WW.eq_vartime a b
 
 -- innards --------------------------------------------------------------------
 
