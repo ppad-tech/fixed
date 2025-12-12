@@ -117,7 +117,7 @@ mul_matches a b =
   in  W.eq_vartime (W.to ((ia * ib) `mod` im)) (S.from (ma * mb))
 
 inv_valid :: Q.NonZero S.Montgomery -> Bool
-inv_valid (Q.NonZero s) = S.inv s * s == 1
+inv_valid (Q.NonZero s) = S.eq_vartime (S.inv s * s) 1
 
 tests :: TestTree
 tests = testGroup "montgomery tests (scalar)" [
