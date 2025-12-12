@@ -1021,6 +1021,7 @@ exp b = loop 1 b where
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# = WW.odd#
+{-# INLINE odd #-}
 
 -- | Check if a 'Montgomery' value is odd.
 --
