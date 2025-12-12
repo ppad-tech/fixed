@@ -29,6 +29,10 @@ module Data.Word.Wider (
   , gt#
   , cmp#
 
+  -- * Parity
+  , odd#
+  , odd
+
   -- * Constant-time selection
   , select
   , select#
@@ -79,7 +83,7 @@ import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
 import GHC.Exts (Word(..), Int(..), Int#)
 import qualified GHC.Exts as Exts
-import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
+import Prelude hiding (div, mod, or, and, not, quot, rem, recip, odd)
 
 -- utilities ------------------------------------------------------------------
 
@@ -727,4 +731,19 @@ sqr :: Wider -> (Wider, Wider)
 sqr (Wider w) =
   let !(# l, h #) = sqr# w
   in  (Wider l, Wider h)
+
+odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
+odd# (# Limb w, _, _, _ #) = C.from_word_lsb# (Exts.and# w 1##)
+{-# INLINE odd# #-}
+
+-- | Check if a 'Wider' is odd.
+--
+--   >>> odd 1
+--   True
+--   >>> odd 2
+--   False
+odd
+  :: Wider
+  -> Bool
+odd (Wider w) = C.decide (odd# w)
 

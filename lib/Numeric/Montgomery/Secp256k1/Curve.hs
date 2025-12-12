@@ -49,6 +49,8 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , inv#
   , sqrt
   , exp
+  , odd#
+  , odd
   ) where
 
 import Control.DeepSeq
@@ -60,7 +62,7 @@ import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
-import Prelude hiding (div, mod, or, and, not, quot, rem, recip, sqrt, exp)
+import Prelude hiding (or, and, not, sqrt, exp, odd)
 
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
@@ -998,6 +1000,8 @@ sqrt n =
       then Just $! rv
       else Nothing
 
+-- XX want unboxed variants
+
 -- | Exponentiation in the Montgomery domain.
 --
 --   >>> exp 2 3
@@ -1014,3 +1018,17 @@ exp b = loop 1 b where
               | otherwise = r
       in  loop nr nm ne
     _ -> r
+
+odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
+odd# = WW.odd#
+
+-- | Check if a 'Montgomery' value is odd.
+--
+--   >>> odd 1
+--   True
+--   >>> odd 2
+--   False
+--   >>> Data.Word.Wider.odd (retr 3) -- parity is preserved
+--   True
+odd :: Montgomery -> Bool
+odd (Montgomery m) = C.decide (odd# m)

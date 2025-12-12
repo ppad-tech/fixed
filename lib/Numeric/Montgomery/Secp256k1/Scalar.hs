@@ -48,6 +48,8 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   , inv
   , inv#
   , exp
+  , odd#
+  , odd
   ) where
 
 import Control.DeepSeq
@@ -936,6 +938,8 @@ inv
   -> Montgomery -- ^ inverse
 inv (Montgomery w) = Montgomery (inv# w)
 
+-- XX want unboxed variant
+
 -- | Exponentiation in the Montgomery domain.
 --
 --   >>> exp 2 3
@@ -952,3 +956,17 @@ exp b = loop 1 b where
               | otherwise = r
       in  loop nr nm ne
     _ -> r
+
+odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
+odd# = WW.odd#
+
+-- | Check if a 'Montgomery' value is odd.
+--
+--   >>> odd 1
+--   True
+--   >>> odd 2
+--   False
+--   >>> Data.Word.Wider.odd (retr 3) -- parity is preserved
+--   True
+odd :: Montgomery -> Bool
+odd (Montgomery m) = C.decide (odd# m)
