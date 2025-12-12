@@ -54,7 +54,6 @@ module Numeric.Montgomery.Secp256k1.Curve (
   ) where
 
 import Control.DeepSeq
-import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
@@ -1010,11 +1009,11 @@ sqrt n =
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
 exp b = loop 1 b where
-  loop !r !m !e@(Wider (# Limb (W# -> w), _, _, _ #)) = case WW.cmp e 0 of
+  loop !r !m !e = case WW.cmp e 0 of
     GT ->
       let !nm = sqr m
           !ne = WW.shr1 e
-          !nr | B.testBit w 0 = r * m
+          !nr | WW.odd e = r * m
               | otherwise = r
       in  loop nr nm ne
     _ -> r

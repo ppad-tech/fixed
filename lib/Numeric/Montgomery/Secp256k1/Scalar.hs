@@ -53,7 +53,6 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   ) where
 
 import Control.DeepSeq
-import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
@@ -61,7 +60,7 @@ import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
-import Prelude hiding (div, mod, or, and, not, quot, rem, recip, exp)
+import Prelude hiding (or, and, not, exp, odd)
 
 -- montgomery arithmetic, specialized to the secp256k1 scalar group order
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
@@ -948,11 +947,11 @@ inv (Montgomery w) = Montgomery (inv# w)
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
 exp b = loop 1 b where
-  loop !r !m !e@(Wider (# Limb (W# -> w), _, _, _ #)) = case WW.cmp e 0 of
+  loop !r !m !e = case WW.cmp e 0 of
     GT ->
       let !nm = sqr m
           !ne = WW.shr1 e
-          !nr | B.testBit w 0 = r * m
+          !nr | WW.odd e = r * m
               | otherwise = r
       in  loop nr nm ne
     _ -> r
