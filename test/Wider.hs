@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -9,8 +10,10 @@ module Wider (
 
 import qualified Data.Choice as C
 import qualified Data.Word.Wider as W
+import qualified GHC.Num.Integer as I
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
+import qualified Test.Tasty.QuickCheck as Q
 
 overflowing_add_no_carry :: H.Assertion
 overflowing_add_no_carry = do
@@ -140,6 +143,12 @@ sub_mod = do
       !e = 0x44acf6b7e36c1342c2c5897204fe09504e1e2efb1a900377dbc4e7a6a133ec56
   H.assertBool mempty (W.eq_vartime o e)
 
+instance Q.Arbitrary W.Wider where
+  arbitrary = fmap W.to Q.arbitrary
+
+odd_correct :: W.Wider -> Bool
+odd_correct w = W.odd w == I.integerTestBit (W.from w) 0
+
 tests :: TestTree
 tests = testGroup "wider tests" [
     H.testCase "overflowing add, no carry" overflowing_add_no_carry
@@ -157,5 +166,6 @@ tests = testGroup "wider tests" [
   , H.testCase "sqr" sqr
   , H.testCase "mul" mul
   , H.testCase "sub_mod" sub_mod
+  , Q.testProperty "odd w ~ odd (from w)" $ Q.withMaxSuccess 500 odd_correct
   ]
 

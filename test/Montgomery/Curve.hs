@@ -138,6 +138,9 @@ exp_matches a b =
 inv_valid :: Q.NonZero C.Montgomery -> Bool
 inv_valid (Q.NonZero s) = C.eq_vartime (C.inv s * s) 1
 
+odd_correct :: C.Montgomery -> Bool
+odd_correct w = C.odd w == I.integerTestBit (W.from (C.from w)) 0
+
 tests :: TestTree
 tests = testGroup "montgomery tests (curve)" [
     H.testCase "representation" repr
@@ -148,5 +151,6 @@ tests = testGroup "montgomery tests (curve)" [
   , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 500 mul_matches
   , Q.testProperty "a ^ b mod m ~ ma ^ mb" $ Q.withMaxSuccess 500 exp_matches
   , Q.testProperty "n ^ -1 mod m * n ~ 1"  $ Q.withMaxSuccess 500 inv_valid
+  , Q.testProperty "odd m ~ odd (from m)"  $ Q.withMaxSuccess 500 odd_correct
   ]
 
