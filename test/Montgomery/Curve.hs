@@ -3,17 +3,29 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE UnboxedSums #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Montgomery.Curve (
     tests
   ) where
 
 import qualified Data.Word.Wider as W
+import qualified GHC.Num.Integer as I
+import GHC.Natural
 import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
+
+-- generic modular exponentiation
+-- b ^ e mod m
+modexp :: Integer -> Natural -> Natural -> Integer
+modexp b (fromIntegral -> e) p = case I.integerPowMod# b e p of
+  (# fromIntegral -> n | #) -> n
+  (# | _ #) -> error "bang"
+{-# INLINE modexp #-}
 
 -- modulus
 m :: W.Wider
@@ -116,6 +128,13 @@ mul_matches a b =
       im = W.from m
   in  W.eq_vartime (W.to ((ia * ib) `mod` im)) (C.from (ma * mb))
 
+exp_matches :: C.Montgomery -> W.Wider -> Bool
+exp_matches a b =
+  let ia = W.from (C.from a)
+      nb = fromIntegral (W.from b)
+      nm = fromIntegral (W.from m)
+  in  W.eq_vartime (W.to (modexp ia nb nm)) (C.from (C.exp a b))
+
 inv_valid :: Q.NonZero C.Montgomery -> Bool
 inv_valid (Q.NonZero s) = C.eq_vartime (C.inv s * s) 1
 
@@ -127,6 +146,7 @@ tests = testGroup "montgomery tests (curve)" [
   , H.testCase "mul" mul
   , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 500 add_matches
   , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 500 mul_matches
+  , Q.testProperty "a ^ b mod m ~ ma ^ mb" $ Q.withMaxSuccess 500 exp_matches
   , Q.testProperty "n ^ -1 mod m * n ~ 1"  $ Q.withMaxSuccess 500 inv_valid
   ]
 

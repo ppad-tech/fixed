@@ -48,6 +48,7 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , inv
   , inv#
   , sqrt
+  , exp
   ) where
 
 import Control.DeepSeq
@@ -59,7 +60,7 @@ import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
-import Prelude hiding (div, mod, or, and, not, quot, rem, recip, sqrt)
+import Prelude hiding (div, mod, or, and, not, quot, rem, recip, sqrt, exp)
 
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
@@ -991,17 +992,25 @@ inv (Montgomery w) = Montgomery (inv# w)
 --   Just 15
 sqrt :: Montgomery -> Maybe Montgomery
 sqrt n =
-    let !e0 = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffff0c
-        !rv = loop 1 n e0
-    in  if   C.decide (eq (rv * rv) n)
-        then Just $! rv
-        else Nothing
-  where
-    loop !r !m !e@(Wider (# Limb (W# -> w), _, _, _ #)) = case WW.cmp e 0 of
-      GT ->
-        let !nm = m * m
-            !ne = WW.shr1 e
-            !nr | B.testBit w 0 = r * m
-                | otherwise = r
-        in  loop nr nm ne
-      _ -> r
+  let !e0 = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffff0c
+      !rv = exp n e0
+  in  if   C.decide (eq (sqr rv) n)
+      then Just $! rv
+      else Nothing
+
+-- | Exponentiation in the Montgomery domain.
+--
+--   >>> exp 2 3
+--   8
+--   >>> exp 2 10
+--   1024
+exp :: Montgomery -> Wider -> Montgomery
+exp b = loop 1 b where
+  loop !r !m !e@(Wider (# Limb (W# -> w), _, _, _ #)) = case WW.cmp e 0 of
+    GT ->
+      let !nm = sqr m
+          !ne = WW.shr1 e
+          !nr | B.testBit w 0 = r * m
+              | otherwise = r
+      in  loop nr nm ne
+    _ -> r

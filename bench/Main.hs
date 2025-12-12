@@ -7,6 +7,7 @@ module Main where
 import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import qualified Numeric.Montgomery.Secp256k1.Scalar as S
 import Criterion.Main
+import Prelude hiding (exp, sqrt)
 
 main :: IO ()
 main = defaultMain [
@@ -15,6 +16,8 @@ main = defaultMain [
   , mul
   , sqr
   , inv
+  , exp
+  , sqrt
   , redc
   , retr
   ]
@@ -65,6 +68,20 @@ inv = bgroup "inv" [
   , bench "curve:  M(2 ^ 255 - 19) ^ -1" $ nf C.inv (2 ^ 255 - 19)
   , bench "scalar: M(2) ^ -1" $ nf S.inv 2
   , bench "scalar: M(2 ^ 255 - 19) ^ -1" $ nf S.inv (2 ^ 255 - 19)
+  ]
+
+sqrt :: Benchmark
+sqrt = bgroup "sqrt" [
+    bench "curve:  sqrt M(2)" $ nf C.sqrt 2
+  , bench "curve:  sqrt M(2 ^ 255 - 19)" $ nf C.sqrt (2 ^ 255 - 19)
+  ]
+
+exp :: Benchmark
+exp = bgroup "exp" [
+    bench "curve:  M(2) ^ 2" $ nf C.exp 2
+  , bench "curve:  M(2 ^ 255 - 19) ^ 2" $ nf C.exp (2 ^ 255 - 19)
+  , bench "scalar: M(2) ^ 2" $ nf S.exp 2
+  , bench "scalar: M(2 ^ 255 - 19) ^ 2" $ nf S.exp (2 ^ 255 - 19)
   ]
 
 redc :: Benchmark
