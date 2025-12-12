@@ -47,9 +47,11 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , neg#
   , inv
   , inv#
+  , sqrt
   ) where
 
 import Control.DeepSeq
+import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
@@ -57,7 +59,7 @@ import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
-import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
+import Prelude hiding (div, mod, or, and, not, quot, rem, recip, sqrt)
 
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
@@ -975,3 +977,31 @@ inv# a =
 --   1
 inv :: Montgomery -> Montgomery
 inv (Montgomery w) = Montgomery (inv# w)
+
+-- | Square root (Tonelli-Shanks) in the Montgomery domain.
+--
+--   For a, return x such that a = x x mod p. Returns nothing if no such
+--   square root exists.
+--
+--   >>> sqrt 4
+--   Just 2
+--   >>> sqrt 15
+--   Just 69211104694897500952317515077652022726490027694212560352756646854116994689233
+--   >>> (*) <$> sqrt 15 <*> sqrt 15
+--   Just 15
+sqrt :: Montgomery -> Maybe Montgomery
+sqrt n =
+    let !e0 = 0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffff0c
+        !rv = loop 1 n e0
+    in  if   C.decide (eq (rv * rv) n)
+        then Just $! rv
+        else Nothing
+  where
+    loop !r !m !e@(Wider (# Limb (W# -> w), _, _, _ #)) = case WW.cmp e 0 of
+      GT ->
+        let !nm = m * m
+            !ne = WW.shr1 e
+            !nr | B.testBit w 0 = r * m
+                | otherwise = r
+        in  loop nr nm ne
+      _ -> r
