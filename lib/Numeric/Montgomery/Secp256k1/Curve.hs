@@ -34,6 +34,10 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , redc#
   , retr#
 
+  -- * Constant-time selection
+  , select#
+  , select
+
   -- * Montgomery arithmetic
   , add
   , add#
@@ -1032,3 +1036,26 @@ odd# = WW.odd#
 --   True
 odd :: Montgomery -> Bool
 odd (Montgomery m) = C.decide (odd# m)
+
+-- constant-time selection ----------------------------------------------------
+
+select#
+  :: (# Limb, Limb, Limb, Limb #) -- ^ a
+  -> (# Limb, Limb, Limb, Limb #) -- ^ b
+  -> C.Choice                     -- ^ c
+  -> (# Limb, Limb, Limb, Limb #) -- ^ result
+select# = WW.select#
+{-# INLINE select# #-}
+
+-- | Return a if c is truthy, otherwise return b.
+--
+--   >>> import qualified Data.Choice as C
+--   >>> select 0 1 (C.true# ())
+--   1
+select
+  :: Montgomery    -- ^ a
+  -> Montgomery    -- ^ b
+  -> C.Choice      -- ^ c
+  -> Montgomery    -- ^ result
+select (Montgomery a) (Montgomery b) c = Montgomery (select# a b c)
+
