@@ -98,7 +98,7 @@ ne#
   :: Limb
   -> Limb
   -> C.Choice
-ne# a b = C.not_c# (eq# a b)
+ne# a b = C.not# (eq# a b)
 {-# INLINE ne# #-}
 
 ne_vartime#
