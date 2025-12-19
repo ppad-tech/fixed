@@ -4,6 +4,7 @@
 
 module Main where
 
+import Prelude hiding (sqrt)
 import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import qualified Numeric.Montgomery.Secp256k1.Scalar as S
 import Weigh
@@ -16,6 +17,7 @@ main = mainWith $ do
   mul
   sqr
   inv
+  sqrt
   redc
   retr
 
@@ -82,6 +84,14 @@ inv =
         func "curve:  M(2 ^ 255 - 19) ^ -1" C.inv c_big
         func "scalar: M(2) ^ -1" S.inv s2
         func "scalar: M(2 ^ 255 - 19) ^ -1" S.inv s_big
+
+sqrt :: Weigh ()
+sqrt =
+  let !c2 = 2 :: C.Montgomery
+      !c_big = (2 ^ 255 - 19) :: C.Montgomery
+  in  wgroup "sqrt" $ do
+        func "curve:  sqrt M(2)" C.sqrt c2
+        func "curve:  sqrt M(2 ^ 255 - 19)" C.sqrt c_big
 
 redc :: Weigh ()
 redc =
