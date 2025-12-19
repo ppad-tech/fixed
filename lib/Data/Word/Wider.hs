@@ -105,6 +105,9 @@ instance Show Wider where
 instance Eq Wider where
   Wider a == Wider b = C.decide (eq# a b)
 
+instance Ord Wider where
+  compare = cmp
+
 instance Num Wider where
   (+) = add
   (-) = sub
