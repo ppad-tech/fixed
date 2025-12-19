@@ -102,6 +102,9 @@ data Wider = Wider !(# Limb, Limb, Limb, Limb #)
 instance Show Wider where
   show = show . from
 
+instance Eq Wider where
+  Wider a == Wider b = C.decide (eq# a b)
+
 instance Num Wider where
   (+) = add
   (-) = sub
