@@ -18,7 +18,6 @@ main = defaultMain [
   , sqr
   , inv
   , exp
-  , exp_vartime
   , sqrt
   , redc
   , retr
@@ -119,23 +118,6 @@ exp =
         , bench "scalar: M(2) ^ 2" $ nf (S.exp s2) e2
         , bench "scalar: M(2 ^ 255 - 19) ^ (2 ^ 255 - 19)" $
             nf (S.exp s_big) e_big
-        ]
-
-exp_vartime :: Benchmark
-exp_vartime =
-  let !c2 = 2 :: C.Montgomery
-      !c_big = (2 ^ 255 - 19) :: C.Montgomery
-      !s2 = 2 :: S.Montgomery
-      !s_big = (2 ^ 255 - 19) :: S.Montgomery
-      !e2 = 2 :: Wider
-      !e_big = (2 ^ 255 - 19) :: Wider
-  in  bgroup "exp_vartime" [
-          bench "curve:  M(2) ^ 2" $ nf (C.exp_vartime c2) e2
-        , bench "curve:  M(2 ^ 255 - 19) ^ (2 ^ 255 - 19)" $
-            nf (C.exp_vartime c_big) e_big
-        , bench "scalar: M(2) ^ 2" $ nf (S.exp_vartime s2) e2
-        , bench "scalar: M(2 ^ 255 - 19) ^ (2 ^ 255 - 19)" $
-            nf (S.exp_vartime s_big) e_big
         ]
 
 redc :: Benchmark
