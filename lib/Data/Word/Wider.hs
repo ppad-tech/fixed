@@ -281,7 +281,7 @@ shr1_c# (# w0, w1, w2, w3 #) =
       !(# s0, c0 #) = (# L.shr# w0 1#, L.shl# w0 s #)
       !r0           = L.or# s0 c1
       !(Limb w)     = L.shr# c0 s
-  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
+  in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
 {-# INLINE shr1_c# #-}
 
 -- | Constant-time 1-bit shift-right with carry, indicating whether the
@@ -321,7 +321,7 @@ shl1_c# (# w0, w1, w2, w3 #) =
       !(# s3, c3 #) = (# L.shl# w3 1#, L.shr# w3 s #)
       !r3           = L.or# s3 c2
       !(Limb w)     = L.shl# c3 s
-  in  (# (# r0, r1, r2, r3 #), C.from_word_lsb# w #)
+  in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
 {-# INLINE shl1_c# #-}
 
 -- | Constant-time 1-bit shift-left with carry, indicating whether the
@@ -739,7 +739,7 @@ sqr (Wider w) =
   in  (Wider l, Wider h)
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
-odd# (# Limb w, _, _, _ #) = C.from_word_lsb# (Exts.and# w 1##)
+odd# (# Limb w, _, _, _ #) = C.from_word# (Exts.and# w 1##)
 {-# INLINE odd# #-}
 
 -- | Check if a 'Wider' is odd.
