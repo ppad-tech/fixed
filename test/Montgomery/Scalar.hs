@@ -128,6 +128,13 @@ mul_matches a b =
       im = W.from m
   in  W.eq_vartime (W.to ((ia * ib) `mod` im)) (S.from (ma * mb))
 
+sqr_matches :: W.Wider -> Bool
+sqr_matches a =
+  let ma = S.to a
+      ia = W.from a
+      im = W.from m
+  in  W.eq_vartime (W.to ((ia * ia) `mod` im)) (S.from (S.sqr ma))
+
 exp_matches :: S.Montgomery -> W.Wider -> Bool
 exp_matches a b =
   let ia = W.from (S.from a)
@@ -146,6 +153,7 @@ tests = testGroup "montgomery tests (scalar)" [
   , H.testCase "mul" mul
   , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 500 add_matches
   , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 500 mul_matches
+  , Q.testProperty "a ^ 2 mod m ~ ma ^ 2"  $ Q.withMaxSuccess 500 sqr_matches
   , Q.testProperty "a ^ b mod m ~ ma ^ mb" $ Q.withMaxSuccess 500 exp_matches
   , Q.testProperty "n ^ -1 mod m * n ~ 1"  $ Q.withMaxSuccess 500 inv_valid
   ]
