@@ -75,6 +75,12 @@ time                 6.936 μs   (6.911 μs .. 6.959 μs)
 mean                 6.898 μs   (6.885 μs .. 6.911 μs)
 std dev              44.83 ns   (35.58 ns .. 56.92 ns)
 
+benchmarking exp/curve:  M(2 ^ 255 - 19) ^ (2 ^ 255 - 19)
+time                 5.200 μs   (5.194 μs .. 5.205 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 5.192 μs   (5.188 μs .. 5.197 μs)
+std dev              15.58 ns   (11.38 ns .. 20.86 ns)
+
 benchmarking sqrt/curve:  sqrt M(2 ^ 255 - 19)
 time                 6.882 μs   (6.876 μs .. 6.890 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
@@ -137,6 +143,12 @@ inv
   curve:  M(2) ^ -1                    40    0
   curve:  M(2 ^ 255 - 19) ^ -1         40    0
 
+exp
+
+  Case                            Allocated  GCs
+  curve:  M(2) ^ 2                       40    0
+  curve:  M(2) ^ (2 ^ 255 - 19)          40    0
+
 sqrt
 
   Case                          Allocated  GCs
@@ -146,7 +158,8 @@ sqrt
 
 Note that 'sqrt' for example allocates 16 additional bytes as it returns
 a value of type 'Maybe Montgomery', which involves using either a Just
-or Nothing constructor.
+or Nothing constructor (the analogous function in the unboxed API,
+'sqrt#', avoids allocation by returning an unboxed sum).
 
 You can compile with GHC's LLVM backend and filter on specific
 benchmarks via e.g.:
