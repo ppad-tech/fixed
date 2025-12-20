@@ -147,7 +147,7 @@ instance Q.Arbitrary W.Wider where
   arbitrary = fmap W.to Q.arbitrary
 
 odd_correct :: W.Wider -> Bool
-odd_correct w = W.odd w == I.integerTestBit (W.from w) 0
+odd_correct w = C.decide (W.odd w) == I.integerTestBit (W.from w) 0
 
 tests :: TestTree
 tests = testGroup "wider tests" [

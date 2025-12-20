@@ -284,17 +284,12 @@ shr1_c# (# w0, w1, w2, w3 #) =
   in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
 {-# INLINE shr1_c# #-}
 
--- | Constant-time 1-bit shift-right with carry, indicating whether the
---   lowest bit was set.
---
---   >>> shr1_c 2
---   (1,False)
---   >>> shr1_c 1
---   (0,True)
-shr1_c :: Wider -> (Wider, Bool)
+-- | Constant-time 1-bit shift-right with carry, with a 'Choice'
+--   indicating whether the lowest bit was set.
+shr1_c :: Wider -> (# Wider, C.Choice #)
 shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
-  in  (Wider r, C.decide c)
+  in  (# Wider r, c #)
 
 -- | Constant-time 1-bit shift-right.
 --
@@ -324,17 +319,12 @@ shl1_c# (# w0, w1, w2, w3 #) =
   in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
 {-# INLINE shl1_c# #-}
 
--- | Constant-time 1-bit shift-left with carry, indicating whether the
---   highest bit was set.
---
---   >>> shl1_c 1
---   (2,False)
---   >>> shl1_c (2 ^ (255 :: Word))
---   (0,True)
-shl1_c :: Wider -> (Wider, Bool)
+-- | Constant-time 1-bit shift-left with carry, with a 'Choice' indicating
+--   whether the highest bit was set.
+shl1_c :: Wider -> (# Wider, C.Choice #)
 shl1_c (Wider w) =
   let !(# r, c #) = shl1_c# w
-  in  (Wider r, C.decide c)
+  in  (# Wider r, c #)
 
 -- | Constant-time 1-bit shift-left.
 --
@@ -742,14 +732,9 @@ odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# (# Limb w, _, _, _ #) = C.from_word# (Exts.and# w 1##)
 {-# INLINE odd# #-}
 
--- | Check if a 'Wider' is odd.
---
---   >>> odd 1
---   True
---   >>> odd 2
---   False
+-- | Check if a 'Wider' is odd, returning a 'Choice'.
 odd
   :: Wider
-  -> Bool
-odd (Wider w) = C.decide (odd# w)
+  -> C.Choice
+odd (Wider w) = odd# w
 
