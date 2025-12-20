@@ -72,16 +72,22 @@ mean                 14.26 ns   (14.23 ns .. 14.29 ns)
 std dev              114.3 ps   (84.98 ps .. 181.1 ps)
 
 benchmarking inv/curve:  M(2 ^ 255 - 19) ^ -1
-time                 7.004 μs   (6.988 μs .. 7.030 μs)
+time                 6.936 μs   (6.911 μs .. 6.959 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 7.027 μs   (7.013 μs .. 7.047 μs)
-std dev              57.73 ns   (50.57 ns .. 74.05 ns)
+mean                 6.898 μs   (6.885 μs .. 6.911 μs)
+std dev              44.83 ns   (35.58 ns .. 56.92 ns)
+
+benchmarking sqrt/curve:  sqrt M(2 ^ 255 - 19)
+time                 6.882 μs   (6.876 μs .. 6.890 μs)
+                     1.000 R²   (1.000 R² .. 1.000 R²)
+mean                 6.893 μs   (6.870 μs .. 6.902 μs)
+std dev              47.48 ns   (25.79 ns .. 100.5 ns)
 ```
 
-The library can be used either via a boxed or unboxed API. Unboxed
-functions, suffixed by magic hashes, do not allocate. Boxed functions
-allocate only for top-level data constructors used when boxing results
--- any internal arithmetic is entirely unboxed.
+The library can be used either via a boxed or unboxed API. Functions in
+the unboxed API, suffixed by magic hashes, do not allocate. Functions in
+the boxed API allocate only for top-level data constructors used when
+boxing results -- any internal arithmetic is entirely unboxed.
 
 For example, a boxed 'Wide' word, defined as:
 
@@ -132,9 +138,19 @@ inv
   Case                          Allocated  GCs
   curve:  M(2) ^ -1                    40    0
   curve:  M(2 ^ 255 - 19) ^ -1         40    0
+
+sqrt
+
+  Case                          Allocated  GCs
+  curve:  sqrt M(2)                    56    0
+  curve:  sqrt M(2 ^ 255 - 19)         56    0
 ```
 
-Note that you can compile with GHC's LLVM backend and filter on specific
+Note that 'sqrt' for example allocates 16 additional bytes as it returns
+a value of type 'Maybe Montgomery', which involves using either a Just
+or Nothing constructor.
+
+You can compile with GHC's LLVM backend and filter on specific
 benchmarks via e.g.:
 
 ```
