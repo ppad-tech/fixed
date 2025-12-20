@@ -52,6 +52,7 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   , inv
   , inv#
   , exp
+  , exp_vartime
   , odd#
   , odd
   ) where
@@ -941,8 +942,6 @@ inv
   -> Montgomery -- ^ inverse
 inv (Montgomery w) = Montgomery (inv# w)
 
--- XX want unboxed variant
-
 -- | Exponentiation in the Montgomery domain.
 --
 --   >>> exp 2 3
@@ -950,7 +949,26 @@ inv (Montgomery w) = Montgomery (inv# w)
 --   >>> exp 2 10
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
-exp b = loop 1 b where
+exp (Montgomery b) (Wider e) =
+  let !one# = (# Limb 0x402DA1732FC9BEBF##, Limb 0x4551231950B75FC4##
+              ,  Limb 0x0000000000000001##, Limb 0x0000000000000000## #)
+      loop !r !_ !_ 0 = r
+      loop !r !m !ex !n =
+        let !(# ne, bit #) = WW.shr1_c# ex
+            !candidate = mul# r m
+            !nr = select# r candidate bit
+            !nm = sqr# m
+        in  loop nr nm ne (n - 1)
+  in  Montgomery (loop one# b e (256 :: Word))
+
+-- | Variable-time exponentiation in the Montgomery domain.
+--
+--   >>> exp_vartime 2 3
+--   8
+--   >>> exp_vartime 2 10
+--   1024
+exp_vartime :: Montgomery -> Wider -> Montgomery
+exp_vartime b = loop 1 b where
   loop !r !m !e = case WW.cmp e 0 of
     GT ->
       let !nm = sqr m

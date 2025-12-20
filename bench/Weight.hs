@@ -4,9 +4,10 @@
 
 module Main where
 
-import Prelude hiding (sqrt)
+import Data.Word.Wider (Wider)
 import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import qualified Numeric.Montgomery.Secp256k1.Scalar as S
+import Prelude hiding (sqrt, exp)
 import Weigh
 
 -- note that 'weigh' doesn't work properly in a repl
@@ -17,6 +18,8 @@ main = mainWith $ do
   mul
   sqr
   inv
+  exp
+  exp_vartime
   sqrt
   redc
   retr
@@ -84,6 +87,30 @@ inv =
         func "curve:  M(2 ^ 255 - 19) ^ -1" C.inv c_big
         func "scalar: M(2) ^ -1" S.inv s2
         func "scalar: M(2 ^ 255 - 19) ^ -1" S.inv s_big
+
+exp :: Weigh ()
+exp =
+  let !c2 = 2 :: C.Montgomery
+      !s2 = 2 :: S.Montgomery
+      !sma = 2 :: Wider
+      !big = (2 ^ 255 - 19) :: Wider
+  in  wgroup "exp" $ do
+        func "curve:  M(2) ^ 2" (C.exp c2) sma
+        func "curve:  M(2) ^ (2 ^ 255 - 19)" (C.exp c2) big
+        func "scalar:  M(2) ^ 2" (S.exp s2) sma
+        func "scalar:  M(2) ^ (2 ^ 255 - 19)" (S.exp s2) big
+
+exp_vartime :: Weigh ()
+exp_vartime =
+  let !c2 = 2 :: C.Montgomery
+      !s2 = 2 :: S.Montgomery
+      !sma = 2 :: Wider
+      !big = (2 ^ 255 - 19) :: Wider
+  in  wgroup "exp_vartime" $ do
+        func "curve:  M(2) ^ 2" (C.exp_vartime c2) sma
+        func "curve:  M(2) ^ (2 ^ 255 - 19)" (C.exp_vartime c2) big
+        func "scalar:  M(2) ^ 2" (S.exp_vartime s2) sma
+        func "scalar:  M(2) ^ (2 ^ 255 - 19)" (S.exp_vartime s2) big
 
 sqrt :: Weigh ()
 sqrt =

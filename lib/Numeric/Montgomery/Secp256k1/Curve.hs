@@ -54,6 +54,7 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , sqrt
   , sqrt#
   , exp
+  , exp_vartime
   , odd#
   , odd
   ) where
@@ -1523,7 +1524,25 @@ sqrt# a =
 --   >>> exp 2 10
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
-exp b = loop 1 b where
+exp (Montgomery b) (Wider e) =
+  let !one# = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+      loop !r !_ !_ 0 = r
+      loop !r !m !ex !n =
+        let !(# ne, bit #) = WW.shr1_c# ex
+            !candidate = mul# r m
+            !nr = select# r candidate bit
+            !nm = sqr# m
+        in  loop nr nm ne (n - 1)
+  in  Montgomery (loop one# b e (256 :: Word))
+
+-- | Variable-time exponentiation in the Montgomery domain.
+--
+--   >>> exp_vartime 2 3
+--   8
+--   >>> exp_vartime 2 10
+--   1024
+exp_vartime :: Montgomery -> Wider -> Montgomery
+exp_vartime b = loop 1 b where
   loop !r !m !e = case WW.cmp e 0 of
     GT ->
       let !nm = sqr m
