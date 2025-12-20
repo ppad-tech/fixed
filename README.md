@@ -1,10 +1,8 @@
 # ppad-fixed
 
-A pure (**pre-release**, under construction,
-not-yet-guaranteed-constant-time) high-performance implementation
-of large fixed-width integers and supporting operations, including
-Montgomery-form arithmetic on domains related to the the elliptic curve
-secp256k1.
+A pure high-performance implementation of large fixed-width integers
+and supporting constant-time operations, including Montgomery-form
+arithmetic on domains related to the the elliptic curve secp256k1.
 
 ## Usage
 

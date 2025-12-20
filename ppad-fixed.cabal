@@ -1,7 +1,7 @@
 cabal-version:      3.0
 name:               ppad-fixed
-version:            0.0.1
-synopsis:           A large fixed-width integer library.
+version:            0.1.0
+synopsis:           Large fixed-width words and constant-time arithmetic.
 license:            MIT
 license-file:       LICENSE
 author:             Jared Tobin
@@ -11,7 +11,9 @@ build-type:         Simple
 tested-with:        GHC == { 9.8.1 }
 extra-doc-files:    CHANGELOG
 description:
-  Representations for, and operations on, large fixed-width integers.
+  A pure high-performance implementation of large fixed-width integers
+  and supporting constant-time operations, including Montgomery-form
+  arithmetic on domains related to the the elliptic curve secp256k1.
 
 flag llvm
   description: Use GHC's LLVM backend.

@@ -1,5 +1,5 @@
 {
-  description = "Fixed-width integer types.";
+  description = "Large fixed-width words and constant-time arithmetic.";
 
   inputs = {
     ppad-nixpkgs = {
