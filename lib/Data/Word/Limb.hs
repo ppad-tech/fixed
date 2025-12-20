@@ -83,7 +83,7 @@ eq#
   :: Limb
   -> Limb
   -> C.Choice
-eq# (Limb a) (Limb b) = C.ct_eq_word# a b
+eq# (Limb a) (Limb b) = C.eq_word# a b
 {-# INLINE eq# #-}
 
 eq_vartime#
@@ -139,7 +139,7 @@ select#
   -> Limb     -- ^ b
   -> C.Choice -- ^ c
   -> Limb     -- ^ result
-select# (Limb a) (Limb b) c = Limb (C.ct_select_word# a b c)
+select# (Limb a) (Limb b) c = Limb (C.select_word# a b c)
 {-# INLINE select# #-}
 
 -- | Return (# b, a #) if c is truthy, otherwise return (# a, b #).
@@ -149,8 +149,8 @@ cswap#
   -> C.Choice         -- ^ c
   -> (# Limb, Limb #) -- ^ result
 cswap# (Limb a) (Limb b) c =
-  let !l = C.ct_select_word# a b c
-      !r = C.ct_select_word# b a c
+  let !l = C.select_word# a b c
+      !r = C.select_word# b a c
   in  (# Limb l, Limb r #)
 {-# INLINE cswap# #-}
 

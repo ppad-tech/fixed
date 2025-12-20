@@ -46,14 +46,14 @@ module Data.Choice (
   , eq#
 
   -- * Constant-time Selection
-  , ct_select_word#
-  , ct_select_wide#
-  , ct_select_wider#
+  , select_word#
+  , select_wide#
+  , select_wider#
 
   -- * Constant-time Equality
-  , ct_eq_word#
-  , ct_eq_wide#
-  , ct_eq_wider#
+  , eq_word#
+  , eq_wide#
+  , eq_wider#
   ) where
 
 import qualified Data.Bits as B
@@ -280,63 +280,63 @@ eq# c0 c1 = not# (ne# c0 c1)
 
 -- constant-time selection ----------------------------------------------------
 
-ct_select_word# :: Word# -> Word# -> Choice -> Word#
-ct_select_word# a b (Choice c) = Exts.xor# a (Exts.and# c (Exts.xor# a b))
-{-# INLINE ct_select_word# #-}
+select_word# :: Word# -> Word# -> Choice -> Word#
+select_word# a b (Choice c) = Exts.xor# a (Exts.and# c (Exts.xor# a b))
+{-# INLINE select_word# #-}
 
-ct_select_wide#
+select_wide#
   :: (# Word#, Word# #)
   -> (# Word#, Word# #)
   -> Choice
   -> (# Word#, Word# #)
-ct_select_wide# a b (Choice w) =
+select_wide# a b (Choice w) =
   let !mask = or_w# (hi# w) (lo# w)
   in  xor_w# a (and_w# mask (xor_w# a b))
-{-# INLINE ct_select_wide# #-}
+{-# INLINE select_wide# #-}
 
-ct_select_wider#
+select_wider#
   :: (# Word#, Word#, Word#, Word# #)
   -> (# Word#, Word#, Word#, Word# #)
   -> Choice
   -> (# Word#, Word#, Word#, Word# #)
-ct_select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) (Choice w) =
+select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) (Choice w) =
   let !w0 = Exts.xor# a0 (Exts.and# w (Exts.xor# a0 b0))
       !w1 = Exts.xor# a1 (Exts.and# w (Exts.xor# a1 b1))
       !w2 = Exts.xor# a2 (Exts.and# w (Exts.xor# a2 b2))
       !w3 = Exts.xor# a3 (Exts.and# w (Exts.xor# a3 b3))
   in  (# w0, w1, w2, w3 #)
-{-# INLINE ct_select_wider# #-}
+{-# INLINE select_wider# #-}
 
 -- constant-time equality -----------------------------------------------------
 
-ct_eq_word# :: Word# -> Word# -> Choice
-ct_eq_word# a b =
+eq_word# :: Word# -> Word# -> Choice
+eq_word# a b =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !x = Exts.xor# a b
       !y = Exts.uncheckedShiftRL# (Exts.or# x (wrapping_neg# x)) s
   in  Choice (Exts.xor# y 1##)
-{-# INLINE ct_eq_word# #-}
+{-# INLINE eq_word# #-}
 
-ct_eq_wide#
+eq_wide#
   :: (# Word#, Word# #)
   -> (# Word#, Word# #)
   -> Choice
-ct_eq_wide# (# a0, a1 #) (# b0, b1 #) =
+eq_wide# (# a0, a1 #) (# b0, b1 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !x = Exts.or# (Exts.xor# a0 b0) (Exts.xor# a1 b1)
       !y = Exts.uncheckedShiftRL# (Exts.or# x (wrapping_neg# x)) s
   in  Choice (Exts.xor# y 1##)
-{-# INLINE ct_eq_wide# #-}
+{-# INLINE eq_wide# #-}
 
-ct_eq_wider#
+eq_wider#
   :: (# Word#, Word#, Word#, Word# #)
   -> (# Word#, Word#, Word#, Word# #)
   -> Choice
-ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !x = Exts.or# (Exts.or# (Exts.xor# a0 b0) (Exts.xor# a1 b1))
                     (Exts.or# (Exts.xor# a2 b2) (Exts.xor# a3 b3))
       !y = Exts.uncheckedShiftRL# (Exts.or# x (wrapping_neg# x)) s
   in  Choice (Exts.xor# y 1##)
-{-# INLINE ct_eq_wider# #-}
+{-# INLINE eq_wider# #-}
 

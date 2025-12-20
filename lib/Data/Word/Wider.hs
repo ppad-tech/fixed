@@ -132,7 +132,7 @@ eq#
 eq# a b =
   let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
       !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
-  in  C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
+  in  C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
 {-# INLINE eq# #-}
 
 -- | Compare 'Wider' words for equality in variable time.
@@ -249,7 +249,7 @@ select# a b c =
   let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
       !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
       !(# w0, w1, w2, w3 #) =
-        C.ct_select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) c
+        C.select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) c
   in  (# Limb w0, Limb w1, Limb w2, Limb w3 #)
 {-# INLINE select# #-}
 

@@ -131,7 +131,7 @@ eq :: Montgomery -> Montgomery -> C.Choice
 eq
   (Montgomery (# Limb a0, Limb a1, Limb a2, Limb a3 #))
   (Montgomery (# Limb b0, Limb b1, Limb b2, Limb b3 #))
-  = C.ct_eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
+  = C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
 {-# INLINE eq #-}
 
 -- | Variable-time equality comparison.
