@@ -1,5 +1,9 @@
 # ppad-fixed
 
+[![](https://img.shields.io/hackage/v/ppad-fixed?color=blue)](https://hackage.haskell.org/package/ppad-fixed)
+![](https://img.shields.io/badge/license-MIT-brightgreen)
+[![](https://img.shields.io/badge/haddock-fixed-lightblue)](https://docs.ppad.tech/fixed)
+
 A pure high-performance implementation of large fixed-width integers
 and supporting constant-time operations, including Montgomery-form
 arithmetic on domains related to the the elliptic curve secp256k1.
