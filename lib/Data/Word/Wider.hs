@@ -161,8 +161,8 @@ lt# a b =
   in  C.from_word_mask# bor
 {-# INLINE lt# #-}
 
-lt :: Wider -> Wider -> Bool
-lt (Wider a) (Wider b) = C.decide (lt# a b)
+lt :: Wider -> Wider -> C.Choice
+lt (Wider a) (Wider b) = lt# a b
 
 gt#
   :: (# Limb, Limb, Limb, Limb #)
@@ -173,8 +173,8 @@ gt# a b =
   in  C.from_word_mask# bor
 {-# INLINE gt# #-}
 
-gt :: Wider -> Wider -> Bool
-gt (Wider a) (Wider b) = C.decide (gt# a b)
+gt :: Wider -> Wider -> C.Choice
+gt (Wider a) (Wider b) = gt# a b
 
 cmp#
   :: (# Limb, Limb, Limb, Limb #)
