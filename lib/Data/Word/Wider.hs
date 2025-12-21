@@ -24,10 +24,12 @@ module Data.Word.Wider (
   -- * Comparison
   , eq_vartime
   , cmp
-  , eq#
-  , lt#
-  , gt#
   , cmp#
+  , eq#
+  , lt
+  , lt#
+  , gt
+  , gt#
 
   -- * Parity
   , odd#
@@ -159,6 +161,9 @@ lt# a b =
   in  C.from_word_mask# bor
 {-# INLINE lt# #-}
 
+lt :: Wider -> Wider -> Bool
+lt (Wider a) (Wider b) = C.decide (lt# a b)
+
 gt#
   :: (# Limb, Limb, Limb, Limb #)
   -> (# Limb, Limb, Limb, Limb #)
@@ -167,6 +172,9 @@ gt# a b =
   let !(# _, Limb bor #) = sub_b# b a
   in  C.from_word_mask# bor
 {-# INLINE gt# #-}
+
+gt :: Wider -> Wider -> Bool
+gt (Wider a) (Wider b) = C.decide (gt# a b)
 
 cmp#
   :: (# Limb, Limb, Limb, Limb #)
@@ -199,6 +207,7 @@ cmp (Wider a) (Wider b) = case cmp# a b of
   1#  -> GT
   0#  -> EQ
   _   -> LT
+{-# INLINABLE cmp #-}
 
 -- construction / conversion --------------------------------------------------
 

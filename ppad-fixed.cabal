@@ -89,6 +89,7 @@ benchmark fixed-weigh
 
   build-depends:
       base
+    , deepseq
     , ppad-fixed
     , weigh
 

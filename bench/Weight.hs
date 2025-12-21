@@ -4,7 +4,9 @@
 
 module Main where
 
+import Control.DeepSeq
 import Data.Word.Wider (Wider)
+import qualified Data.Word.Wider as W
 import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import qualified Numeric.Montgomery.Secp256k1.Scalar as S
 import Prelude hiding (sqrt, exp)
@@ -13,6 +15,8 @@ import Weigh
 -- note that 'weigh' doesn't work properly in a repl
 main :: IO ()
 main = mainWith $ do
+  num_wider
+  cmp
   add
   sub
   mul
@@ -22,6 +26,23 @@ main = mainWith $ do
   sqrt
   redc
   retr
+
+num_wider :: Weigh ()
+num_wider = wgroup "num_wider" $ do
+  func "small" (force :: Wider -> Wider) 2
+  func "large" (force :: Wider -> Wider)
+    0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed
+
+cmp :: Weigh ()
+cmp =
+  let !a = 1
+      !b = 2
+      !c = 2 ^ 255 - 19
+  in  wgroup "cmp" $ do
+        func "cmp: 1 < 2" (W.cmp a) b
+        func "cmp: 2 < 1" (W.cmp b) a
+        func "cmp: 2 < 2 ^ 255 - 19" (W.cmp b) c
+        func "cmp: 2 ^ 255 - 19 < 2" (W.cmp c) b
 
 add :: Weigh ()
 add =
