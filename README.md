@@ -50,16 +50,18 @@ Current benchmark figures on my M4 Silicon MacBook Air look like:
 
 ```
 benchmarking add/curve:  M(1) + M(2 ^ 255 - 19)
-time                 6.890 ns   (6.882 ns .. 6.906 ns)
+time                 5.399 ns   (5.359 ns .. 5.442 ns)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 6.889 ns   (6.885 ns .. 6.897 ns)
-std dev              16.73 ps   (8.753 ps .. 30.75 ps)
+mean                 5.389 ns   (5.371 ns .. 5.426 ns)
+std dev              82.34 ps   (54.62 ps .. 128.7 ps)
+variance introduced by outliers: 21% (moderately inflated)
 
 benchmarking sub/curve:  M(2 ^ 255 - 1) - M(2 ^ 255 - 19)
-time                 6.876 ns   (6.872 ns .. 6.883 ns)
+time                 5.226 ns   (5.217 ns .. 5.241 ns)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 6.877 ns   (6.874 ns .. 6.881 ns)
-std dev              11.60 ps   (7.865 ps .. 18.34 ps)
+mean                 5.249 ns   (5.230 ns .. 5.287 ns)
+std dev              84.60 ps   (54.00 ps .. 126.7 ps)
+variance introduced by outliers: 23% (moderately inflated)
 
 benchmarking mul/curve:  M(2) * M(2 ^ 255 - 19)
 time                 14.78 ns   (14.75 ns .. 14.81 ns)
