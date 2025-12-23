@@ -19,8 +19,8 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   -- * Montgomery form, secp256k1 scalar group order modulus
     Montgomery(..)
   , render
-  , to
-  , from
+  , to_vartime
+  , from_vartime
   , zero
   , one
 
@@ -80,7 +80,7 @@ import Prelude hiding (or, and, not, exp, odd)
 data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 
 instance Show Montgomery where
-  show = show . from
+  show = show . from_vartime
 
 -- | Render a 'Montgomery' value as a 'String', showing its individual
 --   'Limb's.
@@ -92,19 +92,21 @@ render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
      "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
   <> show (W# c) <> ", " <> show (W# d) <> ")"
 
+-- | Note that 'fromInteger' necessarily runs in variable time due
+--   to conversion from the variable-size, potentially heap-allocated
+--   'Integer' type.
 instance Num Montgomery where
   a + b = add a b
   a - b = sub a b
   a * b = mul a b
   negate a = neg a
   abs = id
-  fromInteger = to . WW.to_vartime
-  signum a = case a of
-    Montgomery (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) -> 0
-    _ -> 1
-
-instance Eq Montgomery where
-  a == b = C.decide (eq a b)
+  fromInteger = to_vartime . WW.to_vartime
+  signum (Montgomery (# l0, l1, l2, l3 #)) =
+    let !(Limb l) = l0 `L.or#` l1 `L.or#` l2 `L.or#` l3
+        !n = C.from_word_nonzero# l
+        !b = C.to_word# n
+    in  Montgomery (# Limb b, Limb 0##, Limb 0##, Limb 0## #)
 
 instance NFData Montgomery where
   rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()
@@ -364,14 +366,14 @@ to# x =
 {-# INLINE to# #-}
 
 -- | Convert a 'Wider' word to the Montgomery domain.
-to :: Wider -> Montgomery
-to (Wider x) = Montgomery (to# x)
+to_vartime :: Wider -> Montgomery
+to_vartime (Wider x) = Montgomery (to# x)
 
 -- | Retrieve a 'Montgomery' word from the Montgomery domain.
 --
 --   This function is a synonym for 'retr'.
-from :: Montgomery -> Wider
-from = retr
+from_vartime :: Montgomery -> Wider
+from_vartime = retr
 
 add#
   :: (# Limb, Limb, Limb, Limb #) -- ^ augend

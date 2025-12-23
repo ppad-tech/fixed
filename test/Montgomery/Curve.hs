@@ -11,6 +11,7 @@ module Montgomery.Curve (
     tests
   ) where
 
+import qualified Data.Choice as CT
 import qualified Data.Word.Wider as W
 import qualified GHC.Num.Integer as I
 import GHC.Natural
@@ -18,6 +19,10 @@ import qualified Numeric.Montgomery.Secp256k1.Curve as C
 import Test.Tasty
 import qualified Test.Tasty.HUnit as H
 import qualified Test.Tasty.QuickCheck as Q
+
+-- orphan Eq instance for testing
+instance Eq C.Montgomery where
+  a == b = CT.decide (C.eq a b)
 
 -- generic modular exponentiation
 -- b ^ e mod m
@@ -36,12 +41,15 @@ mm :: C.Montgomery
 mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
 repr :: H.Assertion
-repr = H.assertBool mempty (W.eq_vartime 0 (C.from mm))
+repr = H.assertBool mempty (W.eq_vartime 0 (C.from_vartime mm))
 
 add_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
 add_case t a b s = do
-  H.assertEqual "sanity" ((W.from_vartime a + W.from_vartime b) `mod` W.from_vartime m) (W.from_vartime s)
-  H.assertBool t (W.eq_vartime s (C.from (C.to a + C.to b)))
+  H.assertEqual "sanity"
+    ((W.from_vartime a + W.from_vartime b) `mod` W.from_vartime m)
+    (W.from_vartime s)
+  H.assertBool t
+    (W.eq_vartime s (C.from_vartime (C.to_vartime a + C.to_vartime b)))
 
 add :: H.Assertion
 add = do
@@ -61,8 +69,11 @@ add = do
 
 sub_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
 sub_case t b a d = do
-  H.assertEqual "sanity" ((W.from_vartime b - W.from_vartime a) `mod` W.from_vartime m) (W.from_vartime d)
-  H.assertBool t (W.eq_vartime d (C.from (C.to b - C.to a)))
+  H.assertEqual "sanity"
+    ((W.from_vartime b - W.from_vartime a) `mod` W.from_vartime m)
+    (W.from_vartime d)
+  H.assertBool t
+    (W.eq_vartime d (C.from_vartime (C.to_vartime b - C.to_vartime a)))
 
 sub :: H.Assertion
 sub = do
@@ -81,8 +92,11 @@ sub = do
 
 mul_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
 mul_case t a b p = do
-  H.assertEqual "sanity" ((W.from_vartime a * W.from_vartime b) `mod` W.from_vartime m) (W.from_vartime p)
-  H.assertBool t (W.eq_vartime p (C.from (C.to a * C.to b)))
+  H.assertEqual "sanity"
+    ((W.from_vartime a * W.from_vartime b) `mod` W.from_vartime m)
+    (W.from_vartime p)
+  H.assertBool t
+    (W.eq_vartime p (C.from_vartime (C.to_vartime a * C.to_vartime b)))
 
 mul :: H.Assertion
 mul = do
@@ -108,45 +122,54 @@ instance Q.Arbitrary W.Wider where
   arbitrary = fmap W.to_vartime Q.arbitrary
 
 instance Q.Arbitrary C.Montgomery where
-  arbitrary = fmap C.to Q.arbitrary
+  arbitrary = fmap C.to_vartime Q.arbitrary
 
 add_matches :: W.Wider -> W.Wider -> Bool
 add_matches a b =
-  let ma = C.to a
-      mb = C.to b
+  let ma = C.to_vartime a
+      mb = C.to_vartime b
       ia = W.from_vartime a
       ib = W.from_vartime b
       im = W.from_vartime m
-  in  W.eq_vartime (W.to_vartime ((ia + ib) `mod` im)) (C.from (ma + mb))
+  in  W.eq_vartime
+        (W.to_vartime ((ia + ib) `mod` im))
+        (C.from_vartime (ma + mb))
 
 mul_matches :: W.Wider -> W.Wider -> Bool
 mul_matches a b =
-  let ma = C.to a
-      mb = C.to b
+  let ma = C.to_vartime a
+      mb = C.to_vartime b
       ia = W.from_vartime a
       ib = W.from_vartime b
       im = W.from_vartime m
-  in  W.eq_vartime (W.to_vartime ((ia * ib) `mod` im)) (C.from (ma * mb))
+  in  W.eq_vartime
+        (W.to_vartime ((ia * ib) `mod` im))
+        (C.from_vartime (ma * mb))
 
 sqr_matches :: W.Wider -> Bool
 sqr_matches a =
-  let ma = C.to a
+  let ma = C.to_vartime a
       ia = W.from_vartime a
       im = W.from_vartime m
-  in  W.eq_vartime (W.to_vartime ((ia * ia) `mod` im)) (C.from (C.sqr ma))
+  in  W.eq_vartime
+        (W.to_vartime ((ia * ia) `mod` im))
+        (C.from_vartime (C.sqr ma))
 
 exp_matches :: C.Montgomery -> W.Wider -> Bool
 exp_matches a b =
-  let ia = W.from_vartime (C.from a)
+  let ia = W.from_vartime (C.from_vartime a)
       nb = fromIntegral (W.from_vartime b)
       nm = fromIntegral (W.from_vartime m)
-  in  W.eq_vartime (W.to_vartime (modexp ia nb nm)) (C.from (C.exp a b))
+  in  W.eq_vartime
+        (W.to_vartime (modexp ia nb nm))
+        (C.from_vartime (C.exp a b))
 
 inv_valid :: Q.NonZero C.Montgomery -> Bool
 inv_valid (Q.NonZero s) = C.eq_vartime (C.inv s * s) 1
 
 odd_correct :: C.Montgomery -> Bool
-odd_correct w = C.odd w == I.integerTestBit (W.from_vartime (C.from w)) 0
+odd_correct w =
+  C.odd w == I.integerTestBit (W.from_vartime (C.from_vartime w)) 0
 
 tests :: TestTree
 tests = testGroup "montgomery tests (curve)" [
