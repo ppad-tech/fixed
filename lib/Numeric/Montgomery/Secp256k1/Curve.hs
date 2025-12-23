@@ -146,8 +146,8 @@ eq_vartime (Montgomery (Wider -> a)) (Montgomery (Wider -> b)) =
 -- innards --------------------------------------------------------------------
 
 redc_inner#
-  :: (# Limb, Limb, Limb, Limb #)              -- ^ upper limbs
-  -> (# Limb, Limb, Limb, Limb #)              -- ^ lower limbs
+  :: (# Limb, Limb, Limb, Limb #)             -- ^ upper limbs
+  -> (# Limb, Limb, Limb, Limb #)             -- ^ lower limbs
   -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ upper limbs, meta-carry
 redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) =
   let !(# m0, m1, m2, m3 #) =
@@ -204,7 +204,7 @@ redc
   -> Montgomery -- ^ reduced value
 redc (Montgomery l) (Montgomery u) =
   let !res = redc# l u
-  in  (Montgomery res)
+  in  Montgomery res
 
 retr_inner#
   :: (# Limb, Limb, Limb, Limb #) -- ^ value in montgomery form
