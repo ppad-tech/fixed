@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedSums #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -18,12 +19,12 @@ module Data.Word.Wider (
   -- * Four-limb words
     Wider(..)
   , wider
-  , to
-  , from
+  , to_vartime
+  , from_vartime
 
   -- * Comparison
   , eq_vartime
-  , cmp
+  , cmp_vartime
   , cmp#
   , eq#
   , lt
@@ -83,7 +84,7 @@ import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
-import GHC.Exts (Word(..), Int(..), Int#)
+import GHC.Exts (Word(..), Int(..), Word#, Int#)
 import qualified GHC.Exts as Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip, odd)
 
@@ -95,6 +96,12 @@ fi = fromIntegral
 
 -- wider words ----------------------------------------------------------------
 
+pattern Limb4
+  :: Word# -> Word# -> Word# -> Word#
+  -> (# Limb, Limb, Limb, Limb #)
+pattern Limb4 w0 w1 w2 w3 = (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+{-# COMPLETE Limb4 #-}
+
 -- | Little-endian wider words, consisting of four 'Limbs'.
 --
 --   >>> 1 :: Wider
@@ -102,24 +109,23 @@ fi = fromIntegral
 data Wider = Wider !(# Limb, Limb, Limb, Limb #)
 
 instance Show Wider where
-  show = show . from
+  show = show . from_vartime
 
-instance Eq Wider where
-  Wider a == Wider b = C.decide (eq# a b)
-
-instance Ord Wider where
-  compare = cmp
-
+-- | Note that 'fromInteger' necessarily runs in variable time due
+--   to conversion from the variable-size, potentially heap-allocated
+--   'Integer' type.
 instance Num Wider where
   (+) = add
   (-) = sub
   (*) = mul
   abs = id
-  fromInteger = to
-  negate w = add (not w) (Wider (# Limb 1##, Limb 0##, Limb 0##, Limb 0## #))
-  signum a = case a of
-    Wider (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) -> 0
-    _ -> 1
+  fromInteger = to_vartime
+  negate w = add (not w) (Wider (Limb4 1## 0## 0## 0##))
+  signum (Wider (# l0, l1, l2, l3 #)) =
+    let !(Limb l) = l0 `L.or#` l1 `L.or#` l2 `L.or#` l3
+        !n = C.from_word_nonzero# l
+        !b = C.to_word# n
+    in  Wider (Limb4 b 0## 0## 0##)
 
 instance NFData Wider where
   rnf (Wider a) = case a of
@@ -132,8 +138,8 @@ eq#
   -> (# Limb, Limb, Limb, Limb #)
   -> C.Choice
 eq# a b =
-  let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
-      !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
+  let !(Limb4 a0 a1 a2 a3) = a
+      !(Limb4 b0 b1 b2 b3) = b
   in  C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
 {-# INLINE eq# #-}
 
@@ -161,6 +167,13 @@ lt# a b =
   in  C.from_word_mask# bor
 {-# INLINE lt# #-}
 
+-- | Constant-time less-than comparison between 'Wider' values.
+--
+--   >>> import qualified Data.Choice as CT
+--   >>> CT.decide (lt 1 2)
+--   True
+--   >>> CT.decide (lt 1 1)
+--   False
 lt :: Wider -> Wider -> C.Choice
 lt (Wider a) (Wider b) = lt# a b
 
@@ -173,6 +186,13 @@ gt# a b =
   in  C.from_word_mask# bor
 {-# INLINE gt# #-}
 
+-- | Constant-time greater-than comparison between 'Wider' values.
+--
+--   >>> import qualified Data.Choice as CT
+--   >>> CT.decide (gt 1 2)
+--   False
+--   >>> CT.decide (gt 2 1)
+--   True
 gt :: Wider -> Wider -> C.Choice
 gt (Wider a) (Wider b) = gt# a b
 
@@ -194,20 +214,23 @@ cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
   in  (Exts.word2Int# (C.to_word# (L.nonzero# d3))) Exts.*# s
 {-# INLINE cmp# #-}
 
--- | Constant-time comparison between 'Wider' words.
+-- | Variable-time comparison between 'Wider' words.
 --
---   >>> cmp 1 2
+--   The actual comparison here is performed in constant time, but we must
+--   branch to return an 'Ordering'.
+--
+--   >>> cmp_vartime 1 2
 --   LT
---   >>> cmp 2 1
+--   >>> cmp_vartime 2 1
 --   GT
---   >>> cmp 2 2
+--   >>> cmp_vartime 2 2
 --   EQ
-cmp :: Wider -> Wider -> Ordering
-cmp (Wider a) (Wider b) = case cmp# a b of
+cmp_vartime :: Wider -> Wider -> Ordering
+cmp_vartime (Wider a) (Wider b) = case cmp# a b of
   1#  -> GT
   0#  -> EQ
   _   -> LT
-{-# INLINABLE cmp #-}
+{-# INLINABLE cmp_vartime #-}
 
 -- construction / conversion --------------------------------------------------
 
@@ -222,10 +245,10 @@ wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider
 
 -- | Convert an 'Integer' to a 'Wider' word.
 --
---   >>> to 1
+--   >>> to_vartime 1
 --   1
-to :: Integer -> Wider
-to n =
+to_vartime :: Integer -> Wider
+to_vartime n =
   let !size = B.finiteBitSize (0 :: Word)
       !mask = fi (maxBound :: Word) :: Integer
       !(W# w0) = fi (n .&. mask)
@@ -236,10 +259,10 @@ to n =
 
 -- | Convert a 'Wider' word to an 'Integer'.
 --
---   >>> from 1
+--   >>> from_vartime 1
 --   1
-from :: Wider -> Integer
-from (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
+from_vartime :: Wider -> Integer
+from_vartime (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
         fi (W# w3) .<<. (3 * size)
     .|. fi (W# w2) .<<. (2 * size)
     .|. fi (W# w1) .<<. size

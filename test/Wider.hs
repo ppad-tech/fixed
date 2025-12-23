@@ -107,17 +107,17 @@ cmp = do
   let !a = 0
       !b = 1
       !c = 2 ^ (256 :: Word) - 1
-  H.assertEqual mempty (W.cmp a b) LT
-  H.assertEqual mempty (W.cmp a c) LT
-  H.assertEqual mempty (W.cmp b c) LT
+  H.assertEqual mempty (W.cmp_vartime a b) LT
+  H.assertEqual mempty (W.cmp_vartime a c) LT
+  H.assertEqual mempty (W.cmp_vartime b c) LT
 
-  H.assertEqual mempty (W.cmp a a) EQ
-  H.assertEqual mempty (W.cmp b b) EQ
-  H.assertEqual mempty (W.cmp c c) EQ
+  H.assertEqual mempty (W.cmp_vartime a a) EQ
+  H.assertEqual mempty (W.cmp_vartime b b) EQ
+  H.assertEqual mempty (W.cmp_vartime c c) EQ
 
-  H.assertEqual mempty (W.cmp b a) GT
-  H.assertEqual mempty (W.cmp c a) GT
-  H.assertEqual mempty (W.cmp c b) GT
+  H.assertEqual mempty (W.cmp_vartime b a) GT
+  H.assertEqual mempty (W.cmp_vartime c a) GT
+  H.assertEqual mempty (W.cmp_vartime c b) GT
 
 sqr :: H.Assertion
 sqr = do
@@ -144,10 +144,10 @@ sub_mod = do
   H.assertBool mempty (W.eq_vartime o e)
 
 instance Q.Arbitrary W.Wider where
-  arbitrary = fmap W.to Q.arbitrary
+  arbitrary = fmap W.to_vartime Q.arbitrary
 
 odd_correct :: W.Wider -> Bool
-odd_correct w = C.decide (W.odd w) == I.integerTestBit (W.from w) 0
+odd_correct w = C.decide (W.odd w) == I.integerTestBit (W.from_vartime w) 0
 
 tests :: TestTree
 tests = testGroup "wider tests" [

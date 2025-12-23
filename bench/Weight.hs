@@ -38,11 +38,11 @@ cmp =
   let !a = 1
       !b = 2
       !c = 2 ^ 255 - 19
-  in  wgroup "cmp" $ do
-        func "cmp: 1 < 2" (W.cmp a) b
-        func "cmp: 2 < 1" (W.cmp b) a
-        func "cmp: 2 < 2 ^ 255 - 19" (W.cmp b) c
-        func "cmp: 2 ^ 255 - 19 < 2" (W.cmp c) b
+  in  wgroup "cmp_vartime" $ do
+        func "cmp_vartime: 1 < 2" (W.cmp_vartime a) b
+        func "cmp_vartime: 2 < 1" (W.cmp_vartime b) a
+        func "cmp_vartime: 2 < 2 ^ 255 - 19" (W.cmp_vartime b) c
+        func "cmp_vartime: 2 ^ 255 - 19 < 2" (W.cmp_vartime c) b
 
 add :: Weigh ()
 add =

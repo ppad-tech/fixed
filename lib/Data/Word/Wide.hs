@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedSums #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -20,8 +21,8 @@ module Data.Word.Wide (
 
   -- * Construction, Conversion
   , wide
-  , to
-  , from
+  , to_vartime
+  , from_vartime
 
   -- * Bit Manipulation
   , or
@@ -55,6 +56,7 @@ module Data.Word.Wide (
 import Control.DeepSeq
 import Data.Bits ((.|.), (.&.), (.<<.), (.>>.))
 import qualified Data.Bits as B
+import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
 import GHC.Exts
@@ -68,22 +70,33 @@ fi = fromIntegral
 
 -- wide words -----------------------------------------------------------------
 
+pattern Limb2
+  :: Word# -> Word#
+  -> (# Limb, Limb #)
+pattern Limb2 w0 w1 = (# Limb w0, Limb w1 #)
+{-# COMPLETE Limb2 #-}
+
 -- | Little-endian wide words.
 data Wide = Wide !(# Limb, Limb #)
 
 instance Show Wide where
-  show = show . from
+  show = show . from_vartime
 
+-- | Note that 'fromInteger' necessarily runs in variable time due
+--   to conversion from the variable-size, potentially heap-allocated
+--   'Integer' type.
 instance Num Wide where
   (+) = add
   (-) = sub
   (*) = mul
   abs = id
-  fromInteger = to
+  fromInteger = to_vartime
   negate = neg
-  signum a = case a of
-    Wide (# Limb 0##, Limb 0## #) -> 0
-    _ -> 1
+  signum (Wide (# l0, l1 #)) =
+    let !(Limb l) = l0 `L.or#` l1
+        !n = C.from_word_nonzero# l
+        !b = C.to_word# n
+    in  Wide (Limb2 b 0##)
 
 instance NFData Wide where
   rnf (Wide a) = case a of (# _, _ #) -> ()
@@ -95,8 +108,11 @@ wide :: Word -> Word -> Wide
 wide (W# l) (W# h) = Wide (# Limb l, Limb h #)
 
 -- | Convert an 'Integer' to a 'Wide' word.
-to :: Integer -> Wide
-to n =
+--
+--   >>> to_vartime 1
+--   1
+to_vartime :: Integer -> Wide
+to_vartime n =
   let !size = B.finiteBitSize (0 :: Word)
       !mask = fi (maxBound :: Word) :: Integer
       !(W# w0) = fi (n .&. mask)
@@ -104,8 +120,11 @@ to n =
   in  Wide (# Limb w0, Limb w1 #)
 
 -- | Convert a 'Wide' word to an 'Integer'.
-from :: Wide -> Integer
-from (Wide (# Limb a, Limb b #)) =
+--
+--   >>> from_vartime 1
+--   1
+from_vartime :: Wide -> Integer
+from_vartime (Wide (# Limb a, Limb b #)) =
       fi (W# b) .<<. (B.finiteBitSize (0 :: Word))
   .|. fi (W# a)
 

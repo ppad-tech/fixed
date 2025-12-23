@@ -98,7 +98,7 @@ instance Num Montgomery where
   a * b = mul a b
   negate a = neg a
   abs = id
-  fromInteger = to . WW.to
+  fromInteger = to . WW.to_vartime
   signum a = case a of
     Montgomery (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) -> 0
     _ -> 1
