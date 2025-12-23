@@ -53,7 +53,7 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   , inv#
   , exp
   , odd#
-  , odd
+  , odd_vartime
   ) where
 
 import Control.DeepSeq
@@ -64,7 +64,7 @@ import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
 import GHC.Exts (Word(..))
-import Prelude hiding (or, and, not, exp, odd)
+import Prelude hiding (or, and, not, exp)
 
 -- montgomery arithmetic, specialized to the secp256k1 scalar group order
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
@@ -964,9 +964,12 @@ exp (Montgomery b) (Wider e) =
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# = WW.odd#
-{-# INLINE odd #-}
+{-# INLINE odd# #-}
 
 -- | Check if a 'Montgomery' value is odd.
+--
+--   Note that the comparison is performed in constant time, but we
+--   branch when converting to 'Bool'.
 --
 --   >>> odd 1
 --   True
@@ -974,8 +977,8 @@ odd# = WW.odd#
 --   False
 --   >>> Data.Word.Wider.odd (retr 3) -- parity is preserved
 --   True
-odd :: Montgomery -> Bool
-odd (Montgomery m) = C.decide (odd# m)
+odd_vartime :: Montgomery -> Bool
+odd_vartime (Montgomery m) = C.decide (odd# m)
 
 -- constant-time selection ----------------------------------------------------
 

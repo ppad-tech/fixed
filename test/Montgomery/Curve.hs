@@ -169,7 +169,7 @@ inv_valid (Q.NonZero s) = C.eq_vartime (C.inv s * s) 1
 
 odd_correct :: C.Montgomery -> Bool
 odd_correct w =
-  C.odd w == I.integerTestBit (W.from_vartime (C.from_vartime w)) 0
+  C.odd_vartime w == I.integerTestBit (W.from_vartime (C.from_vartime w)) 0
 
 tests :: TestTree
 tests = testGroup "montgomery tests (curve)" [
