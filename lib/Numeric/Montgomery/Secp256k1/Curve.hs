@@ -72,7 +72,7 @@ import Prelude hiding (or, and, not, sqrt, exp, odd)
 -- 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 
 -- | Montgomery-form 'Wider' words, on the Montgomery domain defined by
---   the secp256k1 scalar group order.
+--   the secp256k1 field prime.
 --
 --   >>> let one = 1 :: Montgomery
 --   >>> one
