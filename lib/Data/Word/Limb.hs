@@ -285,10 +285,9 @@ add_s#
   :: Limb
   -> Limb
   -> Limb
-add_s# (Limb a) (Limb b) = case Exts.addWordC# a b of
-  (# s, 0# #) -> Limb s
-  _ -> case maxBound :: Word of
-    Exts.W# m -> Limb m
+add_s# (Limb a) (Limb b) =
+  let !(# c, s #) = Exts.plusWord2# a b
+  in  Limb (C.select_word# s (Exts.not# 0##) (C.from_word_nonzero# c))
 {-# INLINE add_s# #-}
 
 -- subtraction ----------------------------------------------------------------
@@ -315,9 +314,10 @@ sub_s#
   :: Limb -- ^ minuend
   -> Limb -- ^ subtrahend
   -> Limb -- ^ difference
-sub_s# (Limb m) (Limb n) = case Exts.subWordC# m n of
-  (# d, 0# #) -> Limb d
-  _ -> Limb 0##
+sub_s# (Limb m) (Limb n) =
+  let !(# d, b #) = Exts.subWordC# m n
+      !borrow = C.from_word# (Exts.int2Word# b)
+  in  Limb (C.select_word# d 0## borrow)
 {-# INLINE sub_s# #-}
 
 -- | Wrapping subtraction, computing minuend - subtrahend, returning the
@@ -355,9 +355,9 @@ mul_s#
   :: Limb -- ^ multiplicand
   -> Limb -- ^ multiplier
   -> Limb -- ^ clamped low word of product
-mul_s# (Limb a) (Limb b) = case Exts.timesWord2# a b of
-  (# 0##, l #) -> Limb l
-  _ -> Limb (Exts.not# 0##)
+mul_s# (Limb a) (Limb b) =
+  let !(# h, l #) = Exts.timesWord2# a b
+  in  Limb (C.select_word# l (Exts.not# 0##) (C.from_word_nonzero# h))
 {-# INLINE mul_s# #-}
 
 -- | Multiply-add-carry, computing a * b + m + c, returning the
