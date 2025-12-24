@@ -1527,7 +1527,7 @@ sqrt# a =
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
 exp (Montgomery b) (Wider e) =
-  let !one# = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+  let !o = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
       loop !r !_ !_ 0 = r
       loop !r !m !ex !n =
         let !(# ne, bit #) = WW.shr1_c# ex
@@ -1535,7 +1535,7 @@ exp (Montgomery b) (Wider e) =
             !nr = select# r candidate bit
             !nm = sqr# m
         in  loop nr nm ne (n - 1)
-  in  Montgomery (loop one# b e (256 :: Word))
+  in  Montgomery (loop o b e (256 :: Word))
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# = WW.odd#

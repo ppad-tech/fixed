@@ -951,8 +951,8 @@ inv (Montgomery w) = Montgomery (inv# w)
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
 exp (Montgomery b) (Wider e) =
-  let !one# = (# Limb 0x402DA1732FC9BEBF##, Limb 0x4551231950B75FC4##
-              ,  Limb 0x0000000000000001##, Limb 0x0000000000000000## #)
+  let !o = (# Limb 0x402DA1732FC9BEBF##, Limb 0x4551231950B75FC4##
+           ,  Limb 0x0000000000000001##, Limb 0x0000000000000000## #)
       loop !r !_ !_ 0 = r
       loop !r !m !ex !n =
         let !(# ne, bit #) = WW.shr1_c# ex
@@ -960,7 +960,7 @@ exp (Montgomery b) (Wider e) =
             !nr = select# r candidate bit
             !nm = sqr# m
         in  loop nr nm ne (n - 1)
-  in  Montgomery (loop one# b e (256 :: Word))
+  in  Montgomery (loop o b e (256 :: Word))
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# = WW.odd#
