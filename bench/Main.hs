@@ -99,8 +99,8 @@ sqrt =
   let !c2 = 2 :: C.Montgomery
       !c_big = (2 ^ 255 - 19) :: C.Montgomery
   in  bgroup "sqrt" [
-          bench "curve:  sqrt M(2)" $ nf C.sqrt c2
-        , bench "curve:  sqrt M(2 ^ 255 - 19)" $ nf C.sqrt c_big
+          bench "curve:  sqrt M(2)" $ nf C.sqrt_vartime c2
+        , bench "curve:  sqrt M(2 ^ 255 - 19)" $ nf C.sqrt_vartime c_big
         ]
 
 exp :: Benchmark
