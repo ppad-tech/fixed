@@ -54,6 +54,7 @@ module Numeric.Montgomery.Secp256k1.Curve (
   , sqrt_vartime
   , sqrt#
   , exp
+  , exp#
   , odd#
   , odd_vartime
   ) where
@@ -1526,7 +1527,13 @@ sqrt# a =
 --   >>> exp 2 10
 --   1024
 exp :: Montgomery -> Wider -> Montgomery
-exp (Montgomery b) (Wider e) =
+exp (Montgomery b) (Wider e) = Montgomery (exp# b e)
+
+exp#
+  :: (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+  -> (# Limb, Limb, Limb, Limb #)
+exp# b e =
   let !o = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
       loop !r !_ !_ 0 = r
       loop !r !m !ex !n =
@@ -1535,7 +1542,8 @@ exp (Montgomery b) (Wider e) =
             !nr = select# r candidate bit
             !nm = sqr# m
         in  loop nr nm ne (n - 1)
-  in  Montgomery (loop o b e (256 :: Word))
+  in  loop o b e (256 :: Word)
+{-# INLINE exp# #-}
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
 odd# = WW.odd#

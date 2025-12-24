@@ -506,9 +506,9 @@ add_o# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
 --   >>> add_o 1 (2 ^ (256 :: Word) - 1)
 --   (0,1)
 add_o
-  :: Wider
-  -> Wider
-  -> (Wider, Word)
+  :: Wider          -- ^ augend
+  -> Wider          -- ^ addend
+  -> (Wider, Word)  -- ^ (sum, carry bit)
 add_o (Wider a) (Wider b) =
   let !(# s, Limb c #) = add_o# a b
   in  (Wider s, W# c)
