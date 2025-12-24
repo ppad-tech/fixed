@@ -960,13 +960,14 @@ exp#
 exp# b e =
   let !o = (# Limb 0x402DA1732FC9BEBF##, Limb 0x4551231950B75FC4##
            ,  Limb 0x0000000000000001##, Limb 0x0000000000000000## #)
-      loop !r !_ !_ 0 = r
-      loop !r !m !ex !n =
-        let !(# ne, bit #) = WW.shr1_c# ex
-            !candidate = mul# r m
-            !nr = select# r candidate bit
-            !nm = sqr# m
-        in  loop nr nm ne (n - 1)
+      loop !r !m !ex n = case n of
+        0 -> r
+        _ ->
+          let !(# ne, bit #) = WW.shr1_c# ex
+              !candidate = mul# r m
+              !nr = select# r candidate bit
+              !nm = sqr# m
+          in  loop nr nm ne (n - 1)
   in  loop o b e (256 :: Word)
 {-# INLINE exp# #-}
 
