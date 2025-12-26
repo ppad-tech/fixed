@@ -124,9 +124,9 @@ sqrt :: Weigh ()
 sqrt =
   let !c2 = 2 :: C.Montgomery
       !c_big = (2 ^ 255 - 19) :: C.Montgomery
-  in  wgroup "sqrt" $ do
-        func "curve:  sqrt M(2)" C.sqrt_vartime c2
-        func "curve:  sqrt M(2 ^ 255 - 19)" C.sqrt_vartime c_big
+  in  wgroup "sqrt_vartime" $ do
+        func "curve:  sqrt_vartime M(2)" C.sqrt_vartime c2
+        func "curve:  sqrt_vartime M(2 ^ 255 - 19)" C.sqrt_vartime c_big
 
 redc :: Weigh ()
 redc =

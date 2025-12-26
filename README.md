@@ -163,9 +163,9 @@ sqrt
 ```
 
 Note that 'sqrt' for example allocates 16 additional bytes as it returns
-a value of type 'Maybe Montgomery', which involves using either a Just
-or Nothing constructor (the analogous function in the unboxed API,
-'sqrt#', avoids allocation by returning an unboxed sum).
+a value of type 'Maybe Montgomery', which involves allocating a Just
+constructor and a pointer to its payload (the analogous function in the
+unboxed API, 'sqrt#', avoids allocation by returning an unboxed sum).
 
 You can compile with GHC's LLVM backend and filter on specific
 benchmarks via e.g.:
