@@ -155,17 +155,18 @@ exp
   curve:  M(2) ^ 2                       40    0
   curve:  M(2) ^ (2 ^ 255 - 19)          40    0
 
-sqrt
+sqrt_vartime
 
-  Case                          Allocated  GCs
-  curve:  sqrt M(2)                    56    0
-  curve:  sqrt M(2 ^ 255 - 19)         56    0
+  Case                                  Allocated  GCs
+  curve:  sqrt_vartime M(2)                    56    0
+  curve:  sqrt_vartime M(2 ^ 255 - 19)         56    0
 ```
 
-Note that 'sqrt' for example allocates 16 additional bytes as it returns
-a value of type 'Maybe Montgomery', which involves allocating a Just
-constructor and a pointer to its payload (the analogous function in the
-unboxed API, 'sqrt#', avoids allocation by returning an unboxed sum).
+Note that `sqrt_vartime` for example allocates 16 additional bytes
+as it returns a value of type 'Maybe Montgomery', which involves
+potentially allocating a Just constructor and a pointer to its payload
+(the analogous function in the unboxed API, 'sqrt#', avoids allocation
+by returning an unboxed sum).
 
 You can compile with GHC's LLVM backend and filter on specific
 benchmarks via e.g.:
