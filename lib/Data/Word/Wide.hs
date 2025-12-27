@@ -25,6 +25,10 @@ module Data.Word.Wide (
   , to_vartime
   , from_vartime
 
+  -- * Constant-time selection
+  , select
+  , select#
+
   -- * Bit Manipulation
   , or
   , or#
@@ -36,6 +40,7 @@ module Data.Word.Wide (
   , not#
 
   -- * Comparison
+  , eq
   , eq_vartime
 
   -- * Arithmetic
@@ -131,10 +136,42 @@ from_vartime (Wide (# Limb a, Limb b #)) =
 
 -- comparison -----------------------------------------------------------------
 
+-- | Compare 'Wide' words for equality in constant time.
+eq :: Wide -> Wide -> C.Choice
+eq (Wide (# Limb a0, Limb a1 #)) (Wide (# Limb b0, Limb b1 #)) =
+  C.eq_wide# (# a0, a1 #) (# b0, b1 #)
+
 -- | Compare 'Wide' words for equality in variable time.
 eq_vartime :: Wide -> Wide -> Bool
 eq_vartime (Wide (# Limb a0, Limb b0 #)) (Wide (# Limb a1, Limb b1 #)) =
   isTrue# (andI# (eqWord# a0 a1) (eqWord# b0 b1))
+
+-- constant-time selection-----------------------------------------------------
+
+select#
+  :: (# Limb, Limb #) -- ^ a
+  -> (# Limb, Limb #) -- ^ b
+  -> C.Choice         -- ^ c
+  -> (# Limb, Limb #) -- ^ result
+select# a b c =
+  let !(# Limb a0, Limb a1 #) = a
+      !(# Limb b0, Limb b1 #) = b
+      !(# w0, w1 #) =
+        C.select_wide# (# a0, a1 #) (# b0, b1 #) c
+  in  (# Limb w0, Limb w1 #)
+{-# INLINE select# #-}
+
+-- | Return a if c is truthy, otherwise return b.
+--
+--   >>> import qualified Data.Choice as C
+--   >>> select 0 1 (C.true# ())
+--   1
+select
+  :: Wide     -- ^ a
+  -> Wide     -- ^ b
+  -> C.Choice -- ^ c
+  -> Wide     -- ^ result
+select (Wide a) (Wide b) c = Wide (select# a b c)
 
 -- bits -----------------------------------------------------------------------
 

@@ -165,7 +165,7 @@ lt#
   -> C.Choice
 lt# a b =
   let !(# _, Limb bor #) = sub_b# a b
-  in  C.from_word_mask# bor
+  in  C.from_full_mask# bor
 {-# INLINE lt# #-}
 
 -- | Constant-time less-than comparison between 'Wider' values.
@@ -184,7 +184,7 @@ gt#
   -> C.Choice
 gt# a b =
   let !(# _, Limb bor #) = sub_b# b a
-  in  C.from_word_mask# bor
+  in  C.from_full_mask# bor
 {-# INLINE gt# #-}
 
 -- | Constant-time greater-than comparison between 'Wider' values.
@@ -314,7 +314,7 @@ shr1_c# (# w0, w1, w2, w3 #) =
       !(# s0, c0 #) = (# L.shr# w0 1#, L.shl# w0 s #)
       !r0           = L.or# s0 c1
       !(Limb w)     = L.shr# c0 s
-  in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
+  in  (# (# r0, r1, r2, r3 #), C.from_bit# w #)
 {-# INLINE shr1_c# #-}
 
 -- | Constant-time 1-bit shift-right with carry, with a 'Choice'
@@ -349,7 +349,7 @@ shl1_c# (# w0, w1, w2, w3 #) =
       !(# s3, c3 #) = (# L.shl# w3 1#, L.shr# w3 s #)
       !r3           = L.or# s3 c2
       !(Limb w)     = L.shl# c3 s
-  in  (# (# r0, r1, r2, r3 #), C.from_word# w #)
+  in  (# (# r0, r1, r2, r3 #), C.from_bit# w #)
 {-# INLINE shl1_c# #-}
 
 -- | Constant-time 1-bit shift-left with carry, with a 'Choice' indicating
@@ -762,7 +762,7 @@ sqr (Wider w) =
   in  (Wider l, Wider h)
 
 odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
-odd# (# Limb w, _, _, _ #) = C.from_word# (Exts.and# w 1##)
+odd# (# Limb w, _, _, _ #) = C.from_bit# (Exts.and# w 1##)
 {-# INLINE odd# #-}
 
 -- | Check if a 'Wider' is odd, returning a 'Choice'.

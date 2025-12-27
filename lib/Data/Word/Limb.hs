@@ -317,7 +317,7 @@ sub_s#
   -> Limb -- ^ difference
 sub_s# (Limb m) (Limb n) =
   let !(# d, b #) = Exts.subWordC# m n
-      !borrow = C.from_word# (Exts.int2Word# b)
+      !borrow = C.from_bit# (Exts.int2Word# b)
   in  Limb (C.select_word# d 0## borrow)
 {-# INLINE sub_s# #-}
 
