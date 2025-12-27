@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE UnboxedSums #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -66,7 +67,7 @@ import qualified Data.Word.Limb as L
 import qualified Data.Word.Wide as W
 import Data.Word.Wider (Wider(..))
 import qualified Data.Word.Wider as WW
-import GHC.Exts (Word(..))
+import GHC.Exts (Word(..), Word#)
 import Prelude hiding (or, and, not, sqrt, exp)
 
 -- montgomery arithmetic, specialized to the secp256k1 field prime modulus
@@ -80,7 +81,7 @@ import Prelude hiding (or, and, not, sqrt, exp)
 --   1
 --   >>> putStrLn (render one)
 --   (4294968273, 0, 0, 0)
-data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
+data Montgomery = Montgomery !Limb4
 
 -- | Render a 'Montgomery' value as a 'String', showing its individual
 --   'Limb's.
@@ -88,7 +89,7 @@ data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 --   >>> putStrLn (render 1)
 --   (4294968273, 0, 0, 0)
 render :: Montgomery -> String
-render (Montgomery (# Limb a, Limb b, Limb c, Limb d #)) =
+render (Montgomery (L4 a b c d)) =
      "(" <> show (W# a) <> ", " <> show (W# b) <> ", "
   <> show (W# c) <> ", " <> show (W# d) <> ")"
 
@@ -116,8 +117,16 @@ instance NFData Montgomery where
 
 -- utilities ------------------------------------------------------------------
 
+type Limb2 = (# Limb, Limb #)
+
+type Limb4 = (# Limb, Limb, Limb, Limb #)
+
+pattern L4 :: Word# -> Word# -> Word# -> Word# -> Limb4
+pattern L4 w0 w1 w2 w3 = (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+{-# COMPLETE L4 #-}
+
 -- Wide wrapping addition, when addend is only a limb.
-wadd_w# :: (# Limb, Limb #) -> Limb -> (# Limb, Limb #)
+wadd_w# :: Limb2 -> Limb -> Limb2
 wadd_w# (# x_lo, x_hi #) y_lo =
   let !(# s0, c0 #) = L.add_o# x_lo y_lo
       !(# s1, _ #) = L.add_o# x_hi c0
@@ -125,7 +134,7 @@ wadd_w# (# x_lo, x_hi #) y_lo =
 {-# INLINE wadd_w# #-}
 
 -- Truncate a wide word to a 'Limb'.
-lo :: (# Limb, Limb #) -> Limb
+lo :: Limb2 -> Limb
 lo (# l, _ #) = l
 {-# INLINE lo #-}
 
@@ -133,10 +142,8 @@ lo (# l, _ #) = l
 
 -- | Constant-time equality comparison.
 eq :: Montgomery -> Montgomery -> C.Choice
-eq
-  (Montgomery (# Limb a0, Limb a1, Limb a2, Limb a3 #))
-  (Montgomery (# Limb b0, Limb b1, Limb b2, Limb b3 #))
-  = C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
+eq (Montgomery (L4 a0 a1 a2 a3)) (Montgomery (L4 b0 b1 b2 b3)) =
+  C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
 {-# INLINE eq #-}
 
 -- | Variable-time equality comparison.
@@ -147,9 +154,9 @@ eq_vartime (Montgomery (Wider -> a)) (Montgomery (Wider -> b)) =
 -- innards --------------------------------------------------------------------
 
 redc_inner#
-  :: (# Limb, Limb, Limb, Limb #)             -- ^ upper limbs
-  -> (# Limb, Limb, Limb, Limb #)             -- ^ lower limbs
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ upper limbs, meta-carry
+  :: Limb4             -- ^ upper limbs
+  -> Limb4             -- ^ lower limbs
+  -> (# Limb4, Limb #) -- ^ upper limbs, meta-carry
 redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) =
   let !(# m0, m1, m2, m3 #) =
         (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
@@ -184,13 +191,13 @@ redc_inner# (# u0, u1, u2, u3 #) (# l0, l1, l2, l3 #) =
 
 -- | Montgomery reduction.
 redc#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ lower limbs
-  -> (# Limb, Limb, Limb, Limb #) -- ^ upper limbs
-  -> (# Limb, Limb, Limb, Limb #) -- ^ result
+  :: Limb4 -- ^ lower limbs
+  -> Limb4 -- ^ upper limbs
+  -> Limb4 -- ^ result
 redc# l u =
   let -- field prime
-      !m = (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-           ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+      !m = L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+              0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
       !(# nu, mc #) = redc_inner# u l
   in  WW.sub_mod_c# nu mc m m
 {-# INLINE redc# #-}
@@ -208,12 +215,12 @@ redc (Montgomery l) (Montgomery u) =
   in  Montgomery res
 
 retr_inner#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ value in montgomery form
-  -> (# Limb, Limb, Limb, Limb #) -- ^ retrieved value
+  :: Limb4 -- ^ value in montgomery form
+  -> Limb4 -- ^ retrieved value
 retr_inner# (# x0, x1, x2, x3 #) =
   let !(# m0, m1, m2, m3 #) =
-        (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-        ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+        L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+           0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
       !n                = Limb 0xD838091DD2253531##
       !u_0              = L.mul_w# x0 n
       !(# _, o0 #)      = L.mac# u_0 m0 x0 (Limb 0##)
@@ -239,8 +246,8 @@ retr_inner# (# x0, x1, x2, x3 #) =
 {-# INLINE retr_inner# #-}
 
 retr#
-  :: (# Limb, Limb, Limb, Limb #) -- montgomery form
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4 -- montgomery form
+  -> Limb4
 retr# f = retr_inner# f
 {-# INLINE retr# #-}
 
@@ -255,13 +262,13 @@ retr (Montgomery f) =
 
 -- | Montgomery multiplication (FIOS), without conditional subtract.
 mul_inner#
-  :: (# Limb, Limb, Limb, Limb #)              -- ^ x
-  -> (# Limb, Limb, Limb, Limb #)              -- ^ y
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #)  -- ^ product, meta-carry
+  :: Limb4              -- ^ x
+  -> Limb4              -- ^ y
+  -> (# Limb4, Limb #)  -- ^ product, meta-carry
 mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
   let !(# m0, m1, m2, m3 #) =
-        (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-        ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+        L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+           0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
       !n                           = Limb 0xD838091DD2253531##
       !axy0                        = L.mul_c# x0 y0
       !u0                          = L.mul_w# (lo axy0) n
@@ -335,13 +342,13 @@ mul_inner# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
 {-# INLINE mul_inner# #-}
 
 mul#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
+  -> Limb4
 mul# a b =
   let -- field prime
-      !m = (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-           ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+      !m = L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+              0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
       !(# nu, mc #) = mul_inner# a b
   in  WW.sub_mod_c# nu mc m m
 {-# NOINLINE mul# #-} -- cannot be inlined without exploding comp time
@@ -360,11 +367,10 @@ mul
 mul (Montgomery a) (Montgomery b) = Montgomery (mul# a b)
 
 to#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ integer
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4 -- ^ integer
+  -> Limb4
 to# x =
-  let -- r^2 mod m
-      !r2 = (# Limb 0x000007A2000E90A1##, Limb 0x1##, Limb 0##, Limb 0## #)
+  let !r2 = L4 0x000007A2000E90A1## 0x1## 0## 0## -- r^2 mod m
   in  mul# x r2
 {-# INLINE to# #-}
 
@@ -379,13 +385,13 @@ from :: Montgomery -> Wider
 from = retr
 
 add#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ augend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ addend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ sum
+  :: Limb4 -- ^ augend
+  -> Limb4 -- ^ addend
+  -> Limb4 -- ^ sum
 add# a b =
   let -- field prime
-      !m = (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-           ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+      !m = L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+              0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
   in  WW.add_mod# a b m
 {-# INLINE add# #-}
 
@@ -400,13 +406,13 @@ add :: Montgomery -> Montgomery -> Montgomery
 add (Montgomery a) (Montgomery b) = Montgomery (add# a b)
 
 sub#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ difference
+  :: Limb4 -- ^ minuend
+  -> Limb4 -- ^ subtrahend
+  -> Limb4 -- ^ difference
 sub# a b =
   let -- field prime
-      !m = (# Limb 0xFFFFFFFEFFFFFC2F##, Limb 0xFFFFFFFFFFFFFFFF##
-           ,  Limb 0xFFFFFFFFFFFFFFFF##, Limb 0xFFFFFFFFFFFFFFFF## #)
+      !m = L4 0xFFFFFFFEFFFFFC2F## 0xFFFFFFFFFFFFFFFF##
+              0xFFFFFFFFFFFFFFFF## 0xFFFFFFFFFFFFFFFF##
   in  WW.sub_mod# a b m
 {-# INLINE sub# #-}
 
@@ -421,9 +427,9 @@ sub :: Montgomery -> Montgomery -> Montgomery
 sub (Montgomery a) (Montgomery b) = Montgomery (sub# a b)
 
 neg#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ argument
-  -> (# Limb, Limb, Limb, Limb #) -- ^ modular negation
-neg# a = sub# (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) a
+  :: Limb4 -- ^ argument
+  -> Limb4 -- ^ modular negation
+neg# a = sub# (L4 0## 0## 0## 0##) a
 {-# INLINE neg# #-}
 
 -- | Additive inverse in the Montgomery domain.
@@ -438,7 +444,7 @@ neg# a = sub# (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #) a
 neg :: Montgomery -> Montgomery
 neg (Montgomery a) = Montgomery (neg# a)
 
-sqr# :: (# Limb, Limb, Limb, Limb #) -> (# Limb, Limb, Limb, Limb #)
+sqr# :: Limb4 -> Limb4
 sqr# a =
   let !(# l, h #) = WW.sqr# a
   in  redc# l h
@@ -457,19 +463,19 @@ sqr (Montgomery a) = Montgomery (mul# a a)
 
 -- | Zero (the additive unit) in the Montgomery domain.
 zero :: Montgomery
-zero = Montgomery (# Limb 0##, Limb 0##, Limb 0##, Limb 0## #)
+zero = Montgomery (L4 0## 0## 0## 0##)
 
 -- | One (the multiplicative unit) in the Montgomery domain.
 one :: Montgomery
-one = Montgomery (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+one = Montgomery (L4 0x1000003D1## 0## 0## 0##)
 
 -- generated by etc/generate_inv.sh
 inv#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
 inv# a =
   let -- montgomery 'one'
-      !t0 = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+      !t0 = L4 0x1000003D1## 0## 0## 0##
       !t1 = sqr# t0
       !t2 = mul# a t1
       !t3 = sqr# t2
@@ -1009,10 +1015,10 @@ sqrt_vartime (Montgomery n) = case sqrt# n of
 
 -- generated by etc/generate_sqrt.sh
 sqrt#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# (# Limb, Limb, Limb, Limb #), C.Choice #)
+  :: Limb4
+  -> (# Limb4, C.Choice #)
 sqrt# a =
-  let !t0 = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+  let !t0 = L4 0x1000003D1## 0## 0## 0##
       !t1 = sqr# t0
       !t2 = sqr# t1
       !t3 = sqr# t2
@@ -1530,11 +1536,11 @@ exp :: Montgomery -> Wider -> Montgomery
 exp (Montgomery b) (Wider e) = Montgomery (exp# b e)
 
 exp#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
+  -> Limb4
 exp# b e =
-  let !o = (# Limb 0x1000003D1##, Limb 0##, Limb 0##, Limb 0## #)
+  let !o = L4 0x1000003D1## 0## 0## 0##
       loop !r !m !ex n = case n of
         0 -> r
         _ ->
@@ -1546,7 +1552,7 @@ exp# b e =
   in  loop o b e (256 :: Word)
 {-# INLINE exp# #-}
 
-odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
+odd# :: Limb4 -> C.Choice
 odd# = WW.odd#
 {-# INLINE odd# #-}
 
@@ -1567,10 +1573,10 @@ odd_vartime (Montgomery m) = C.decide (odd# m)
 -- constant-time selection ----------------------------------------------------
 
 select#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ a
-  -> (# Limb, Limb, Limb, Limb #) -- ^ b
+  :: Limb4 -- ^ a
+  -> Limb4 -- ^ b
   -> C.Choice                     -- ^ c
-  -> (# Limb, Limb, Limb, Limb #) -- ^ result
+  -> Limb4 -- ^ result
 select# = WW.select#
 {-# INLINE select# #-}
 
