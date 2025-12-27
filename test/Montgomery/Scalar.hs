@@ -41,7 +41,7 @@ mm :: S.Montgomery
 mm = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 repr :: H.Assertion
-repr = H.assertBool mempty (W.eq_vartime 0 (S.from_vartime mm))
+repr = H.assertBool mempty (W.eq_vartime 0 (S.from mm))
 
 add_case :: String -> W.Wider -> W.Wider -> W.Wider -> H.Assertion
 add_case t a b s = do
@@ -49,7 +49,7 @@ add_case t a b s = do
     ((W.from_vartime a + W.from_vartime b) `mod` W.from_vartime m)
     (W.from_vartime s)
   H.assertBool t
-    (W.eq_vartime s (S.from_vartime (S.to_vartime a + S.to_vartime b)))
+    (W.eq_vartime s (S.from (S.to a + S.to b)))
 
 add :: H.Assertion
 add = do
@@ -73,7 +73,7 @@ sub_case t b a d = do
     ((W.from_vartime b - W.from_vartime a) `mod` W.from_vartime m)
     (W.from_vartime d)
   H.assertBool t
-    (W.eq_vartime d (S.from_vartime (S.to_vartime b - S.to_vartime a)))
+    (W.eq_vartime d (S.from (S.to b - S.to a)))
 
 sub :: H.Assertion
 sub = do
@@ -96,7 +96,7 @@ mul_case t a b p = do
     ((W.from_vartime a * W.from_vartime b) `mod` W.from_vartime m)
     (W.from_vartime p)
   H.assertBool t
-    (W.eq_vartime p (S.from_vartime (S.to_vartime a * S.to_vartime b)))
+    (W.eq_vartime p (S.from (S.to a * S.to b)))
 
 mul :: H.Assertion
 mul = do
@@ -122,47 +122,47 @@ instance Q.Arbitrary W.Wider where
   arbitrary = fmap W.to_vartime Q.arbitrary
 
 instance Q.Arbitrary S.Montgomery where
-  arbitrary = fmap S.to_vartime Q.arbitrary
+  arbitrary = fmap S.to Q.arbitrary
 
 add_matches :: W.Wider -> W.Wider -> Bool
 add_matches a b =
-  let ma = S.to_vartime a
-      mb = S.to_vartime b
+  let ma = S.to a
+      mb = S.to b
       ia = W.from_vartime a
       ib = W.from_vartime b
       im = W.from_vartime m
   in  W.eq_vartime
         (W.to_vartime ((ia + ib) `mod` im))
-        (S.from_vartime (ma + mb))
+        (S.from (ma + mb))
 
 mul_matches :: W.Wider -> W.Wider -> Bool
 mul_matches a b =
-  let ma = S.to_vartime a
-      mb = S.to_vartime b
+  let ma = S.to a
+      mb = S.to b
       ia = W.from_vartime a
       ib = W.from_vartime b
       im = W.from_vartime m
   in  W.eq_vartime
         (W.to_vartime ((ia * ib) `mod` im))
-        (S.from_vartime (ma * mb))
+        (S.from (ma * mb))
 
 sqr_matches :: W.Wider -> Bool
 sqr_matches a =
-  let ma = S.to_vartime a
+  let ma = S.to a
       ia = W.from_vartime a
       im = W.from_vartime m
   in  W.eq_vartime
         (W.to_vartime ((ia * ia) `mod` im))
-        (S.from_vartime (S.sqr ma))
+        (S.from (S.sqr ma))
 
 exp_matches :: S.Montgomery -> W.Wider -> Bool
 exp_matches a b =
-  let ia = W.from_vartime (S.from_vartime a)
+  let ia = W.from_vartime (S.from a)
       nb = fromIntegral (W.from_vartime b)
       nm = fromIntegral (W.from_vartime m)
   in  W.eq_vartime
         (W.to_vartime (modexp ia nb nm))
-        (S.from_vartime (S.exp a b))
+        (S.from (S.exp a b))
 
 inv_valid :: Q.NonZero S.Montgomery -> Bool
 inv_valid (Q.NonZero s) = S.eq_vartime (S.inv s * s) 1

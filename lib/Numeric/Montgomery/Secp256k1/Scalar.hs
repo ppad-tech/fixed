@@ -19,8 +19,8 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   -- * Montgomery form, secp256k1 scalar group order modulus
     Montgomery(..)
   , render
-  , to_vartime
-  , from_vartime
+  , to
+  , from
   , zero
   , one
 
@@ -81,7 +81,7 @@ import Prelude hiding (or, and, not, exp)
 data Montgomery = Montgomery !(# Limb, Limb, Limb, Limb #)
 
 instance Show Montgomery where
-  show = show . from_vartime
+  show = show . from
 
 -- | Render a 'Montgomery' value as a 'String', showing its individual
 --   'Limb's.
@@ -102,7 +102,7 @@ instance Num Montgomery where
   a * b = mul a b
   negate a = neg a
   abs = id
-  fromInteger = to_vartime . WW.to_vartime
+  fromInteger = to . WW.to_vartime
   signum (Montgomery (# l0, l1, l2, l3 #)) =
     let !(Limb l) = l0 `L.or#` l1 `L.or#` l2 `L.or#` l3
         !n = C.from_word_nonzero# l
@@ -367,14 +367,14 @@ to# x =
 {-# INLINE to# #-}
 
 -- | Convert a 'Wider' word to the Montgomery domain.
-to_vartime :: Wider -> Montgomery
-to_vartime (Wider x) = Montgomery (to# x)
+to :: Wider -> Montgomery
+to (Wider x) = Montgomery (to# x)
 
 -- | Retrieve a 'Montgomery' word from the Montgomery domain.
 --
 --   This function is a synonym for 'retr'.
-from_vartime :: Montgomery -> Wider
-from_vartime = retr
+from :: Montgomery -> Wider
+from = retr
 
 add#
   :: (# Limb, Limb, Limb, Limb #) -- ^ augend
