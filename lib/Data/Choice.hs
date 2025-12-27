@@ -12,6 +12,13 @@
 -- Maintainer: Jared Tobin <jared@ppad.tech>
 --
 -- Primitives for constant-time choice.
+--
+-- The 'Choice' type encodes truthy and falsy values as unboxed 'Word#'
+-- bit masks. You should convert it to a 'Bool' using 'decide' at the /end/
+-- of a computation that you want to run in constant time.
+--
+-- Use the standard logical primitives ('or', 'and', 'xor', 'not', eq') to
+-- manipulate "in-flight" 'Choice' values.
 
 module Data.Choice (
   -- * Choice
@@ -126,6 +133,12 @@ decide (Choice c) = Exts.isTrue# (Exts.neWord# c 0##)
 {-# INLINE decide #-}
 
 -- | Convert a 'Choice' to an unboxed 'Word#'.
+--
+--   This essentially "unboxes" the 'Choice' for direct manipulation.
+--
+--   >>> import qualified GHC.Exts as Exts
+--   >>> Exts.isTrue# (Exts.eqWord# 0## (to_word# (false# ())))
+--   True
 to_word# :: Choice -> Word#
 to_word# (Choice c) = Exts.and# c 1##
 {-# INLINE to_word# #-}
@@ -230,9 +243,9 @@ from_word_gt# x y = from_word_lt# y x
 
 -- | Logically negate a 'Choice'.
 --
---   >>> C.decide (C.not (C.true# ()))
+--   >>> decide (not (true# ()))
 --   False
---   >>> C.decide (C.not (C.false# ()))
+--   >>> decide (not (false# ()))
 --   True
 not :: Choice -> Choice
 not (Choice w) = Choice (Exts.not# w)
@@ -240,7 +253,7 @@ not (Choice w) = Choice (Exts.not# w)
 
 -- | Logical disjunction on 'Choice' values.
 --
---   >>> C.decide (C.or (C.true# ()) (C.false# ()))
+--   >>> decide (or (true# ()) (false# ()))
 --   True
 or :: Choice -> Choice -> Choice
 or (Choice w0) (Choice w1) = Choice (Exts.or# w0 w1)
@@ -248,7 +261,7 @@ or (Choice w0) (Choice w1) = Choice (Exts.or# w0 w1)
 
 -- | Logical conjunction on 'Choice' values.
 --
---   >>> C.decide (C.and (C.true# ()) (C.false# ()))
+--   >>> decide (and (true# ()) (false# ()))
 --   False
 and :: Choice -> Choice -> Choice
 and (Choice w0) (Choice w1) = Choice (Exts.and# w0 w1)
@@ -256,7 +269,7 @@ and (Choice w0) (Choice w1) = Choice (Exts.and# w0 w1)
 
 -- | Logical inequality on 'Choice' values.
 --
---   >>> C.decide (C.xor (C.true# ()) (C.false# ()))
+--   >>> decide (xor (true# ()) (false# ()))
 --   True
 xor :: Choice -> Choice -> Choice
 xor (Choice w0) (Choice w1) = Choice (Exts.xor# w0 w1)
@@ -264,7 +277,7 @@ xor (Choice w0) (Choice w1) = Choice (Exts.xor# w0 w1)
 
 -- | Logical inequality on 'Choice' values.
 --
---   >>> C.decide (C.ne (C.true# ()) (C.false# ()))
+--   >>> decide (ne (true# ()) (false# ()))
 --   True
 ne :: Choice -> Choice -> Choice
 ne c0 c1 = xor c0 c1
@@ -272,7 +285,7 @@ ne c0 c1 = xor c0 c1
 
 -- | Logical equality on 'Choice' values.
 --
---   >>> C.decide (C.eq (C.true# ()) (C.false# ()))
+--   >>> decide (eq (true# ()) (false# ()))
 --   False
 eq :: Choice -> Choice -> Choice
 eq c0 c1 = not (ne c0 c1)
