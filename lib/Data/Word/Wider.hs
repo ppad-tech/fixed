@@ -158,6 +158,7 @@ eq_vartime a b =
       && (L.eq_vartime# a1 b1)
       && (L.eq_vartime# a2 b2)
       && (L.eq_vartime# a3 b3)
+{-# INLINABLE eq_vartime #-}
 
 lt#
   :: Limb4
@@ -177,6 +178,7 @@ lt# a b =
 --   False
 lt :: Wider -> Wider -> C.Choice
 lt (Wider a) (Wider b) = lt# a b
+{-# INLINABLE lt #-}
 
 gt#
   :: Limb4
@@ -196,6 +198,7 @@ gt# a b =
 --   True
 gt :: Wider -> Wider -> C.Choice
 gt (Wider a) (Wider b) = gt# a b
+{-# INLINABLE gt #-}
 
 cmp#
   :: Limb4
@@ -242,6 +245,7 @@ cmp_vartime (Wider a) (Wider b) = case cmp# a b of
 --   1
 wider :: Word -> Word -> Word -> Word -> Wider
 wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider (L4 w0 w1 w2 w3)
+{-# INLINABLE wider #-}
 
 -- | Convert an 'Integer' to a 'Wider' word.
 --
@@ -256,6 +260,7 @@ to_vartime n =
       !(W# w2) = fi ((n .>>. (2 * size)) .&. mask)
       !(W# w3) = fi ((n .>>. (3 * size)) .&. mask)
   in  Wider (L4 w0 w1 w2 w3)
+{-# INLINABLE to_vartime #-}
 
 -- | Convert a 'Wider' word to an 'Integer'.
 --
@@ -269,6 +274,7 @@ from_vartime (Wider (L4 w0 w1 w2 w3)) =
     .|. fi (W# w0)
   where
     !size = B.finiteBitSize (0 :: Word)
+{-# INLINABLE from_vartime #-}
 
 -- constant-time selection-----------------------------------------------------
 
@@ -294,6 +300,7 @@ select
   -> C.Choice -- ^ c
   -> Wider    -- ^ result
 select (Wider a) (Wider b) c = Wider (select# a b c)
+{-# INLINABLE select #-}
 
 -- bit manipulation -----------------------------------------------------------
 
@@ -320,6 +327,7 @@ shr1_c :: Wider -> (# Wider, C.Choice #)
 shr1_c (Wider w) =
   let !(# r, c #) = shr1_c# w
   in  (# Wider r, c #)
+{-# INLINABLE shr1_c #-}
 
 -- | Constant-time 1-bit shift-right.
 --
@@ -331,6 +339,7 @@ shr1 :: Wider -> Wider
 shr1 (Wider w) =
   let !(# r, _ #) = shr1_c# w
   in  Wider r
+{-# INLINABLE shr1 #-}
 
 shl1_c#
   :: Limb4                 -- ^ argument
@@ -355,6 +364,7 @@ shl1_c :: Wider -> (# Wider, C.Choice #)
 shl1_c (Wider w) =
   let !(# r, c #) = shl1_c# w
   in  (# Wider r, c #)
+{-# INLINABLE shl1_c #-}
 
 -- | Constant-time 1-bit shift-left.
 --
@@ -366,6 +376,7 @@ shl1 :: Wider -> Wider
 shl1 (Wider w) =
   let !(# r, _ #) = shl1_c# w
   in  Wider r
+{-# INLINABLE shl1 #-}
 
 shr_limb#
   :: Limb4
@@ -394,6 +405,7 @@ shr_limb
 shr_limb (Wider w) (I# s) =
   let !(# r, _ #) = shr_limb# w s
   in  Wider r
+{-# INLINABLE shr_limb #-}
 
 shl_limb#
   :: Limb4
@@ -424,6 +436,7 @@ shl_limb
 shl_limb (Wider w) (I# s) =
   let !(# r, _ #) = shl_limb# w s
   in  Wider r
+{-# INLINABLE shl_limb #-}
 
 and_w#
   :: Limb4
@@ -444,6 +457,7 @@ and
   -> Wider -- ^ b
   -> Wider -- ^ a & b
 and (Wider a) (Wider b) = Wider (and_w# a b)
+{-# INLINABLE and #-}
 
 or_w#
   :: Limb4
@@ -464,6 +478,7 @@ or
   -> Wider -- ^ b
   -> Wider -- ^ a | b
 or (Wider a) (Wider b) = Wider (or_w# a b)
+{-# INLINABLE or #-}
 
 not#
   :: Limb4
@@ -481,6 +496,7 @@ not
   :: Wider -- ^ value
   -> Wider -- ^ not value
 not (Wider w) = Wider (not# w)
+{-# INLINABLE not #-}
 
 -- addition, subtraction ------------------------------------------------------
 
@@ -510,6 +526,7 @@ add_o
 add_o (Wider a) (Wider b) =
   let !(# s, Limb c #) = add_o# a b
   in  (Wider s, W# c)
+{-# INLINABLE add_o #-}
 
 add_w#
   :: Limb4 -- ^ augend
@@ -559,6 +576,7 @@ add_mod
   -> Wider -- ^ modulus
   -> Wider -- ^ sum
 add_mod (Wider a) (Wider b) (Wider m) = Wider (add_mod# a b m)
+{-# INLINABLE add_mod #-}
 
 sub_b#
   :: Limb4              -- ^ minuend
@@ -586,6 +604,7 @@ sub_b
 sub_b (Wider l) (Wider r) =
   let !(# d, Limb b #) = sub_b# l r
   in  (Wider d, W# b)
+{-# INLINABLE sub_b #-}
 
 -- | Wrapping subtraction, computing 'a - b' and returning the
 --   difference.
@@ -604,6 +623,7 @@ sub
 sub (Wider a) (Wider b) =
   let !(# d, _ #) = sub_b# a b
   in  Wider d
+{-# INLINABLE sub #-}
 
 sub_mod#
   :: Limb4 -- ^ minuend
@@ -631,6 +651,7 @@ sub_mod
   -> Wider
   -> Wider
 sub_mod (Wider a) (Wider b) (Wider p) = Wider (sub_mod# a b p)
+{-# INLINABLE sub_mod #-}
 
 -- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#
@@ -697,6 +718,7 @@ mul_c
 mul_c (Wider a) (Wider b) =
   let !(# l, h #) = mul_c# a b
   in  (Wider l, Wider h)
+{-# INLINABLE mul_c #-}
 
 -- | Wrapping multiplication.
 --
@@ -714,6 +736,7 @@ mul
 mul (Wider a) (Wider b) =
   let !(# l, _ #) = mul_c# a b
   in  Wider l
+{-# INLINABLE mul #-}
 
 sqr#
   :: Limb4
@@ -757,6 +780,7 @@ sqr :: Wider -> (Wider, Wider)
 sqr (Wider w) =
   let !(# l, h #) = sqr# w
   in  (Wider l, Wider h)
+{-# INLINABLE sqr #-}
 
 odd# :: Limb4 -> C.Choice
 odd# (# Limb w, _, _, _ #) = C.from_bit# (Exts.and# w 1##)
@@ -767,4 +791,5 @@ odd
   :: Wider
   -> C.Choice
 odd (Wider w) = odd# w
+{-# INLINABLE odd #-}
 
