@@ -112,8 +112,9 @@ instance NFData Wide where
 -- | Construct a 'Wide' word from low and high 'Word's.
 wide :: Word -> Word -> Wide
 wide (W# l) (W# h) = Wide (# Limb l, Limb h #)
+{-# INLINE wide #-}
 
--- | Convert an 'Integer' to a 'Wide' word.
+-- | Convert an 'Integer' to a 'Wide' word in variable time.
 --
 --   >>> to_vartime 1
 --   1
@@ -124,8 +125,9 @@ to_vartime n =
       !(W# w0) = fi (n .&. mask)
       !(W# w1) = fi ((n .>>. size) .&. mask)
   in  Wide (# Limb w0, Limb w1 #)
+{-# INLINABLE to_vartime #-}
 
--- | Convert a 'Wide' word to an 'Integer'.
+-- | Convert a 'Wide' word to an 'Integer' in variable time.
 --
 --   >>> from_vartime 1
 --   1
@@ -133,20 +135,43 @@ from_vartime :: Wide -> Integer
 from_vartime (Wide (# Limb a, Limb b #)) =
       fi (W# b) .<<. (B.finiteBitSize (0 :: Word))
   .|. fi (W# a)
+{-# INLINABLE from_vartime #-}
 
 -- comparison -----------------------------------------------------------------
 
 -- | Compare 'Wide' words for equality in constant time.
+--
+--   >>> import qualified Data.Chocie as C
+--   >>> C.decide (eq 1 1)
+--   True
 eq :: Wide -> Wide -> C.Choice
 eq (Wide (# Limb a0, Limb a1 #)) (Wide (# Limb b0, Limb b1 #)) =
   C.eq_wide# (# a0, a1 #) (# b0, b1 #)
+{-# INLINABLE eq #-}
 
 -- | Compare 'Wide' words for equality in variable time.
+--
+--   >>> eq_vartime 1 1
+--   True
 eq_vartime :: Wide -> Wide -> Bool
 eq_vartime (Wide (# Limb a0, Limb b0 #)) (Wide (# Limb a1, Limb b1 #)) =
   isTrue# (andI# (eqWord# a0 a1) (eqWord# b0 b1))
+{-# INLINABLE eq_vartime #-}
 
 -- constant-time selection-----------------------------------------------------
+
+-- | Return a if c is truthy, otherwise return b.
+--
+--   >>> import qualified Data.Choice as C
+--   >>> select 0 1 (C.true# ())
+--   1
+select
+  :: Wide     -- ^ a
+  -> Wide     -- ^ b
+  -> C.Choice -- ^ c
+  -> Wide     -- ^ result
+select (Wide a) (Wide b) c = Wide (select# a b c)
+{-# INLINABLE select #-}
 
 select#
   :: (# Limb, Limb #) -- ^ a
@@ -161,61 +186,63 @@ select# a b c =
   in  (# Limb w0, Limb w1 #)
 {-# INLINE select# #-}
 
--- | Return a if c is truthy, otherwise return b.
---
---   >>> import qualified Data.Choice as C
---   >>> select 0 1 (C.true# ())
---   1
-select
-  :: Wide     -- ^ a
-  -> Wide     -- ^ b
-  -> C.Choice -- ^ c
-  -> Wide     -- ^ result
-select (Wide a) (Wide b) c = Wide (select# a b c)
-
 -- bits -----------------------------------------------------------------------
 
 or_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
 or_w# (# a0, a1 #) (# b0, b1 #) = (# L.or# a0 b0, L.or# a1 b1 #)
 {-# INLINE or_w# #-}
 
+-- | Logical disjunction on 'Wide' words.
 or :: Wide -> Wide -> Wide
 or (Wide a) (Wide b) = Wide (or_w# a b)
+{-# INLINABLE or #-}
 
 and_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
 and_w# (# a0, a1 #) (# b0, b1 #) = (# L.and# a0 b0, L.and# a1 b1 #)
 {-# INLINE and_w# #-}
 
+-- | Logical conjunction on 'Wide' words.
 and :: Wide -> Wide -> Wide
 and (Wide a) (Wide b) = Wide (and_w# a b)
+{-# INLINABLE and #-}
 
 xor_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
 xor_w# (# a0, a1 #) (# b0, b1 #) = (# L.xor# a0 b0, L.xor# a1 b1 #)
 {-# INLINE xor_w# #-}
 
+-- | Logical exclusive-or on 'Wide' words.
 xor :: Wide -> Wide -> Wide
 xor (Wide a) (Wide b) = Wide (xor_w# a b)
+{-# INLINABLE xor #-}
 
 not_w# :: (# Limb, Limb #) -> (# Limb, Limb #)
 not_w# (# a0, a1 #) = (# L.not# a0, L.not# a1 #)
 {-# INLINE not_w# #-}
 
+-- | Logical negation on 'Wide' words.
 not :: Wide -> Wide
 not (Wide w) = Wide (not_w# w)
-{-# INLINE not #-}
+{-# INLINABLE not #-}
 
 -- negation -------------------------------------------------------------------
+
+-- | Wrapping negation on 'Wide' words, producing an additive inverse.
+--
+--   >>> neg 1
+--   340282366920938463463374607431768211455
+--   >>> 1 + neg 1
+--   >>> 0
+neg
+  :: Wide -- ^ argument
+  -> Wide -- ^ (wrapping) additive inverse
+neg (Wide w) = Wide (neg# w)
+{-# INLINABLE neg #-}
 
 neg#
   :: (# Limb, Limb #) -- ^ argument
   -> (# Limb, Limb #) -- ^ (wrapping) additive inverse
 neg# w = add_w# (not_w# w) (# Limb 1##, Limb 0## #)
 {-# INLINE neg# #-}
-
-neg
-  :: Wide -- ^ argument
-  -> Wide -- ^ (wrapping) additive inverse
-neg (Wide w) = Wide (neg# w)
 
 -- addition, subtraction ------------------------------------------------------
 
@@ -232,7 +259,7 @@ add_o# (# a0, a1 #) (# b0, b1 #) =
 {-# INLINE add_o# #-}
 
 -- | Overflowing addition on 'Wide' words, computing 'a + b', returning
---   the sum and carry.
+--   the sum and carry bit.
 add_o
   :: Wide         -- ^ augend
   -> Wide         -- ^ addend
