@@ -76,14 +76,14 @@ fi = fromIntegral
 
 -- wide words -----------------------------------------------------------------
 
-pattern Limb2
-  :: Word# -> Word#
-  -> (# Limb, Limb #)
-pattern Limb2 w0 w1 = (# Limb w0, Limb w1 #)
-{-# COMPLETE Limb2 #-}
+type Limb2 = (# Limb, Limb #)
+
+pattern L2 :: Word# -> Word# -> Limb2
+pattern L2 w0 w1 = (# Limb w0, Limb w1 #)
+{-# COMPLETE L2 #-}
 
 -- | Little-endian wide words.
-data Wide = Wide !(# Limb, Limb #)
+data Wide = Wide !Limb2
 
 instance Show Wide where
   show = show . from_vartime
@@ -102,7 +102,7 @@ instance Num Wide where
     let !(Limb l) = l0 `L.or#` l1
         !n = C.from_word_nonzero# l
         !b = C.to_word# n
-    in  Wide (Limb2 b 0##)
+    in  Wide (L2 b 0##)
 
 instance NFData Wide where
   rnf (Wide a) = case a of (# _, _ #) -> ()
@@ -174,21 +174,18 @@ select (Wide a) (Wide b) c = Wide (select# a b c)
 {-# INLINABLE select #-}
 
 select#
-  :: (# Limb, Limb #) -- ^ a
-  -> (# Limb, Limb #) -- ^ b
-  -> C.Choice         -- ^ c
-  -> (# Limb, Limb #) -- ^ result
-select# a b c =
-  let !(# Limb a0, Limb a1 #) = a
-      !(# Limb b0, Limb b1 #) = b
-      !(# w0, w1 #) =
-        C.select_wide# (# a0, a1 #) (# b0, b1 #) c
-  in  (# Limb w0, Limb w1 #)
+  :: Limb2    -- ^ a
+  -> Limb2    -- ^ b
+  -> C.Choice -- ^ c
+  -> Limb2    -- ^ result
+select# (L2 a0 a1) (L2 b0 b1) c =
+  let !(# w0, w1 #) = C.select_wide# (# a0, a1 #) (# b0, b1 #) c
+  in  L2 w0 w1
 {-# INLINE select# #-}
 
 -- bits -----------------------------------------------------------------------
 
-or_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
+or_w# :: Limb2 -> Limb2 -> Limb2
 or_w# (# a0, a1 #) (# b0, b1 #) = (# L.or# a0 b0, L.or# a1 b1 #)
 {-# INLINE or_w# #-}
 
@@ -197,7 +194,7 @@ or :: Wide -> Wide -> Wide
 or (Wide a) (Wide b) = Wide (or_w# a b)
 {-# INLINABLE or #-}
 
-and_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
+and_w# :: Limb2 -> Limb2 -> Limb2
 and_w# (# a0, a1 #) (# b0, b1 #) = (# L.and# a0 b0, L.and# a1 b1 #)
 {-# INLINE and_w# #-}
 
@@ -206,7 +203,7 @@ and :: Wide -> Wide -> Wide
 and (Wide a) (Wide b) = Wide (and_w# a b)
 {-# INLINABLE and #-}
 
-xor_w# :: (# Limb, Limb #) -> (# Limb, Limb #) -> (# Limb, Limb #)
+xor_w# :: Limb2 -> Limb2 -> Limb2
 xor_w# (# a0, a1 #) (# b0, b1 #) = (# L.xor# a0 b0, L.xor# a1 b1 #)
 {-# INLINE xor_w# #-}
 
@@ -215,7 +212,7 @@ xor :: Wide -> Wide -> Wide
 xor (Wide a) (Wide b) = Wide (xor_w# a b)
 {-# INLINABLE xor #-}
 
-not_w# :: (# Limb, Limb #) -> (# Limb, Limb #)
+not_w# :: Limb2 -> Limb2
 not_w# (# a0, a1 #) = (# L.not# a0, L.not# a1 #)
 {-# INLINE not_w# #-}
 
@@ -239,9 +236,9 @@ neg (Wide w) = Wide (neg# w)
 {-# INLINABLE neg #-}
 
 neg#
-  :: (# Limb, Limb #) -- ^ argument
-  -> (# Limb, Limb #) -- ^ (wrapping) additive inverse
-neg# w = add_w# (not_w# w) (# Limb 1##, Limb 0## #)
+  :: Limb2 -- ^ argument
+  -> Limb2 -- ^ (wrapping) additive inverse
+neg# w = add_w# (not_w# w) (L2 1## 0##)
 {-# INLINE neg# #-}
 
 -- addition, subtraction ------------------------------------------------------
@@ -249,9 +246,9 @@ neg# w = add_w# (not_w# w) (# Limb 1##, Limb 0## #)
 -- | Overflowing addition, computing 'a + b', returning the sum and a
 --   carry bit.
 add_o#
-  :: (# Limb, Limb #)              -- ^ augend
-  -> (# Limb, Limb #)              -- ^ addend
-  -> (# (# Limb, Limb #), Limb #)  -- ^ (# sum, carry bit #)
+  :: Limb2              -- ^ augend
+  -> Limb2              -- ^ addend
+  -> (# Limb2, Limb #)  -- ^ (# sum, carry bit #)
 add_o# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
@@ -270,9 +267,9 @@ add_o (Wide a) (Wide b) =
 
 -- | Wrapping addition, computing 'a + b'.
 add_w#
-  :: (# Limb, Limb #) -- ^ augend
-  -> (# Limb, Limb #) -- ^ addend
-  -> (# Limb, Limb #) -- ^ sum
+  :: Limb2 -- ^ augend
+  -> Limb2 -- ^ addend
+  -> Limb2 -- ^ sum
 add_w# a b =
   let !(# c, _ #) = add_o# a b
   in  c
@@ -285,9 +282,9 @@ add (Wide a) (Wide b) = Wide (add_w# a b)
 -- | Borrowing subtraction, computing 'a - b' and returning the
 --   difference with a borrow mask.
 sub_b#
-  :: (# Limb, Limb #)              -- ^ minuend
-  -> (# Limb, Limb #)              -- ^ subtrahend
-  -> (# (# Limb, Limb #), Limb #) -- ^ (# difference, borrow mask #)
+  :: Limb2              -- ^ minuend
+  -> Limb2              -- ^ subtrahend
+  -> (# Limb2, Limb #) -- ^ (# difference, borrow mask #)
 sub_b# (# a0, a1 #) (# b0, b1 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 (Limb 0##)
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
@@ -296,9 +293,9 @@ sub_b# (# a0, a1 #) (# b0, b1 #) =
 
 -- | Wrapping subtraction, computing 'a - b'.
 sub_w#
-  :: (# Limb, Limb #) -- ^ minuend
-  -> (# Limb, Limb #) -- ^ subtrahend
-  -> (# Limb, Limb #) -- ^ difference
+  :: Limb2 -- ^ minuend
+  -> Limb2 -- ^ subtrahend
+  -> Limb2 -- ^ difference
 sub_w# a b =
   let !(# c, _ #) = sub_b# a b
   in  c
@@ -312,9 +309,9 @@ sub (Wide a) (Wide b) = Wide (sub_w# a b)
 
 -- | Wrapping multiplication, computing 'a b'.
 mul_w#
-  :: (# Limb, Limb #) -- ^ multiplicand
-  -> (# Limb, Limb #) -- ^ multiplier
-  -> (# Limb, Limb #) -- ^ product
+  :: Limb2 -- ^ multiplicand
+  -> Limb2 -- ^ multiplier
+  -> Limb2 -- ^ product
 mul_w# (# a0, a1 #) (# b0, b1 #) =
   let !(# p0_lo, p0_hi #) = L.mul_c# a0 b0
       !(# p1_lo, _ #) = L.mul_c# a0 b1

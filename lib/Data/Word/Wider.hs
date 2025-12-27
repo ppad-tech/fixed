@@ -97,17 +97,17 @@ fi = fromIntegral
 
 -- wider words ----------------------------------------------------------------
 
-pattern Limb4
-  :: Word# -> Word# -> Word# -> Word#
-  -> (# Limb, Limb, Limb, Limb #)
-pattern Limb4 w0 w1 w2 w3 = (# Limb w0, Limb w1, Limb w2, Limb w3 #)
-{-# COMPLETE Limb4 #-}
+type Limb4 = (# Limb, Limb, Limb, Limb #)
+
+pattern L4 :: Word# -> Word# -> Word# -> Word# -> Limb4
+pattern L4 w0 w1 w2 w3 = (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+{-# COMPLETE L4 #-}
 
 -- | Little-endian wider words, consisting of four 'Limbs'.
 --
 --   >>> 1 :: Wider
 --   1
-data Wider = Wider !(# Limb, Limb, Limb, Limb #)
+data Wider = Wider !Limb4
 
 instance Show Wider where
   show = show . from_vartime
@@ -121,12 +121,12 @@ instance Num Wider where
   (*) = mul
   abs = id
   fromInteger = to_vartime
-  negate w = add (not w) (Wider (Limb4 1## 0## 0## 0##))
+  negate w = add (not w) (Wider (L4 1## 0## 0## 0##))
   signum (Wider (# l0, l1, l2, l3 #)) =
     let !(Limb l) = l0 `L.or#` l1 `L.or#` l2 `L.or#` l3
         !n = C.from_word_nonzero# l
         !b = C.to_word# n
-    in  Wider (Limb4 b 0## 0## 0##)
+    in  Wider (L4 b 0## 0## 0##)
 
 instance NFData Wider where
   rnf (Wider a) = case a of
@@ -135,12 +135,12 @@ instance NFData Wider where
 -- comparison -----------------------------------------------------------------
 
 eq#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
   -> C.Choice
 eq# a b =
-  let !(Limb4 a0 a1 a2 a3) = a
-      !(Limb4 b0 b1 b2 b3) = b
+  let !(L4 a0 a1 a2 a3) = a
+      !(L4 b0 b1 b2 b3) = b
   in  C.eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #)
 {-# INLINE eq# #-}
 
@@ -160,8 +160,8 @@ eq_vartime a b =
       && (L.eq_vartime# a3 b3)
 
 lt#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
   -> C.Choice
 lt# a b =
   let !(# _, Limb bor #) = sub_b# a b
@@ -179,8 +179,8 @@ lt :: Wider -> Wider -> C.Choice
 lt (Wider a) (Wider b) = lt# a b
 
 gt#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
   -> C.Choice
 gt# a b =
   let !(# _, Limb bor #) = sub_b# b a
@@ -198,8 +198,8 @@ gt :: Wider -> Wider -> C.Choice
 gt (Wider a) (Wider b) = gt# a b
 
 cmp#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
   -> Int#
 cmp# (# l0, l1, l2, l3 #) (# r0, r1, r2, r3 #) =
   let !(# w0, b0 #) = L.sub_b# r0 l0 (Limb 0##)
@@ -241,8 +241,7 @@ cmp_vartime (Wider a) (Wider b) = case cmp# a b of
 --   >>> wider 1 0 0 0
 --   1
 wider :: Word -> Word -> Word -> Word -> Wider
-wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider
-  (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+wider (W# w0) (W# w1) (W# w2) (W# w3) = Wider (L4 w0 w1 w2 w3)
 
 -- | Convert an 'Integer' to a 'Wider' word.
 --
@@ -256,14 +255,14 @@ to_vartime n =
       !(W# w1) = fi ((n .>>. size) .&. mask)
       !(W# w2) = fi ((n .>>. (2 * size)) .&. mask)
       !(W# w3) = fi ((n .>>. (3 * size)) .&. mask)
-  in  Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+  in  Wider (L4 w0 w1 w2 w3)
 
 -- | Convert a 'Wider' word to an 'Integer'.
 --
 --   >>> from_vartime 1
 --   1
 from_vartime :: Wider -> Integer
-from_vartime (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
+from_vartime (Wider (L4 w0 w1 w2 w3)) =
         fi (W# w3) .<<. (3 * size)
     .|. fi (W# w2) .<<. (2 * size)
     .|. fi (W# w1) .<<. size
@@ -274,16 +273,14 @@ from_vartime (Wider (# Limb w0, Limb w1, Limb w2, Limb w3 #)) =
 -- constant-time selection-----------------------------------------------------
 
 select#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ a
-  -> (# Limb, Limb, Limb, Limb #) -- ^ b
-  -> C.Choice                     -- ^ c
-  -> (# Limb, Limb, Limb, Limb #) -- ^ result
-select# a b c =
-  let !(# Limb a0, Limb a1, Limb a2, Limb a3 #) = a
-      !(# Limb b0, Limb b1, Limb b2, Limb b3 #) = b
-      !(# w0, w1, w2, w3 #) =
+  :: Limb4    -- ^ a
+  -> Limb4    -- ^ b
+  -> C.Choice -- ^ c
+  -> Limb4    -- ^ result
+select# (L4 a0 a1 a2 a3) (L4 b0 b1 b2 b3) c =
+  let !(# w0, w1, w2, w3 #) =
         C.select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) c
-  in  (# Limb w0, Limb w1, Limb w2, Limb w3 #)
+  in  L4 w0 w1 w2 w3
 {-# INLINE select# #-}
 
 -- | Return a if c is truthy, otherwise return b.
@@ -301,8 +298,8 @@ select (Wider a) (Wider b) c = Wider (select# a b c)
 -- bit manipulation -----------------------------------------------------------
 
 shr1_c#
-  :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
-  -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
+  :: Limb4                 -- ^ argument
+  -> (# Limb4, C.Choice #) -- ^ result, carry
 shr1_c# (# w0, w1, w2, w3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# s3, c3 #) = (# L.shr# w3 1#, L.shl# w3 s #)
@@ -336,8 +333,8 @@ shr1 (Wider w) =
   in  Wider r
 
 shl1_c#
-  :: (# Limb, Limb, Limb, Limb #)                 -- ^ argument
-  -> (# (# Limb, Limb, Limb, Limb #), C.Choice #) -- ^ result, carry
+  :: Limb4                 -- ^ argument
+  -> (# Limb4, C.Choice #) -- ^ result, carry
 shl1_c# (# w0, w1, w2, w3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# s0, c0 #) = (# L.shl# w0 1#, L.shr# w0 s #)
@@ -371,9 +368,9 @@ shl1 (Wider w) =
   in  Wider r
 
 shr_limb#
-  :: (# Limb, Limb, Limb, Limb #)
+  :: Limb4
   -> Int#
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #)
+  -> (# Limb4, Limb #)
 shr_limb# (# a0, a1, a2, a3 #) rs =
   let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
       !ls = size Exts.-# rs
@@ -399,9 +396,9 @@ shr_limb (Wider w) (I# s) =
   in  Wider r
 
 shl_limb#
-  :: (# Limb, Limb, Limb, Limb #)
+  :: Limb4
   -> Int#
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #)
+  -> (# Limb4, Limb #)
 shl_limb# (# a0, a1, a2, a3 #) ls =
   let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
       !rs = size Exts.-# ls
@@ -429,9 +426,9 @@ shl_limb (Wider w) (I# s) =
   in  Wider r
 
 and_w#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
+  -> Limb4
 and_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.and# a0 b0, L.and# a1 b1, L.and# a2 b2, L.and# a3 b3 #)
 {-# INLINE and_w# #-}
@@ -449,9 +446,9 @@ and
 and (Wider a) (Wider b) = Wider (and_w# a b)
 
 or_w#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
+  -> Limb4
 or_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.or# a0 b0, L.or# a1 b1, L.or# a2 b2, L.or# a3 b3 #)
 {-# INLINE or_w# #-}
@@ -469,8 +466,8 @@ or
 or (Wider a) (Wider b) = Wider (or_w# a b)
 
 not#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
+  :: Limb4
+  -> Limb4
 not# (# l0, l1, l2, l3 #) = (# L.not# l0, L.not# l1, L.not# l2, L.not# l3 #)
 {-# INLINE not# #-}
 
@@ -488,9 +485,9 @@ not (Wider w) = Wider (not# w)
 -- addition, subtraction ------------------------------------------------------
 
 add_o#
-  :: (# Limb, Limb, Limb, Limb #)             -- ^ augend
-  -> (# Limb, Limb, Limb, Limb #)             -- ^ addend
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# sum, carry bit #)
+  :: Limb4             -- ^ augend
+  -> Limb4             -- ^ addend
+  -> (# Limb4, Limb #) -- ^ (# sum, carry bit #)
 add_o# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.add_o# a0 b0
       !(# s1, c1 #) = L.add_c# a1 b1 c0
@@ -515,9 +512,9 @@ add_o (Wider a) (Wider b) =
   in  (Wider s, W# c)
 
 add_w#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ augend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ addend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ sum
+  :: Limb4 -- ^ augend
+  -> Limb4 -- ^ addend
+  -> Limb4 -- ^ sum
 add_w# a b =
   let !(# c, _ #) = add_o# a b
   in  c
@@ -538,10 +535,10 @@ add (Wider a) (Wider b) = Wider (add_w# a b)
 {-# INLINE add #-}
 
 add_mod#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ augend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ addend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
-  -> (# Limb, Limb, Limb, Limb #) -- ^ sum
+  :: Limb4 -- ^ augend
+  -> Limb4 -- ^ addend
+  -> Limb4 -- ^ modulus
+  -> Limb4 -- ^ sum
 add_mod# a b m =
   let !(# w, c #) = add_o# a b
   in  sub_mod_c# w c m m
@@ -564,9 +561,9 @@ add_mod
 add_mod (Wider a) (Wider b) (Wider m) = Wider (add_mod# a b m)
 
 sub_b#
-  :: (# Limb, Limb, Limb, Limb #)              -- ^ minuend
-  -> (# Limb, Limb, Limb, Limb #)              -- ^ subtrahend
-  -> (# (# Limb, Limb, Limb, Limb #), Limb #) -- ^ (# diff, borrow mask #)
+  :: Limb4              -- ^ minuend
+  -> Limb4              -- ^ subtrahend
+  -> (# Limb4, Limb #) -- ^ (# diff, borrow mask #)
 sub_b# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !(# s0, c0 #) = L.sub_b# a0 b0 (Limb 0##)
       !(# s1, c1 #) = L.sub_b# a1 b1 c0
@@ -609,10 +606,10 @@ sub (Wider a) (Wider b) =
   in  Wider d
 
 sub_mod#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
-  -> (# Limb, Limb, Limb, Limb #) -- ^ difference
+  :: Limb4 -- ^ minuend
+  -> Limb4 -- ^ subtrahend
+  -> Limb4 -- ^ modulus
+  -> Limb4 -- ^ difference
 sub_mod# a b (# p0, p1, p2, p3 #) =
   let !(# o, m #) = sub_b# a b
       !ba = (# L.and# p0 m, L.and# p1 m, L.and# p2 m, L.and# p3 m #)
@@ -637,11 +634,11 @@ sub_mod (Wider a) (Wider b) (Wider p) = Wider (sub_mod# a b p)
 
 -- | Modular subtraction with carry. Computes (# a, c #) - b mod m.
 sub_mod_c#
-  :: (# Limb, Limb, Limb, Limb #) -- ^ minuend
+  :: Limb4 -- ^ minuend
   -> Limb                         -- ^ carry bit
-  -> (# Limb, Limb, Limb, Limb #) -- ^ subtrahend
-  -> (# Limb, Limb, Limb, Limb #) -- ^ modulus
-  -> (# Limb, Limb, Limb, Limb #) -- ^ difference
+  -> Limb4 -- ^ subtrahend
+  -> Limb4 -- ^ modulus
+  -> Limb4 -- ^ difference
 sub_mod_c# a c b (# p0, p1, p2, p3 #) =
   let !(# (# o0, o1, o2, o3 #), bb #) = sub_b# a b
       !(# _, m #) = L.sub_b# c (Limb 0##) bb
@@ -652,9 +649,9 @@ sub_mod_c# a c b (# p0, p1, p2, p3 #) =
 -- multiplication -------------------------------------------------------------
 
 mul_c#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# Limb, Limb, Limb, Limb #)
-  -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
+  :: Limb4
+  -> Limb4
+  -> (# Limb4, Limb4 #)
 mul_c# (# x0, x1, x2, x3 #) (# y0, y1, y2, y3 #) =
   let !(# z0, c0_0 #)   = L.mac# x0 y0 (Limb 0##) (Limb 0##)
       !(# s1_0, c1_0 #) = L.mac# x0 y1 (Limb 0##) c0_0
@@ -719,8 +716,8 @@ mul (Wider a) (Wider b) =
   in  Wider l
 
 sqr#
-  :: (# Limb, Limb, Limb, Limb #)
-  -> (# (# Limb, Limb, Limb, Limb #), (# Limb, Limb, Limb, Limb #) #)
+  :: Limb4
+  -> (# Limb4, Limb4 #)
 sqr# (# x0, x1, x2, x3 #) =
   let !sh = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !(# q1_0, c1_0 #)  = L.mac# x1 x0 (Limb 0##) (Limb 0##)
@@ -761,7 +758,7 @@ sqr (Wider w) =
   let !(# l, h #) = sqr# w
   in  (Wider l, Wider h)
 
-odd# :: (# Limb, Limb, Limb, Limb #) -> C.Choice
+odd# :: Limb4 -> C.Choice
 odd# (# Limb w, _, _, _ #) = C.from_bit# (Exts.and# w 1##)
 {-# INLINE odd# #-}
 
