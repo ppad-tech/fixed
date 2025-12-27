@@ -1,3 +1,4 @@
+{-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnliftedNewtypes #-}
@@ -46,12 +47,12 @@ module Data.Choice (
   , from_wide_le#
 
   -- * Manipulation
-  , or#
-  , and#
-  , xor#
-  , not#
-  , ne#
-  , eq#
+  , or
+  , and
+  , xor
+  , not
+  , ne
+  , eq
 
   -- * Constant-time Selection
   , select_word#
@@ -67,6 +68,7 @@ module Data.Choice (
 import qualified Data.Bits as B
 import GHC.Exts (Word#, Int(..), Word(..))
 import qualified GHC.Exts as Exts
+import Prelude hiding (and, not, or)
 
 -- utilities ------------------------------------------------------------------
 
@@ -346,34 +348,34 @@ from_word_gt# x y = from_word_lt# y x
 -- manipulation ---------------------------------------------------------------
 
 -- | Logically negate a 'Choice'.
-not# :: Choice -> Choice
-not# (Choice w) = Choice (Exts.not# w)
-{-# INLINE not# #-}
+not :: Choice -> Choice
+not (Choice w) = Choice (Exts.not# w)
+{-# INLINE not #-}
 
 -- | Logical disjunction on 'Choice' values.
-or# :: Choice -> Choice -> Choice
-or# (Choice w0) (Choice w1) = Choice (Exts.or# w0 w1)
-{-# INLINE or# #-}
+or :: Choice -> Choice -> Choice
+or (Choice w0) (Choice w1) = Choice (Exts.or# w0 w1)
+{-# INLINE or #-}
 
 -- | Logical conjunction on 'Choice' values.
-and# :: Choice -> Choice -> Choice
-and# (Choice w0) (Choice w1) = Choice (Exts.and# w0 w1)
-{-# INLINE and# #-}
+and :: Choice -> Choice -> Choice
+and (Choice w0) (Choice w1) = Choice (Exts.and# w0 w1)
+{-# INLINE and #-}
 
 -- | Logical inequality on 'Choice' values.
-xor# :: Choice -> Choice -> Choice
-xor# (Choice w0) (Choice w1) = Choice (Exts.xor# w0 w1)
-{-# INLINE xor# #-}
+xor :: Choice -> Choice -> Choice
+xor (Choice w0) (Choice w1) = Choice (Exts.xor# w0 w1)
+{-# INLINE xor #-}
 
 -- | Logical inequality on 'Choice' values.
-ne# :: Choice -> Choice -> Choice
-ne# c0 c1 = xor# c0 c1
-{-# INLINE ne# #-}
+ne :: Choice -> Choice -> Choice
+ne c0 c1 = xor c0 c1
+{-# INLINE ne #-}
 
 -- | Logical equality on 'Choice' values.
-eq# :: Choice -> Choice -> Choice
-eq# c0 c1 = not# (ne# c0 c1)
-{-# INLINE eq# #-}
+eq :: Choice -> Choice -> Choice
+eq c0 c1 = not (ne c0 c1)
+{-# INLINE eq #-}
 
 -- constant-time selection ----------------------------------------------------
 

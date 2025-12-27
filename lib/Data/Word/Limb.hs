@@ -1,3 +1,4 @@
+{-# OPTIONS_HADDOCK prune #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NumericUnderscores #-}
@@ -98,7 +99,7 @@ ne#
   :: Limb
   -> Limb
   -> C.Choice
-ne# a b = C.not# (eq# a b)
+ne# a b = C.not (eq# a b)
 {-# INLINE ne# #-}
 
 ne_vartime#
