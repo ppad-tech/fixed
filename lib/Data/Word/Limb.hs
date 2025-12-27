@@ -14,6 +14,9 @@
 -- Maintainer: Jared Tobin <jared@ppad.tech>
 --
 -- The primitive 'Limb' type, as well as operations on it.
+--
+-- All operations run in constant time with respect to inputs, unless
+-- specifically indicated otherwise.
 
 module Data.Word.Limb (
   -- * Limb
@@ -79,7 +82,7 @@ render (Limb a) = show (Exts.W# a)
 
 -- comparison -----------------------------------------------------------------
 
--- | Equality comparison.
+-- | Constant-time equality comparison.
 eq#
   :: Limb
   -> Limb
@@ -87,6 +90,7 @@ eq#
 eq# (Limb a) (Limb b) = C.eq_word# a b
 {-# INLINE eq# #-}
 
+-- | Variable-time equality comparison.
 eq_vartime#
   :: Limb
   -> Limb
@@ -94,7 +98,7 @@ eq_vartime#
 eq_vartime# (Limb a) (Limb b) = Exts.isTrue# (Exts.eqWord# a b)
 {-# INLINE eq_vartime# #-}
 
--- | Inequality comparison.
+-- | Constant-time inequality comparison.
 ne#
   :: Limb
   -> Limb
@@ -102,6 +106,7 @@ ne#
 ne# a b = C.not (eq# a b)
 {-# INLINE ne# #-}
 
+-- | Variable-time inequality comparison.
 ne_vartime#
   :: Limb
   -> Limb
@@ -109,14 +114,14 @@ ne_vartime#
 ne_vartime# a b = not (eq_vartime# a b)
 {-# INLINE ne_vartime# #-}
 
--- | Comparison to zero.
+-- | Constant-time comparison to zero.
 nonzero#
   :: Limb
   -> C.Choice
 nonzero# (Limb a) = C.from_word_nonzero# a
 {-# INLINE nonzero# #-}
 
--- | Less than.
+-- | Constant-time less than comparison.
 lt#
   :: Limb
   -> Limb
@@ -124,7 +129,7 @@ lt#
 lt# (Limb a) (Limb b) = C.from_word_lt# a b
 {-# INLINE lt# #-}
 
--- | Greater than.
+-- | Constant-time greater than comparison.
 gt#
   :: Limb
   -> Limb
@@ -132,7 +137,7 @@ gt#
 gt# (Limb a) (Limb b) = C.from_word_gt# a b
 {-# INLINE gt# #-}
 
--- selection ------------------------------------------------------------------
+-- constant-time selection ----------------------------------------------------
 
 -- | Return a if c is truthy, otherwise return b.
 select#
@@ -195,10 +200,10 @@ bits#
 bits# (Limb a) =
   let !_BITS = B.finiteBitSize (0 :: Word)
       !zs = B.countLeadingZeros (Exts.W# a)
-  in  _BITS - zs -- XX unbox?
+  in  _BITS - zs
 {-# INLINE bits# #-}
 
--- | Bit-shift left.
+-- | Unchecked bit-shift left.
 shl#
   :: Limb       -- ^ limb
   -> Exts.Int#  -- ^ shift amount
@@ -206,7 +211,7 @@ shl#
 shl# (Limb w) s = Limb (Exts.uncheckedShiftL# w s)
 {-# INLINE shl# #-}
 
--- | Bit-shift left by 1, returning the result and carry.
+-- | Unchecked bit-shift left by 1, returning the result and carry.
 shl1#
   :: Limb
   -> (# Limb, Limb #)
@@ -217,7 +222,7 @@ shl1# (Limb w) =
   in  (# Limb r, Limb c #)
 {-# INLINE shl1# #-}
 
--- | Bit-shift right.
+-- | Unchecked logical bit-shift right.
 shr#
   :: Limb       -- ^ limb
   -> Exts.Int#  -- ^ shift amount
@@ -225,7 +230,7 @@ shr#
 shr# (Limb w) s = Limb (Exts.uncheckedShiftRL# w s)
 {-# INLINE shr# #-}
 
--- | Bit-shift right by 1, returning the result and carry.
+-- | Unchecked logical bit-shift right by 1, returning the result and carry.
 shr1#
   :: Limb
   -> (# Limb, Limb #)
