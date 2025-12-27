@@ -1,5 +1,8 @@
 # Changelog
 
+- 0.1.1 (2025-12-27)
+  * Contains miscellaneous hardening and API refinements to v0.1.1.
+
 - 0.1.0 (2025-12-21)
   * Initial release, supporting wide, wider, and secp256k1-related
     Montgomery-form words with supporting constant-time operations.
