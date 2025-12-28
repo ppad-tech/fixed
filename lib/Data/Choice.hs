@@ -23,9 +23,9 @@
 module Data.Choice (
   -- * Choice
     Choice
+  , decide
   , true#
   , false#
-  , decide
   , to_word#
 
   -- * Construction
