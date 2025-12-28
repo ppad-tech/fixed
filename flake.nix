@@ -26,7 +26,7 @@
         cabal = hpkgs.cabal-install;
         cc    = pkgs.stdenv.cc;
         ghc   = hpkgs.ghc;
-        llvm  = pkgs.llvmPackages_15.llvm;
+        llvm  = pkgs.llvmPackages_19.llvm;
       in
         {
           packages.default = hpkgs.${lib};
