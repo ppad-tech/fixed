@@ -65,28 +65,32 @@ import Prelude hiding (and, not, or)
 
 -- utilities ------------------------------------------------------------------
 
+type Limb2 = (# Word#, Word# #)
+
+type Limb4 = (# Word#, Word#, Word#, Word# #)
+
 -- wrapping negation
 neg_w# :: Word# -> Word#
 neg_w# w = Exts.plusWord# (Exts.not# w) 1##
 {-# INLINE neg_w# #-}
 
-hi# :: Word# -> (# Word#, Word# #)
+hi# :: Word# -> Limb2
 hi# w = (# 0##, w #)
 {-# INLINE hi# #-}
 
-lo# :: Word# -> (# Word#, Word# #)
+lo# :: Word# -> Limb2
 lo# w = (# w, 0## #)
 {-# INLINE lo# #-}
 
-or_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+or_w# :: Limb2 -> Limb2 -> Limb2
 or_w# (# a0, a1 #) (# b0, b1 #) = (# Exts.or# a0 b0, Exts.or# a1 b1 #)
 {-# INLINE or_w# #-}
 
-and_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+and_w# :: Limb2 -> Limb2 -> Limb2
 and_w# (# a0, a1 #) (# b0, b1 #) = (# Exts.and# a0 b0, Exts.and# a1 b1 #)
 {-# INLINE and_w# #-}
 
-xor_w# :: (# Word#, Word# #) -> (# Word#, Word# #) -> (# Word#, Word# #)
+xor_w# :: Limb2 -> Limb2 -> Limb2
 xor_w# (# a0, a1 #) (# b0, b1 #) = (# Exts.xor# a0 b0, Exts.xor# a1 b1 #)
 {-# INLINE xor_w# #-}
 
@@ -309,10 +313,10 @@ select_word# a b (Choice c) = Exts.xor# a (Exts.and# c (Exts.xor# a b))
 
 -- | Select an unboxed two-limb word without branching, given a 'Choice'.
 select_wide#
-  :: (# Word#, Word# #)
-  -> (# Word#, Word# #)
+  :: Limb2
+  -> Limb2
   -> Choice
-  -> (# Word#, Word# #)
+  -> Limb2
 select_wide# a b (Choice w) =
   let !mask = or_w# (hi# w) (lo# w)
   in  xor_w# a (and_w# mask (xor_w# a b))
@@ -320,10 +324,10 @@ select_wide# a b (Choice w) =
 
 -- | Select an unboxed four-limb word without branching, given a 'Choice'.
 select_wider#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: Limb4
+  -> Limb4
   -> Choice
-  -> (# Word#, Word#, Word#, Word# #)
+  -> Limb4
 select_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) (Choice w) =
   let !w0 = Exts.xor# a0 (Exts.and# w (Exts.xor# a0 b0))
       !w1 = Exts.xor# a1 (Exts.and# w (Exts.xor# a1 b1))
@@ -351,8 +355,8 @@ eq_word# a b =
 --   >>> decide (eq_wide (# 0##, 0## #) (# 0##, 0## #))
 --   True
 eq_wide#
-  :: (# Word#, Word# #)
-  -> (# Word#, Word# #)
+  :: Limb2
+  -> Limb2
   -> Choice
 eq_wide# (# a0, a1 #) (# b0, b1 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
@@ -366,8 +370,8 @@ eq_wide# (# a0, a1 #) (# b0, b1 #) =
 --   >>> let zero = (# 0##, 0##, 0##, 0## #) in decide (eq_wider# zero zero)
 --   True
 eq_wider#
-  :: (# Word#, Word#, Word#, Word# #)
-  -> (# Word#, Word#, Word#, Word# #)
+  :: Limb4
+  -> Limb4
   -> Choice
 eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
