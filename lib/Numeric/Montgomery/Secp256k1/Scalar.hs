@@ -31,13 +31,13 @@ module Numeric.Montgomery.Secp256k1.Scalar (
 
   -- * Reduction and retrieval
   , redc
-  , retr
   , redc#
+  , retr
   , retr#
 
   -- * Constant-time selection
-  , select#
   , select
+  , select#
 
   -- * Montgomery arithmetic
   , add
@@ -54,8 +54,8 @@ module Numeric.Montgomery.Secp256k1.Scalar (
   , inv#
   , exp
   , exp#
-  , odd#
   , odd_vartime
+  , odd#
   ) where
 
 import Control.DeepSeq
@@ -997,10 +997,10 @@ odd_vartime (Montgomery m) = C.decide (odd# m)
 -- constant-time selection ----------------------------------------------------
 
 select#
-  :: Limb4 -- ^ a
-  -> Limb4 -- ^ b
+  :: Limb4    -- ^ a
+  -> Limb4    -- ^ b
   -> C.Choice -- ^ c
-  -> Limb4 -- ^ result
+  -> Limb4    -- ^ result
 select# = WW.select#
 {-# INLINE select# #-}
 

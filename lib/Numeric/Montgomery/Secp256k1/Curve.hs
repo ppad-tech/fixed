@@ -31,13 +31,13 @@ module Numeric.Montgomery.Secp256k1.Curve (
 
   -- * Reduction and retrieval
   , redc
-  , retr
   , redc#
+  , retr
   , retr#
 
   -- * Constant-time selection
-  , select#
   , select
+  , select#
 
   -- * Montgomery arithmetic
   , add
@@ -1573,10 +1573,10 @@ odd_vartime (Montgomery m) = C.decide (odd# m)
 -- constant-time selection ----------------------------------------------------
 
 select#
-  :: Limb4 -- ^ a
-  -> Limb4 -- ^ b
-  -> C.Choice                     -- ^ c
-  -> Limb4 -- ^ result
+  :: Limb4    -- ^ a
+  -> Limb4    -- ^ b
+  -> C.Choice -- ^ c
+  -> Limb4    -- ^ result
 select# = WW.select#
 {-# INLINE select# #-}
 
