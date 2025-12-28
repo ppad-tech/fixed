@@ -14,11 +14,13 @@
 -- Primitives for constant-time choice.
 --
 -- The 'Choice' type encodes truthy and falsy values as unboxed 'Word#'
--- bit masks. You should convert it to a 'Bool' using 'decide' at the /end/
--- of a computation that you want to run in constant time.
+-- bit masks.
 --
--- Use the standard logical primitives ('or', 'and', 'xor', 'not', eq') to
--- manipulate "in-flight" 'Choice' values.
+-- Use the standard logical primitives ('or', 'and', 'xor', 'not', eq')
+-- to manipulate in-flight 'Choice' values. Use one of the selection
+-- functions to use a 'Choice' to select a value in constant time,
+-- or 'decide' to reduce a 'Choice' to a 'Bool' at the /end/ of a
+-- sensitive computation.
 
 module Data.Choice (
   -- * Choice
@@ -92,9 +94,13 @@ xor_w# (# a0, a1 #) (# b0, b1 #) = (# Exts.xor# a0 b0, Exts.xor# a1 b1 #)
 
 -- | Constant-time choice, encoded as a mask.
 --
---   Note that 'Choice' is defined as an unboxed newtype, and so a
+--   Note that 'Choice' is defined as an unlifted newtype, and so a
 --   'Choice' value cannot be bound at the top level. You should work
 --   with it locally in the context of a computation.
+--
+--   Use one of the selection functions to select a 'Choice' value in
+--   constant time, or 'decide' to reduce it to a 'Bool' at the /end/ of
+--   a sensitive computation.
 --
 --   >>> decide (or# (false# ()) (true# ()))
 --   True
@@ -293,7 +299,7 @@ eq c0 c1 = not (ne c0 c1)
 
 -- constant-time selection ----------------------------------------------------
 
--- | Select an unboxed word, given a 'Choice'.
+-- | Select an unboxed word without branching, given a 'Choice'.
 --
 --   >>> let w = C.select_word# 0## 1## (C.true# ()) in GHC.Word.W# w
 --   1
@@ -301,7 +307,7 @@ select_word# :: Word# -> Word# -> Choice -> Word#
 select_word# a b (Choice c) = Exts.xor# a (Exts.and# c (Exts.xor# a b))
 {-# INLINE select_word# #-}
 
--- | Select an unboxed two-limb word, given a 'Choice'.
+-- | Select an unboxed two-limb word without branching, given a 'Choice'.
 select_wide#
   :: (# Word#, Word# #)
   -> (# Word#, Word# #)
@@ -312,7 +318,7 @@ select_wide# a b (Choice w) =
   in  xor_w# a (and_w# mask (xor_w# a b))
 {-# INLINE select_wide# #-}
 
--- | Select an unboxed four-limb word, given a 'Choice'.
+-- | Select an unboxed four-limb word without branching, given a 'Choice'.
 select_wider#
   :: (# Word#, Word#, Word#, Word# #)
   -> (# Word#, Word#, Word#, Word# #)
