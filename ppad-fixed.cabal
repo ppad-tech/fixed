@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               ppad-fixed
-version:            0.1.2
+version:            0.1.3
 synopsis:           Large fixed-width words and constant-time arithmetic.
 license:            MIT
 license-file:       LICENSE
@@ -8,7 +8,7 @@ author:             Jared Tobin
 maintainer:         jared@ppad.tech
 category:           Data
 build-type:         Simple
-tested-with:        GHC == { 9.8.1 }
+tested-with:        GHC == { 9.10.3 }
 extra-doc-files:    CHANGELOG
 description:
   A pure high-performance implementation of large fixed-width integers
