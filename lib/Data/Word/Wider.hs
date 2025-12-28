@@ -53,9 +53,11 @@ module Data.Word.Wider (
   , shr_limb#
   , shl_limb#
   , and
-  , and_w#
+  , and#
   , or
-  , or_w#
+  , or#
+  , xor
+  , xor#
   , not
   , not#
 
@@ -383,8 +385,7 @@ shr_limb#
   -> Int#
   -> (# Limb4, Limb #)
 shr_limb# (# a0, a1, a2, a3 #) rs =
-  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-      !ls = size Exts.-# rs
+  let !ls = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# rs
       !(# l3, c3 #) = (# L.shr# a3 rs, L.shl# a3 ls #)
       !(# l2, c2 #) = (# L.or# (L.shr# a2 rs) c3, L.shl# a2 ls #)
       !(# l1, c1 #) = (# L.or# (L.shr# a1 rs) c2, L.shl# a1 ls #)
@@ -412,8 +413,7 @@ shl_limb#
   -> Int#
   -> (# Limb4, Limb #)
 shl_limb# (# a0, a1, a2, a3 #) ls =
-  let !size = case B.finiteBitSize (0 :: Word) of I# m -> m
-      !rs = size Exts.-# ls
+  let !rs = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# ls
       !(# l0, c0 #) = (# L.shl# a0 ls, L.shr# a0 rs #)
       !(# l1, c1 #) = (# L.or# (L.shl# a1 ls) c0, L.shr# a1 rs #)
       !(# l2, c2 #) = (# L.or# (L.shl# a2 ls) c1, L.shr# a2 rs #)
@@ -438,13 +438,13 @@ shl_limb (Wider w) (I# s) =
   in  Wider r
 {-# INLINABLE shl_limb #-}
 
-and_w#
+and#
   :: Limb4
   -> Limb4
   -> Limb4
-and_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+and# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.and# a0 b0, L.and# a1 b1, L.and# a2 b2, L.and# a3 b3 #)
-{-# INLINE and_w# #-}
+{-# INLINE and# #-}
 
 -- | Binary /and/.
 --
@@ -456,16 +456,16 @@ and
   :: Wider -- ^ a
   -> Wider -- ^ b
   -> Wider -- ^ a & b
-and (Wider a) (Wider b) = Wider (and_w# a b)
+and (Wider a) (Wider b) = Wider (and# a b)
 {-# INLINABLE and #-}
 
-or_w#
+or#
   :: Limb4
   -> Limb4
   -> Limb4
-or_w# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+or# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
   (# L.or# a0 b0, L.or# a1 b1, L.or# a2 b2, L.or# a3 b3 #)
-{-# INLINE or_w# #-}
+{-# INLINE or# #-}
 
 -- | Binary /or/.
 --
@@ -477,8 +477,29 @@ or
   :: Wider -- ^ a
   -> Wider -- ^ b
   -> Wider -- ^ a | b
-or (Wider a) (Wider b) = Wider (or_w# a b)
+or (Wider a) (Wider b) = Wider (or# a b)
 {-# INLINABLE or #-}
+
+xor#
+  :: Limb4
+  -> Limb4
+  -> Limb4
+xor# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
+  (# L.xor# a0 b0, L.xor# a1 b1, L.xor# a2 b2, L.xor# a3 b3 #)
+{-# INLINE xor# #-}
+
+-- | Binary /xor/.
+--
+--   >>> xor 1 1
+--   0
+--   >>> xor 1 0
+--   1
+xor
+  :: Wider -- ^ a
+  -> Wider -- ^ b
+  -> Wider -- ^ a ^ b
+xor (Wider a) (Wider b) = Wider (xor# a b)
+{-# INLINABLE xor #-}
 
 not#
   :: Limb4
@@ -783,7 +804,9 @@ sqr (Wider w) =
 {-# INLINABLE sqr #-}
 
 odd# :: Limb4 -> C.Choice
-odd# (# Limb w, _, _, _ #) = C.from_bit# (Exts.and# w 1##)
+odd# (# l, _, _, _ #) =
+  let !(Limb w) = L.and# l (Limb 1##)
+  in  C.from_bit# w
 {-# INLINE odd# #-}
 
 -- | Check if a 'Wider' is odd, returning a 'Choice'.

@@ -65,7 +65,6 @@ import qualified Data.Bits as B
 import qualified Data.Choice as C
 import Data.Word.Limb (Limb(..))
 import qualified Data.Word.Limb as L
-import GHC.Exts
 import Prelude hiding (div, mod, or, and, not, quot, rem, recip)
 
 -- utilities ------------------------------------------------------------------
@@ -78,7 +77,7 @@ fi = fromIntegral
 
 type Limb2 = (# Limb, Limb #)
 
-pattern L2 :: Word# -> Word# -> Limb2
+pattern L2 :: L.Word# -> L.Word# -> Limb2
 pattern L2 w0 w1 = (# Limb w0, Limb w1 #)
 {-# COMPLETE L2 #-}
 
@@ -111,7 +110,7 @@ instance NFData Wide where
 
 -- | Construct a 'Wide' word from low and high 'Word's.
 wide :: Word -> Word -> Wide
-wide (W# l) (W# h) = Wide (# Limb l, Limb h #)
+wide (L.W# l) (L.W# h) = Wide (# Limb l, Limb h #)
 {-# INLINE wide #-}
 
 -- | Convert an 'Integer' to a 'Wide' word in variable time.
@@ -122,8 +121,8 @@ to_vartime :: Integer -> Wide
 to_vartime n =
   let !size = B.finiteBitSize (0 :: Word)
       !mask = fi (maxBound :: Word) :: Integer
-      !(W# w0) = fi (n .&. mask)
-      !(W# w1) = fi ((n .>>. size) .&. mask)
+      !(L.W# w0) = fi (n .&. mask)
+      !(L.W# w1) = fi ((n .>>. size) .&. mask)
   in  Wide (# Limb w0, Limb w1 #)
 {-# INLINABLE to_vartime #-}
 
@@ -133,8 +132,8 @@ to_vartime n =
 --   1
 from_vartime :: Wide -> Integer
 from_vartime (Wide (# Limb a, Limb b #)) =
-      fi (W# b) .<<. (B.finiteBitSize (0 :: Word))
-  .|. fi (W# a)
+      fi (L.W# b) .<<. (B.finiteBitSize (0 :: Word))
+  .|. fi (L.W# a)
 {-# INLINABLE from_vartime #-}
 
 -- comparison -----------------------------------------------------------------
@@ -154,8 +153,8 @@ eq (Wide (# Limb a0, Limb a1 #)) (Wide (# Limb b0, Limb b1 #)) =
 --   >>> eq_vartime 1 1
 --   True
 eq_vartime :: Wide -> Wide -> Bool
-eq_vartime (Wide (# Limb a0, Limb b0 #)) (Wide (# Limb a1, Limb b1 #)) =
-  isTrue# (andI# (eqWord# a0 a1) (eqWord# b0 b1))
+eq_vartime (Wide (# a0, b0 #)) (Wide (# a1, b1 #)) =
+  L.eq_vartime# a0 a1 && L.eq_vartime# b0 b1
 {-# INLINABLE eq_vartime #-}
 
 -- constant-time selection-----------------------------------------------------
@@ -185,40 +184,40 @@ select# (L2 a0 a1) (L2 b0 b1) c =
 
 -- bits -----------------------------------------------------------------------
 
-or_w# :: Limb2 -> Limb2 -> Limb2
-or_w# (# a0, a1 #) (# b0, b1 #) = (# L.or# a0 b0, L.or# a1 b1 #)
-{-# INLINE or_w# #-}
+or# :: Limb2 -> Limb2 -> Limb2
+or# (# a0, a1 #) (# b0, b1 #) = (# L.or# a0 b0, L.or# a1 b1 #)
+{-# INLINE or# #-}
 
 -- | Logical disjunction on 'Wide' words.
 or :: Wide -> Wide -> Wide
-or (Wide a) (Wide b) = Wide (or_w# a b)
+or (Wide a) (Wide b) = Wide (or# a b)
 {-# INLINABLE or #-}
 
-and_w# :: Limb2 -> Limb2 -> Limb2
-and_w# (# a0, a1 #) (# b0, b1 #) = (# L.and# a0 b0, L.and# a1 b1 #)
-{-# INLINE and_w# #-}
+and# :: Limb2 -> Limb2 -> Limb2
+and# (# a0, a1 #) (# b0, b1 #) = (# L.and# a0 b0, L.and# a1 b1 #)
+{-# INLINE and# #-}
 
 -- | Logical conjunction on 'Wide' words.
 and :: Wide -> Wide -> Wide
-and (Wide a) (Wide b) = Wide (and_w# a b)
+and (Wide a) (Wide b) = Wide (and# a b)
 {-# INLINABLE and #-}
 
-xor_w# :: Limb2 -> Limb2 -> Limb2
-xor_w# (# a0, a1 #) (# b0, b1 #) = (# L.xor# a0 b0, L.xor# a1 b1 #)
-{-# INLINE xor_w# #-}
+xor# :: Limb2 -> Limb2 -> Limb2
+xor# (# a0, a1 #) (# b0, b1 #) = (# L.xor# a0 b0, L.xor# a1 b1 #)
+{-# INLINE xor# #-}
 
 -- | Logical exclusive-or on 'Wide' words.
 xor :: Wide -> Wide -> Wide
-xor (Wide a) (Wide b) = Wide (xor_w# a b)
+xor (Wide a) (Wide b) = Wide (xor# a b)
 {-# INLINABLE xor #-}
 
-not_w# :: Limb2 -> Limb2
-not_w# (# a0, a1 #) = (# L.not# a0, L.not# a1 #)
-{-# INLINE not_w# #-}
+not# :: Limb2 -> Limb2
+not# (# a0, a1 #) = (# L.not# a0, L.not# a1 #)
+{-# INLINE not# #-}
 
 -- | Logical negation on 'Wide' words.
 not :: Wide -> Wide
-not (Wide w) = Wide (not_w# w)
+not (Wide w) = Wide (not# w)
 {-# INLINABLE not #-}
 
 -- negation -------------------------------------------------------------------
@@ -238,7 +237,7 @@ neg (Wide w) = Wide (neg# w)
 neg#
   :: Limb2 -- ^ argument
   -> Limb2 -- ^ (wrapping) additive inverse
-neg# w = add_w# (not_w# w) (L2 1## 0##)
+neg# w = add_w# (not# w) (L2 1## 0##)
 {-# INLINE neg# #-}
 
 -- addition, subtraction ------------------------------------------------------
@@ -263,7 +262,7 @@ add_o
   -> (Wide, Word) -- ^ (sum, carry)
 add_o (Wide a) (Wide b) =
   let !(# s, Limb c #) = add_o# a b
-  in  (Wide s, W# c)
+  in  (Wide s, L.W# c)
 
 -- | Wrapping addition, computing 'a + b'.
 add_w#

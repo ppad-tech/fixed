@@ -66,6 +66,10 @@ module Data.Word.Limb (
   , mul_s#
 
   , mac#
+
+  -- * Re-exported
+  , Word(..)
+  , Word#
   ) where
 
 import qualified Data.Bits as B
