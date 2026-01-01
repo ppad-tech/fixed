@@ -183,6 +183,11 @@ This library aims at the maximum security achievable in a
 garbage-collected language under an optimizing compiler such as GHC, in
 which strict constant-timeness can be challenging to achieve.
 
+The constant-time properties of this library
+have been examined and defended in a [security
+analysis](https://ppad.tech/security-analysis-fixed) at
+[ppad.tech](https://ppad.tech).
+
 If you discover any vulnerabilities, please disclose them via
 security@ppad.tech.
 
