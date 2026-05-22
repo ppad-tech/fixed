@@ -32,6 +32,8 @@ module Data.Word.Wider (
   , lt#
   , gt
   , gt#
+  , lt_vartime
+  , gt_vartime
 
   -- * Parity
   , odd#
@@ -182,6 +184,22 @@ lt :: Wider -> Wider -> C.Choice
 lt (Wider a) (Wider b) = lt# a b
 {-# INLINABLE lt #-}
 
+-- | Variable-time less-than comparison between 'Wider' values.
+--
+--   >>> lt_vartime 1 2
+--   True
+--   >>> lt_vartime 2 1
+--   False
+lt_vartime :: Wider -> Wider -> Bool
+lt_vartime
+      (Wider (# Limb a0, Limb a1, Limb a2, Limb a3 #))
+      (Wider (# Limb b0, Limb b1, Limb b2, Limb b3 #))
+  | Exts.isTrue# (Exts.neWord# a3 b3) = Exts.isTrue# (Exts.ltWord# a3 b3)
+  | Exts.isTrue# (Exts.neWord# a2 b2) = Exts.isTrue# (Exts.ltWord# a2 b2)
+  | Exts.isTrue# (Exts.neWord# a1 b1) = Exts.isTrue# (Exts.ltWord# a1 b1)
+  | otherwise                         = Exts.isTrue# (Exts.ltWord# a0 b0)
+{-# INLINABLE lt_vartime #-}
+
 gt#
   :: Limb4
   -> Limb4
@@ -201,6 +219,16 @@ gt# a b =
 gt :: Wider -> Wider -> C.Choice
 gt (Wider a) (Wider b) = gt# a b
 {-# INLINABLE gt #-}
+
+-- | Variable-time greater-than comparison between 'Wider' values.
+--
+--   >>> gt_vartime 1 2
+--   False
+--   >>> gt_vartime 2 1
+--   True
+gt_vartime :: Wider -> Wider -> Bool
+gt_vartime a b = lt_vartime b a
+{-# INLINABLE gt_vartime #-}
 
 cmp#
   :: Limb4
