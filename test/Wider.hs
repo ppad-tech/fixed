@@ -102,6 +102,40 @@ lt = do
   H.assertBool mempty (not (C.decide (W.lt# c a)))
   H.assertBool mempty (not (C.decide (W.lt# c b)))
 
+gt_vartime :: H.Assertion
+gt_vartime = do
+  let !a = 0
+      !b = 1
+      !c = 2 ^ (256 :: Word) - 1
+  H.assertBool mempty (W.gt_vartime b a)
+  H.assertBool mempty (W.gt_vartime c a)
+  H.assertBool mempty (W.gt_vartime c b)
+
+  H.assertBool mempty (not (W.gt_vartime a a))
+  H.assertBool mempty (not (W.gt_vartime b b))
+  H.assertBool mempty (not (W.gt_vartime c c))
+
+  H.assertBool mempty (not (W.gt_vartime a b))
+  H.assertBool mempty (not (W.gt_vartime a c))
+  H.assertBool mempty (not (W.gt_vartime b c))
+
+lt_vartime :: H.Assertion
+lt_vartime = do
+  let !a = 0
+      !b = 1
+      !c = 2 ^ (256 :: Word) - 1
+  H.assertBool mempty (W.lt_vartime a b)
+  H.assertBool mempty (W.lt_vartime a c)
+  H.assertBool mempty (W.lt_vartime b c)
+
+  H.assertBool mempty (not (W.lt_vartime a a))
+  H.assertBool mempty (not (W.lt_vartime b b))
+  H.assertBool mempty (not (W.lt_vartime c c))
+
+  H.assertBool mempty (not (W.lt_vartime b a))
+  H.assertBool mempty (not (W.lt_vartime c a))
+  H.assertBool mempty (not (W.lt_vartime c b))
+
 cmp :: H.Assertion
 cmp = do
   let !a = 0
@@ -149,6 +183,14 @@ instance Q.Arbitrary W.Wider where
 odd_correct :: W.Wider -> Bool
 odd_correct w = C.decide (W.odd w) == I.integerTestBit (W.from_vartime w) 0
 
+lt_vartime_correct :: W.Wider -> W.Wider -> Bool
+lt_vartime_correct a b =
+  W.lt_vartime a b == (W.from_vartime a < W.from_vartime b)
+
+gt_vartime_correct :: W.Wider -> W.Wider -> Bool
+gt_vartime_correct a b =
+  W.gt_vartime a b == (W.from_vartime a > W.from_vartime b)
+
 tests :: TestTree
 tests = testGroup "wider tests" [
     H.testCase "overflowing add, no carry" overflowing_add_no_carry
@@ -162,10 +204,16 @@ tests = testGroup "wider tests" [
   , H.testCase "eq" eq
   , H.testCase "gt" gt
   , H.testCase "lt" lt
+  , H.testCase "gt_vartime" gt_vartime
+  , H.testCase "lt_vartime" lt_vartime
   , H.testCase "cmp" cmp
   , H.testCase "sqr" sqr
   , H.testCase "mul" mul
   , H.testCase "sub_mod" sub_mod
   , Q.testProperty "odd w ~ odd (from w)" $ Q.withMaxSuccess 500 odd_correct
+  , Q.testProperty "lt_vartime a b ~ from a < from b" $
+      Q.withMaxSuccess 500 lt_vartime_correct
+  , Q.testProperty "gt_vartime a b ~ from a > from b" $
+      Q.withMaxSuccess 500 gt_vartime_correct
   ]
 
