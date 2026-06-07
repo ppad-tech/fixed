@@ -1,5 +1,9 @@
 # Changelog
 
+- 0.1.5 (2026-06-07)
+  * Improves constant-time modular inverse performance on the Montgomery
+    'Curve' module by about 2x, and on the 'Scalar' module by about 1.5x.
+
 - 0.1.4 (2026-05-22)
   * Adds variable-time comparison functions to Data.Word.Wider.
 
