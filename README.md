@@ -76,10 +76,10 @@ mean                 14.26 ns   (14.23 ns .. 14.29 ns)
 std dev              114.3 ps   (84.98 ps .. 181.1 ps)
 
 benchmarking inv/curve:  M(2 ^ 255 - 19) ^ -1
-time                 6.936 μs   (6.911 μs .. 6.959 μs)
+time                 3.567 μs   (3.549 μs .. 3.581 μs)
                      1.000 R²   (1.000 R² .. 1.000 R²)
-mean                 6.898 μs   (6.885 μs .. 6.911 μs)
-std dev              44.83 ns   (35.58 ns .. 56.92 ns)
+mean                 3.547 μs   (3.539 μs .. 3.556 μs)
+std dev              27.66 ns   (22.69 ns .. 35.25 ns)
 
 benchmarking exp/curve:  M(2 ^ 255 - 19) ^ (2 ^ 255 - 19)
 time                 5.200 μs   (5.194 μs .. 5.205 μs)
