@@ -268,6 +268,9 @@ add_o# (Limb a) (Limb b) = case Exts.plusWord2# a b of
 
 -- | Carrying addition, computing augend + addend + carry, returning
 --   the sum and new carry.
+--
+--   The carry-in must be 0 or 1; this is not checked. The carry-out
+--   is always 0 or 1.
 add_c#
   :: Limb             -- ^ augend
   -> Limb             -- ^ addend
@@ -304,6 +307,11 @@ add_s# (Limb a) (Limb b) =
 
 -- | Borrowing subtraction, computing minuend - (subtrahend + borrow),
 --   returning the difference and new borrow mask.
+--
+--   The borrow-in is interpreted as a mask, of which only the most
+--   significant bit is examined; a full-word mask (as produced by
+--   this function) borrows 1. The borrow-out is 0 or a full-word
+--   mask.
 sub_b#
   :: Limb              -- ^ minuend
   -> Limb              -- ^ subtrahend
