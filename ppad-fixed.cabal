@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               ppad-fixed
-version:            0.1.6
+version:            0.2.0
 synopsis:           Large fixed-width words and constant-time arithmetic.
 license:            MIT
 license-file:       LICENSE

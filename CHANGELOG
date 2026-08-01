@@ -1,5 +1,17 @@
 # Changelog
 
+- 0.2.0 (2026-08-01)
+  * Addresses a couple of minor issues detected by an LLM scan:
+
+    * Fixes a bug that could lead shl1_c# to produce a malformed Choice
+      that would behave incorrectly for negation or selection.
+
+    * Each Montgomery domain's 'signum' implementation was broken,
+      producing R^-1 instead of the proper in-domain 'one'. Now these
+      return the appropriate values.
+
+    Also clarifies a few Haddocks, on the suggestions of the same scan.
+
 - 0.1.6 (2026-08-01)
   * The eq_{word,wide,wider}# functions now return a mask, instead of a
     bit, inside the resulting Choice value.
