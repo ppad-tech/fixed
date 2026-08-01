@@ -793,6 +793,9 @@ inv# a =
 
 -- | Multiplicative inverse in the Montgomery domain.
 --
+--   Note that 'zero' has no multiplicative inverse; 'inv' returns
+--   'zero' when applied to it.
+--
 --   >> inv 2
 --   57896044618658097711785492504343953926418782139537452191302581570759080747169
 --   >> inv 2 * 2
