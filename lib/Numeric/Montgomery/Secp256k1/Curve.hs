@@ -1354,7 +1354,7 @@ select#
 select# = WW.select#
 {-# INLINE select# #-}
 
--- | Return a if c is truthy, otherwise return b.
+-- | Return b if c is truthy, otherwise return a.
 --
 --   >>> import qualified Data.Choice as C
 --   >>> select 0 1 (C.true# ())

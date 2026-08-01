@@ -143,7 +143,7 @@ gt# (Limb a) (Limb b) = C.from_word_gt# a b
 
 -- constant-time selection ----------------------------------------------------
 
--- | Return a if c is truthy, otherwise return b.
+-- | Return b if c is truthy, otherwise return a.
 select#
   :: Limb     -- ^ a
   -> Limb     -- ^ b

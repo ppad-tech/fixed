@@ -305,6 +305,9 @@ eq c0 c1 = not (ne c0 c1)
 
 -- | Select an unboxed word without branching, given a 'Choice'.
 --
+--   Returns the second word if the 'Choice' is truthy, and the first
+--   otherwise.
+--
 --   >>> let w = C.select_word# 0## 1## (C.true# ()) in GHC.Word.W# w
 --   1
 select_word# :: Word# -> Word# -> Choice -> Word#
@@ -312,6 +315,9 @@ select_word# a b (Choice c) = Exts.xor# a (Exts.and# c (Exts.xor# a b))
 {-# INLINE select_word# #-}
 
 -- | Select an unboxed two-limb word without branching, given a 'Choice'.
+--
+--   Returns the second word if the 'Choice' is truthy, and the first
+--   otherwise.
 select_wide#
   :: Limb2
   -> Limb2
@@ -323,6 +329,9 @@ select_wide# a b (Choice w) =
 {-# INLINE select_wide# #-}
 
 -- | Select an unboxed four-limb word without branching, given a 'Choice'.
+--
+--   Returns the second word if the 'Choice' is truthy, and the first
+--   otherwise.
 select_wider#
   :: Limb4
   -> Limb4

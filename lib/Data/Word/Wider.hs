@@ -319,7 +319,7 @@ select# (L4 a0 a1 a2 a3) (L4 b0 b1 b2 b3) c =
   in  L4 w0 w1 w2 w3
 {-# INLINE select# #-}
 
--- | Return a if c is truthy, otherwise return b.
+-- | Return b if c is truthy, otherwise return a.
 --
 --   >>> import qualified Data.Choice as C
 --   >>> select 0 1 (C.true# ())

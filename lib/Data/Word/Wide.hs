@@ -159,7 +159,7 @@ eq_vartime (Wide (# a0, b0 #)) (Wide (# a1, b1 #)) =
 
 -- constant-time selection-----------------------------------------------------
 
--- | Return a if c is truthy, otherwise return b.
+-- | Return b if c is truthy, otherwise return a.
 --
 --   >>> import qualified Data.Choice as C
 --   >>> select 0 1 (C.true# ())
