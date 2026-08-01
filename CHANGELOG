@@ -1,5 +1,9 @@
 # Changelog
 
+- 0.1.6 (2026-08-01)
+  * The eq_{word,wide,wider}# functions now return a mask, instead of a
+    bit, inside the resulting Choice value.
+
 - 0.1.5 (2026-06-07)
   * Improves constant-time modular inverse performance on the Montgomery
     'Curve' module by about 2x, and on the 'Scalar' module by about 1.5x.
