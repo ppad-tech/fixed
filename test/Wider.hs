@@ -183,6 +183,23 @@ sub_mod = do
       !e = 0x44acf6b7e36c1342c2c5897204fe09504e1e2efb1a900377dbc4e7a6a133ec56
   H.assertBool mempty (W.eq_vartime o e)
 
+shl1_c :: H.Assertion
+shl1_c = case W.shl1_c (2 ^ (255 :: Word)) of
+  (# r1, c1 #) -> case W.shl1_c 1 of
+    (# r2, c2 #) -> do
+      H.assertBool "value, carry out" (W.eq_vartime r1 0)
+      H.assertBool "carry decides true" (C.decide c1)
+      -- the carry must be a full-word mask, not a bare bit; negating
+      -- or selecting on it is otherwise wrong
+      H.assertBool "negated carry decides false"
+        (not (C.decide (C.not c1)))
+      H.assertBool "select on carry"
+        (W.eq_vartime (W.select 0 1 c1) 1)
+      H.assertBool "value, no carry" (W.eq_vartime r2 2)
+      H.assertBool "no carry decides false" (not (C.decide c2))
+      H.assertBool "select on no carry"
+        (W.eq_vartime (W.select 0 1 c2) 0)
+
 instance Q.Arbitrary W.Wider where
   arbitrary = fmap W.to_vartime Q.arbitrary
 
@@ -216,6 +233,7 @@ tests = testGroup "wider tests" [
   , H.testCase "sqr" sqr
   , H.testCase "mul" mul
   , H.testCase "sub_mod" sub_mod
+  , H.testCase "shl1_c" shl1_c
   , Q.testProperty "odd w ~ odd (from w)" $ Q.withMaxSuccess 500 odd_correct
   , Q.testProperty "lt_vartime a b ~ from a < from b" $
       Q.withMaxSuccess 500 lt_vartime_correct

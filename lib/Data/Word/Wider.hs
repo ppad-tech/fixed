@@ -384,7 +384,7 @@ shl1_c# (# w0, w1, w2, w3 #) =
       !r2           = L.or# s2 c1
       !(# s3, c3 #) = (# L.shl# w3 1#, L.shr# w3 s #)
       !r3           = L.or# s3 c2
-      !(Limb w)     = L.shl# c3 s
+      !(Limb w)     = c3
   in  (# (# r0, r1, r2, r3 #), C.from_bit# w #)
 {-# INLINE shl1_c# #-}
 
