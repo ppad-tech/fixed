@@ -347,7 +347,7 @@ eq_word# a b =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !x = Exts.xor# a b
       !y = Exts.uncheckedShiftRL# (Exts.or# x (neg_w# x)) s
-  in  Choice (Exts.xor# y 1##)
+  in  from_bit# (Exts.xor# y 1##)
 {-# INLINE eq_word# #-}
 
 -- | Compare unboxed two-limb words for equality in constant time.
@@ -362,7 +362,7 @@ eq_wide# (# a0, a1 #) (# b0, b1 #) =
   let !s = case B.finiteBitSize (0 :: Word) of I# m -> m Exts.-# 1#
       !x = Exts.or# (Exts.xor# a0 b0) (Exts.xor# a1 b1)
       !y = Exts.uncheckedShiftRL# (Exts.or# x (neg_w# x)) s
-  in  Choice (Exts.xor# y 1##)
+  in  from_bit# (Exts.xor# y 1##)
 {-# INLINE eq_wide# #-}
 
 -- | Compare unboxed four-limb words for equality in constant time.
@@ -378,6 +378,6 @@ eq_wider# (# a0, a1, a2, a3 #) (# b0, b1, b2, b3 #) =
       !x = Exts.or# (Exts.or# (Exts.xor# a0 b0) (Exts.xor# a1 b1))
                     (Exts.or# (Exts.xor# a2 b2) (Exts.xor# a3 b3))
       !y = Exts.uncheckedShiftRL# (Exts.or# x (neg_w# x)) s
-  in  Choice (Exts.xor# y 1##)
+  in  from_bit# (Exts.xor# y 1##)
 {-# INLINE eq_wider# #-}
 

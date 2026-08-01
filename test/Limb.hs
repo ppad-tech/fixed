@@ -84,6 +84,11 @@ eq = do
   H.assertBool mempty (not (C.decide (L.eq# a b)))
   H.assertBool mempty (not (C.decide (L.eq# b a)))
   H.assertBool mempty (C.decide (L.eq# b b))
+  -- eq# must yield a full-word mask, not a bare bit; negating or
+  -- selecting on it is otherwise wrong
+  H.assertBool mempty (not (C.decide (L.ne# a a)))
+  H.assertBool mempty (C.decide (L.ne# a b))
+  H.assertBool mempty (L.eq_vartime# (L.select# a b (L.eq# a a)) b)
 
 gt :: H.Assertion
 gt = do
