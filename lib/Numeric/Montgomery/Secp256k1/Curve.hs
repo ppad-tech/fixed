@@ -109,8 +109,9 @@ instance Num Montgomery where
   signum (Montgomery (# l0, l1, l2, l3 #)) =
     let !(Limb l) = l0 `L.or#` l1 `L.or#` l2 `L.or#` l3
         !n = C.from_word_nonzero# l
-        !b = C.to_word# n
-    in  Montgomery (# Limb b, Limb 0##, Limb 0##, Limb 0## #)
+        !(Montgomery z) = zero
+        !(Montgomery o) = one
+    in  Montgomery (select# z o n)
 
 instance NFData Montgomery where
   rnf (Montgomery a) = case a of (# _, _, _, _ #) -> ()

@@ -118,6 +118,13 @@ mul = do
     0x000000000000000000000000000000014551231950B75FC4402DA1732FC9BEBF
     0x9D671CD581C69BC5E697F5E45BCD07C6741496C20E7CF878896CF21467D7D140
 
+signum_correct :: H.Assertion
+signum_correct = do
+  H.assertBool "signum 0 = 0" (S.eq_vartime (signum 0) 0)
+  H.assertBool "signum 5 = 1" (S.eq_vartime (signum 5) 1)
+  H.assertBool "abs 5 * signum 5 = 5"
+    (S.eq_vartime (abs 5 * signum 5) 5)
+
 instance Q.Arbitrary W.Wider where
   arbitrary = fmap W.to_vartime Q.arbitrary
 
@@ -173,6 +180,7 @@ tests = testGroup "montgomery tests (scalar)" [
   , H.testCase "add" add
   , H.testCase "sub" sub
   , H.testCase "mul" mul
+  , H.testCase "signum" signum_correct
   , Q.testProperty "a + b mod m ~ ma + mb" $ Q.withMaxSuccess 500 add_matches
   , Q.testProperty "a * b mod m ~ ma * mb" $ Q.withMaxSuccess 500 mul_matches
   , Q.testProperty "a ^ 2 mod m ~ ma ^ 2"  $ Q.withMaxSuccess 500 sqr_matches
