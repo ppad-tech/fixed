@@ -31,6 +31,11 @@ library
       -Wall
   if flag(llvm)
     ghc-options: -fllvm -O2
+  -- LLVM's x86 backend rewrites a cmov whose operand is a load as a
+  -- branch (its cmov converter), which makes sub_mod#'s borrow-masked
+  -- correction a branch on the borrow; keep the cmov.
+  if flag(llvm) && arch(x86_64)
+    ghc-options: -optlc=-x86-cmov-converter=false
   exposed-modules:
       Data.Choice
     , Data.Word.Limb
