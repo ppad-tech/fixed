@@ -1,6 +1,6 @@
 # Changelog
 
-- unreleased
+- 0.2.1 (2026-10-27)
   * Under the llvm flag on x86_64, the library is compiled with LLVM's
     x86 cmov converter off (-optlc=-x86-cmov-converter=false). The
     converter rewrites a conditional move whose operand is a load as a
