@@ -1,5 +1,13 @@
 # Changelog
 
+- unreleased
+  * Under the llvm flag on x86_64, the library is compiled with LLVM's
+    x86 cmov converter off (-optlc=-x86-cmov-converter=false). The
+    converter rewrites a conditional move whose operand is a load as a
+    branch, and so made the borrow-masked correction of sub_mod,
+    sub_mod#, and sub_mod_c# a branch on the borrow, which depends on
+    the operands. NCG builds, and aarch64, were unaffected.
+
 - 0.2.0 (2026-08-01)
   * Addresses a couple of minor issues detected by an LLM scan:
 
